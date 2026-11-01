@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cloud-play — مساحة تجريب سحابية</title>
+<meta name="description" content="مساحة تجريب سحابية لتجربة HTML وCSS وJavaScript مباشرة في المتصفح، مع معاينة فورية وطرفية مدمجة." />
+<meta name="color-scheme" content="dark light" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M14 34a8 8 0 0 1-1-15.9A11 11 0 0 1 34.6 17 8.5 8.5 0 0 1 34 34Z' fill='%236ee7ff'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+<div class="bg-orbs" aria-hidden="true">
+  <span class="orb orb-1"></span>
+  <span class="orb orb-2"></span>
+  <span class="orb orb-3"></span>
+  <span class="grid-overlay"></span>
+</div>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 48 48" role="presentation">
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#6ee7ff" />
+              <stop offset="1" stop-color="#a78bfa" />
+            </linearGradient>
+          </defs>
+          <path d="M14 34a8 8 0 0 1-1-15.9A11 11 0 0 1 34.6 17 8.5 8.5 0 0 1 34 34Z" fill="url(#logoGrad)" />
+          <path d="M18 27.2 23.4 32.5 31 18.6" fill="none" stroke="#08111f" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Cloud<span>-play</span></h1>
+        <p data-i18n="tagline">مساحة تجريب سحابية</p>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <label class="select-wrap" data-i18n-title="templates">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /><path d="m3 18 9 5 9-5" />
+        </svg>
+        <select id="templateSelect" aria-label="القوالب"></select>
+      </label>
+
+      <label class="switch" data-i18n-title="autoRunTitle">
+        <input type="checkbox" id="autoRunToggle" checked />
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        <span class="switch-label" data-i18n="autoRun">تشغيل تلقائي</span>
+      </label>
+
+      <button id="runBtn" class="btn btn-primary" data-i18n-title="runTitle">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5L8 5.5Z" fill="currentColor" /></svg>
+        <span data-i18n="run">تشغيل</span>
+        <kbd>Ctrl ↵</kbd>
+      </button>
+
+      <div class="tool-group">
+        <button id="downloadBtn" class="icon-btn" data-i18n-title="download">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3v12" /><path d="m7.5 10.5 4.5 4.5 4.5-4.5" /><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17" />
+          </svg>
+        </button>
+        <button id="shareBtn" class="icon-btn" data-i18n-title="share">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="17" cy="5.5" r="2.8" /><circle cx="7" cy="12" r="2.8" /><circle cx="17" cy="18.5" r="2.8" />
+            <path d="m9.5 10.6 5-3.6" /><path d="m9.5 13.4 5 3.6" />
+          </svg>
+        </button>
+        <button id="themeBtn" class="icon-btn" data-i18n-title="theme">
+          <svg class="ico ico-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
+          </svg>
+          <svg class="ico ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" /><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6" />
+          </svg>
+        </button>
+        <button id="langBtn" class="icon-btn lang-btn" data-i18n-title="language">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace" id="workspace" style="--split: 50">
+    <section class="pane pane-editor">
+      <div class="pane-head">
+        <div class="file-tabs" role="tablist" aria-label="الملفات">
+          <button class="file-tab is-active" role="tab" aria-selected="true" data-lang="html">
+            <span class="dot dot-html"></span>index.html
+          </button>
+          <button class="file-tab" role="tab" aria-selected="false" data-lang="css">
+            <span class="dot dot-css"></span>style.css
+          </button>
+          <button class="file-tab" role="tab" aria-selected="false" data-lang="js">
+            <span class="dot dot-js"></span>script.js
+          </button>
+        </div>
+        <span class="pane-hint" id="paneHint">HTML</span>
+      </div>
+
+      <div class="editor-stack">
+        <div class="editor is-active" data-lang="html">
+          <pre class="highlight" aria-hidden="true"><code></code></pre>
+          <textarea spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" aria-label="HTML"></textarea>
+        </div>
+        <div class="editor" data-lang="css">
+          <pre class="highlight" aria-hidden="true"><code></code></pre>
+          <textarea spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" aria-label="CSS"></textarea>
+        </div>
+        <div class="editor" data-lang="js">
+          <pre class="highlight" aria-hidden="true"><code></code></pre>
+          <textarea spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" aria-label="JavaScript"></textarea>
+        </div>
+      </div>
+
+      <footer class="statusbar">
+        <span id="statusPos">سطر 1 · عمود 1</span>
+        <span id="statusChars">0 حرف</span>
+        <span class="status-tag" id="statusLang">HTML</span>
+      </footer>
+    </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="تغيير حجم الأجزاء">
+      <span class="grip"></span>
+    </div>
+
+    <section class="pane pane-preview">
+      <div class="pane-head">
+        <div class="pane-title">
+          <span class="live-dot"></span>
+          <span data-i18n="preview">المعاينة</span>
+          <span class="badge" data-i18n="live">مباشر</span>
+        </div>
+        <div class="pane-actions">
+          <div class="device-group" role="group">
+            <button class="seg is-active" data-w="100%" data-i18n-title="desktop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="2.5" y="4" width="19" height="13" rx="2" /><path d="M8.5 20.5h7M12 17v3.5" /></svg>
+            </button>
+            <button class="seg" data-w="768px" data-i18n-title="tablet">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="5" y="2.5" width="14" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+            </button>
+            <button class="seg" data-w="380px" data-i18n-title="phone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.6h2" /></svg>
+            </button>
+          </div>
+          <button id="reloadBtn" class="icon-btn sm" data-i18n-title="reload">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.6-5.9" /><path d="M20 4v4.5h-4.5" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="preview-stage" id="previewStage">
+        <div class="device" id="device">
+          <iframe id="preview" title="معاينة الكود" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-downloads"></iframe>
+        </div>
+      </div>
+
+      <section class="console" id="console">
+        <header class="console-head">
+          <button class="console-toggle" id="consoleToggle" aria-expanded="true">
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+            <span data-i18n="console">الطرفية</span>
+            <span class="count" id="consoleCount">0</span>
+          </button>
+          <button id="clearConsole" class="link-btn" data-i18n="clear">مسح</button>
+        </header>
+        <div class="console-body" id="consoleBody" aria-live="polite">
+          <p class="console-empty" data-i18n="consoleEmpty">لا توجد مخرجات بعد — جرّب console.log().</p>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<noscript>
+  <p style="padding:2rem;text-align:center;font-family:system-ui">يتطلب Cloud-play تشغيل JavaScript في متصفحك.</p>
+</noscript>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>
