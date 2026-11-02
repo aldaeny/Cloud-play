@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- themes.xml — Aether Dark Theme -->
+<resources>
+    <style name="Theme.Aether" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:statusBarColor">@color/brandDark</item>
+        <item name="android:navigationBarColor">@color/brandDark</item>
+        <item name="android:windowBackground">@color/brandDark</item>
+    </style>
+</resources>

@@ -1,0 +1,464 @@
+// This file defines the database schema for Aether (Stage 2)
+// Based on the SQL schema provided in Architecture (Stage 1)
+// PostgreSQL + Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TitleKind {
+  MOVIE
+  SERIES
+}
+
+enum PublishState {
+  DRAFT
+  METADATA_REVIEW
+  RIGHTS_PENDING
+  RIGHTS_APPROVED
+  PROCESSING
+  QC
+  PUBLISHED
+  UNPUBLISHED
+  TAKEDOWN
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+model Tenant {
+  id          String @id @default(uuid()) @db.Uuid
+  branding    TenantBranding?
+  featureFlags FeatureFlag[]
+  users       AppUser[]
+  plans       Plan[]
+  titles      Title[]
+  auditLogs   AuditLog[]
+  homeRows    HomeRow[]
+  banners     Banner[]
+  staffUsers  StaffUser[]
+  roles       Role[]
+  coupons     Coupon[]
+  createdAt   DateTime @default(now()) @db.Timestamptz
+}
+
+model TenantBranding {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  brandDark   String @default("#0a0a0c")
+  brandCard   String @default("#121217")
+  cyanGlow    String @default("#00e5ff")
+  magentaGlow String @default("#ff2085")
+  violetGlow  String @default("#7b30ff")
+  amberGlow   String @default("#ffb000")
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  @@unique([tenantId])
+}
+
+model FeatureFlag {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  key         String
+  enabled     Boolean @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+}
+
+model AppUser {
+  id              String @id @default(uuid()) @db.Uuid
+  tenantId        String @db.Uuid
+  tenant          Tenant @relation(fields: [tenantId], references: [id])
+  email           String? @unique
+  phone           String?
+  passwordHash    String?
+  emailVerifiedAt DateTime? @db.Timestamptz
+  status          String @default("active")
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  profiles        Profile[]
+  devices         Device[]
+  subscriptions   Subscription[]
+  auditLogs       AuditLog[] @relation("AppUserAuditLogs")
+  notifications   Notification[]
+  supportTickets  SupportTicket[]
+  playbackSessions PlaybackSession[]
+}
+
+model Profile {
+  id            String @id @default(uuid()) @db.Uuid
+  userId        String @db.Uuid
+  user          AppUser @relation(fields: [userId], references: [id])
+  name          String
+  avatarUrl     String?
+  maturityMax   String @default("PG-13")
+  isKid         Boolean @default(false)
+  pinHash       String?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+  playbackSessions PlaybackSession[]
+  watchProgress   WatchProgress[]
+  favorites       Favorite[]
+  watchlistItems  WatchlistItem[]
+}
+
+model Device {
+  id            String @id @default(uuid()) @db.Uuid
+  userId        String @db.Uuid
+  user          AppUser @relation(fields: [userId], references: [id])
+  platform      String
+  deviceName    String
+  lastSeenAt    DateTime? @db.Timestamptz
+  revokedAt     DateTime? @db.Timestamptz
+  playbackSessions PlaybackSession[]
+}
+
+model Plan {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  code        String
+  interval    String
+  priceCents  Int
+  currency    String @db.Char(3)
+  trialDays   Int @default(0)
+  maxStreams  Int
+  maxDevices  Int
+  active      Boolean @default(true)
+  subscriptions Subscription[]
+
+  @@unique([tenantId, code])
+}
+
+model Subscription {
+  id              String @id @default(uuid()) @db.Uuid
+  userId          String @db.Uuid
+  user            AppUser @relation(fields: [userId], references: [id])
+  planId          String @db.Uuid
+  plan            Plan @relation(fields: [planId], references: [id])
+  status          SubscriptionStatus
+  currentPeriodEnd DateTime @db.Timestamptz
+  provider        String
+  providerRef     String? @unique
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  invoices        Invoice[]
+  couponRedemptions CouponRedemption[]
+}
+
+model Title {
+  id              String @id @default(uuid()) @db.Uuid
+  tenantId        String @db.Uuid
+  tenant          Tenant @relation(fields: [tenantId], references: [id])
+  kind            TitleKind
+  state           PublishState @default(DRAFT)
+  titleAr         String
+  titleEn         String
+  synopsisAr      String?
+  synopsisEn      String?
+  releaseYear     Int?
+  runtimeSec      Int?
+  maturityRating  String
+  originalLanguage String?
+  posterUrl       String?
+  backdropUrl     String?
+  genres          String[] @default([])
+  keywords        String[] @default([])
+  searchVector    String?
+  viewsCount      Int @default(0)
+  ratingAverage   Float? @default(0)
+  ratingCount     Int @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  seasons         Season[]
+  episodes        Episode[] @relation("TitleEpisodes")
+  rightsWindows   RightsWindow[]
+  mediaAssets     MediaAsset[] @relation("TitleMediaAssets")
+  homeRowItems    HomeRowItem[]
+  watchProgress   WatchProgress[]
+  favorites       Favorite[]
+  watchlistItems  WatchlistItem[]
+  playbackSessions PlaybackSession[]
+}
+
+model RightsWindow {
+  id          String @id @default(uuid()) @db.Uuid
+  titleId     String @db.Uuid
+  title       Title @relation(fields: [titleId], references: [id])
+  contractRef String
+  territories String @db.Text
+  startsAt    DateTime @db.Timestamptz
+  endsAt      DateTime @db.Timestamptz
+  approvedBy  String? @db.Uuid
+  approvedAt  DateTime? @db.Timestamptz
+}
+
+model Season {
+  id          String @id @default(uuid()) @db.Uuid
+  titleId     String @db.Uuid
+  title       Title @relation(fields: [titleId], references: [id])
+  number      Int
+  episodes    Episode[] @relation("SeasonEpisodes")
+
+  @@unique([titleId, number])
+}
+
+model Episode {
+  id          String @id @default(uuid()) @db.Uuid
+  seasonId    String @db.Uuid
+  season      Season @relation("SeasonEpisodes", fields: [seasonId], references: [id])
+  titleId     String @db.Uuid
+  title       Title @relation("TitleEpisodes", fields: [titleId], references: [id])
+  number      Int
+  titleAr     String
+  titleEn     String
+  runtimeSec  Int?
+  state       PublishState @default(DRAFT)
+  mediaAssets MediaAsset[] @relation("EpisodeMediaAssets")
+  watchProgress WatchProgress[]
+  playbackSessions PlaybackSession[]
+
+  @@unique([seasonId, number])
+}
+
+model MediaAsset {
+  id              String @id @default(uuid()) @db.Uuid
+  ownerType       String
+  ownerId         String @db.Uuid
+  sourceKey       String
+  sourceBucket    String @default("aether-source")
+  mediaType       String @default("video")
+  hlsManifestKey  String?
+  dashManifestKey String?
+  drmContentId    String?
+  durationSec     Int?
+  widthPx         Int?
+  heightPx        Int?
+  status          String @default("uploaded")
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  titleId         String? @db.Uuid
+  episodeId       String? @db.Uuid
+  title           Title? @relation("TitleMediaAssets", fields: [titleId], references: [id], map: "MediaAssetTitleFK")
+  episode         Episode? @relation("EpisodeMediaAssets", fields: [episodeId], references: [id], map: "MediaAssetEpisodeFK")
+  transcodeJobs   TranscodeJob[]
+}
+
+model TranscodeJob {
+  id          String @id @default(uuid()) @db.Uuid
+  mediaAssetId String @db.Uuid
+  mediaAsset  MediaAsset @relation(fields: [mediaAssetId], references: [id])
+  status      String @default("queued")
+  progress    Int @default(0)
+  error       String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+}
+
+model PlaybackSession {
+  id              String @id @default(uuid()) @db.Uuid
+  userId          String @db.Uuid
+  user            AppUser @relation(fields: [userId], references: [id])
+  profileId       String @db.Uuid
+  profile         Profile @relation(fields: [profileId], references: [id])
+  deviceId        String @db.Uuid
+  device          Device @relation(fields: [deviceId], references: [id])
+  titleId         String @db.Uuid
+  title           Title @relation(fields: [titleId], references: [id])
+  episodeId       String? @db.Uuid
+  episode         Episode? @relation(fields: [episodeId], references: [id])
+  startedAt       DateTime @default(now()) @db.Timestamptz
+  lastHeartbeatAt DateTime @default(now()) @db.Timestamptz
+  endedAt         DateTime? @db.Timestamptz
+  positionSec     Int @default(0)
+}
+
+model WatchProgress {
+  id          String @id @default(uuid()) @db.Uuid
+  profileId   String @db.Uuid
+  profile     Profile @relation(fields: [profileId], references: [id])
+  titleId     String @db.Uuid
+  title       Title @relation(fields: [titleId], references: [id])
+  episodeId   String? @db.Uuid
+  episode     Episode? @relation(fields: [episodeId], references: [id])
+  positionSec Int
+  durationSec Int
+  completed   Boolean @default(false)
+  updatedAt   DateTime @default(now()) @db.Timestamptz
+
+  @@unique([profileId, titleId, episodeId])
+}
+
+model Favorite {
+  id         String @id @default(uuid()) @db.Uuid
+  profileId  String @db.Uuid
+  profile    Profile @relation(fields: [profileId], references: [id])
+  titleId    String @db.Uuid
+  title      Title @relation(fields: [titleId], references: [id])
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  @@unique([profileId, titleId])
+}
+
+model WatchlistItem {
+  id         String @id @default(uuid()) @db.Uuid
+  profileId  String @db.Uuid
+  profile    Profile @relation(fields: [profileId], references: [id])
+  titleId    String @db.Uuid
+  title      Title @relation(fields: [titleId], references: [id])
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  @@unique([profileId, titleId])
+}
+
+model HomeRow {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @db.Uuid
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  name      String
+  order     Int
+  createdAt DateTime @default(now()) @db.Timestamptz
+  items     HomeRowItem[]
+}
+
+model HomeRowItem {
+  id        String @id @default(uuid()) @db.Uuid
+  homeRowId  String @db.Uuid
+  homeRow    HomeRow @relation(fields: [homeRowId], references: [id])
+  titleId    String @db.Uuid
+  title      Title @relation(fields: [titleId], references: [id])
+  order      Int
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  @@unique([homeRowId, order])
+}
+
+model Banner {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @db.Uuid
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  imageUrl  String
+  linkUrl   String?
+  active    Boolean @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
+
+model StaffUser {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  email       String @unique
+  passwordHash String
+  roleId      String @db.Uuid
+  role        Role @relation(fields: [roleId], references: [id])
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  auditLogs   AuditLog[] @relation("StaffUserAuditLogs")
+}
+
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  name        String
+  permissions String @db.Text
+  staffUsers  StaffUser[]
+  createdAt   DateTime @default(now()) @db.Timestamptz
+}
+
+model AuditLog {
+  id          BigInt @id @default(autoincrement())
+  tenantId    String @db.Uuid
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+  actorId     String @db.Uuid
+  action      String
+  entity      String
+  entityId    String? @db.Uuid
+  ip          String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  diff        Json
+  userAuditLogs   AppUser[] @relation("AppUserAuditLogs")
+  staffUserAuditLogs StaffUser[] @relation("StaffUserAuditLogs")
+}
+
+model OutboxEvent {
+  id          String @id @default(uuid()) @db.Uuid
+  type        String
+  payload     Json
+  status      String @default("pending")
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  processedAt DateTime? @db.Timestamptz
+}
+
+model Notification {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @db.Uuid
+  user      AppUser @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String
+  read      Boolean @default(false)
+  createdAt DateTime @default(now()) @db.Timestamptz
+}
+
+model SupportTicket {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @db.Uuid
+  user      AppUser @relation(fields: [userId], references: [id])
+  subject   String
+  message   String
+  status    String @default("open")
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+model Invoice {
+  id             String @id @default(uuid()) @db.Uuid
+  subscriptionId String @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  amountCents    Int
+  currency       String @db.Char(3)
+  status         String @default("pending")
+  providerRef    String? @unique
+  createdAt      DateTime @default(now()) @db.Timestamptz
+  payments       Payment[]
+}
+
+model Payment {
+  id          String @id @default(uuid()) @db.Uuid
+  invoiceId   String @db.Uuid
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  amountCents Int
+  currency    String @db.Char(3)
+  provider    String
+  providerRef String? @unique
+  status      String @default("succeeded")
+  createdAt   DateTime @default(now()) @db.Timestamptz
+}
+
+model Coupon {
+  id         String @id @default(uuid()) @db.Uuid
+  tenantId   String @db.Uuid
+  tenant     Tenant @relation(fields: [tenantId], references: [id])
+  code       String @unique
+  discountPct Int
+  maxUses    Int @default(0)
+  uses       Int @default(0)
+  expiresAt  DateTime? @db.Timestamptz
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  redemptions CouponRedemption[]
+}
+
+model CouponRedemption {
+  id             String @id @default(uuid()) @db.Uuid
+  couponId       String @db.Uuid
+  coupon         Coupon @relation(fields: [couponId], references: [id])
+  subscriptionId String @db.Uuid
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  createdAt      DateTime @default(now()) @db.Timestamptz
+}

@@ -1,0 +1,50 @@
+{
+  "id": "com.aether.tv",
+  "version": "1.0.0",
+  "vendor": "Aether",
+  "type": "webapplication",
+  "title": "Aether TV",
+  "iconPath": "icon.png",
+  "largeIconPath": "large_icon.png",
+  "bgImage": "bg.png",
+  "bgColor": "#0a0a0c",
+  "splashBackgroundPath": "splash.png",
+  "splashBackgroundColor": "#0a0a0c",
+  "launchPoint": {
+    "id": "main",
+    "title": "Aether",
+    "iconPath": "icon.png",
+    "largeIconPath": "large_icon.png",
+    "url": "index.html",
+    "bgColor": "#0a0a0c"
+  },
+  "permissions": [
+    "http",
+    "network",
+    "storage"
+  ],
+  "privileges": [
+    "http://developer.lge.com/privilege/network",
+    "http://developer.lge.com/privilege/storage"
+  ],
+  "uiRevision": 4,
+  "requiredVersion": "1.0",
+  "deviceProfile": "tv",
+  "platformVersion": "5.0",
+  "supportedLanguages": [
+    {
+      "language": "ar",
+      "locale": "ar-IQ",
+      "dir": "rtl"
+    },
+    {
+      "language": "en",
+      "locale": "en-US",
+      "dir": "ltr"
+    }
+  ],
+  "features": [
+    "http://developer.lge.com/feature/network.wifi",
+    "http://developer.lge.com/feature/network.wired"
+  ]
+}

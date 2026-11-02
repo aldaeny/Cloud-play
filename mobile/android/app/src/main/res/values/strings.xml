@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- strings.xml — Aether (Arabic + English) -->
+<resources>
+    <string name="app_name">Aether</string>
+    <string name="home">الرئيسية</string>
+    <string name="search">بحث</string>
+    <string name="profiles">الملفات</string>
+    <string name="search_hint">ابحث عن محتوى…</string>
+    <string name="register">تسجيل حساب</string>
+    <string name="login">تسجيل الدخول</string>
+    <string name="email">البريد الإلكتروني</string>
+    <string name="password">كلمة المرور</string>
+    <string name="name">الاسم</string>
+    <string name="phone">رقم الهاتف</string>
+    <string name="play">تشغيل</string>
+    <string name="loading">جارٍ التحميل…</string>
+</resources>

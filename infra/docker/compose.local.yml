@@ -1,0 +1,22 @@
+# Local-only additions. Combine with compose.yml; Docker setup remains untested here.
+services:
+  web:
+    build: { context: ../.., dockerfile: apps/web/Dockerfile }
+    environment:
+      XTREAM_CATALOG_ENABLED: ${XTREAM_CATALOG_ENABLED:-false}
+      XTREAM_BASE_URL: ${XTREAM_BASE_URL:-http://redchicks.xyz:2052}
+      XTREAM_ALLOW_HTTP: ${XTREAM_ALLOW_HTTP:-false}
+      XTREAM_USERNAME: ${XTREAM_USERNAME:-}
+      XTREAM_PASSWORD: ${XTREAM_PASSWORD:-}
+    ports: ["127.0.0.1:3001:3001"]
+    networks: [internal]
+    depends_on:
+      api: { condition: service_healthy }
+  admin:
+    build: { context: ../.., dockerfile: apps/admin/Dockerfile }
+    environment:
+      API_INTERNAL_URL: http://api:3000
+    ports: ["127.0.0.1:3002:3002"]
+    networks: [internal]
+    depends_on:
+      api: { condition: service_healthy }

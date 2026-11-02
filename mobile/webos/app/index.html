@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<!-- index.html — Aether webOS TV App -->
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/video.js@8.10.0/dist/video.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Auth Screen -->
+        <div id="auth-screen" class="screen">
+            <div class="auth-card">
+                <h1 class="brand">Aether</h1>
+                <input type="email" id="email" placeholder="البريد الإلكتروني" class="input">
+                <input type="password" id="password" placeholder="كلمة المرور" class="input">
+                <button id="auth-btn" class="btn-primary">تسجيل الدخول</button>
+                <button id="auth-toggle" class="btn-secondary">تسجيل حساب جديد</button>
+                <p id="auth-error" class="error"></p>
+            </div>
+        </div>
+
+        <!-- Home Screen -->
+        <div id="home-screen" class="screen hidden">
+            <div class="header">
+                <h1 class="brand">Aether</h1>
+                <input type="text" id="search-input" placeholder="ابحث عن محتوى…" class="input search">
+            </div>
+            <div id="home-rows" class="home-rows"></div>
+        </div>
+
+        <!-- Player Screen -->
+        <div id="player-screen" class="screen hidden">
+            <button id="back-btn" class="back-btn">← رجوع</button>
+            <video id="video-player" class="video-player" controls></video>
+        </div>
+    </div>
+
+    <script src="./services/aether-api.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{
+  "name": "aether",
+  "private": true,
+  "packageManager": "pnpm@9.x",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter api dev",
+    "build": "pnpm --filter api build",
+    "test": "pnpm --filter api test",
+    "lint": "pnpm --filter api lint"
+  },
+  "overrides": {
+    "@nestjs/config": {
+      "lodash": "4.18.1"
+    },
+    "@nestjs/platform-express": {
+      "body-parser": "1.20.9",
+      "multer": "2.5.0"
+    },
+    "@nestjs/common": {
+      "file-type": "21.3.2"
+    },
+    "express@4.22.1": {
+      "qs": "6.16.2"
+    }
+  }
+}
