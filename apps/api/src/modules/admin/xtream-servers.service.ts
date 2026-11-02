@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma.service';
+import { Prisma } from '@prisma/client';
 
 type ServerInput = { name: string; baseUrl: string; username: string; password?: string };
 
@@ -85,7 +86,7 @@ export class XtreamServersService {
     this.validate(input as ServerInput, true);
     const existing = await this.prisma.xtreamServer.findFirst({ where: { id, tenantId } });
     if (!existing) throw new NotFoundException('Xtream server not found');
-    const data: Record<string, unknown> = {};
+    const data: Prisma.XtreamServerUpdateInput = {};
     if (input.name !== undefined) data.name = input.name.trim();
     if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl.replace(/\/+$/, '');
     if (input.username !== undefined) data.username = input.username.trim();
