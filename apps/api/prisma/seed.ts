@@ -53,7 +53,7 @@ async function main() {
       permissions: JSON.stringify([
         'titles:create', 'titles:edit', 'titles:delete',
         'users:manage', 'devices:manage', 'staff:manage',
-        'rights:manage', 'home:manage',
+        'rights:manage', 'home:manage', 'xtream:manage',
       ]),
     },
   });
