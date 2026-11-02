@@ -41,6 +41,7 @@ model Tenant {
   branding    TenantBranding?
   featureFlags FeatureFlag[]
   users       AppUser[]
+  xtreamServers XtreamServer[]
   plans       Plan[]
   titles      Title[]
   auditLogs   AuditLog[]
@@ -461,4 +462,22 @@ model CouponRedemption {
   subscriptionId String @db.Uuid
   subscription   Subscription @relation(fields: [subscriptionId], references: [id])
   createdAt      DateTime @default(now()) @db.Timestamptz
+}
+
+model XtreamServer {
+  id                 String   @id @default(uuid()) @db.Uuid
+  tenantId           String   @db.Uuid
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  baseUrl            String
+  username           String
+  passwordEncrypted String   @db.Text
+  enabled            Boolean  @default(true)
+  connectionStatus   String   @default("unknown")
+  lastCheckedAt      DateTime? @db.Timestamptz
+  createdAt          DateTime @default(now()) @db.Timestamptz
+  updatedAt          DateTime @updatedAt @db.Timestamptz
+
+  @@unique([tenantId, name])
+  @@index([tenantId, enabled])
 }

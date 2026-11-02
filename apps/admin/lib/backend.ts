@@ -14,8 +14,8 @@ export async function forwardAdminRequest(req: NextApiRequest, res: NextApiRespo
     }
     const response = await fetch(new URL(path, base), {
       method: req.method,
-      headers: { ...(authorization ? { authorization } : {}), ...(req.method === 'POST' ? { 'content-type': 'application/json' } : {}) },
-      ...(req.method === 'POST' ? { body: JSON.stringify(req.body) } : {}),
+      headers: { ...(authorization ? { authorization } : {}), ...(['POST', 'PATCH', 'PUT'].includes(req.method || '') ? { 'content-type': 'application/json' } : {}) },
+      ...(['POST', 'PATCH', 'PUT'].includes(req.method || '') ? { body: JSON.stringify(req.body) } : {}),
       redirect: 'error',
       signal: AbortSignal.timeout(10000),
     });
