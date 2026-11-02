@@ -576,3 +576,33 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 }
 /* The duplicate mobile navigation was removed; retain a natural footer spacing. */
 @media(max-width:700px){.site .footer{padding-bottom:40px}}
+
+/* Reference identity: symbol and wordmark retain their intrinsic proportions. */
+.site .cloudplay-brand{display:inline-flex;align-items:center;gap:8px;direction:ltr;white-space:nowrap;color:#fff;line-height:1;letter-spacing:normal}
+.site.theme-light .cloudplay-brand{color:#08152f}
+.site .cloudplay-symbol{display:block;width:43px;flex:none;line-height:0}
+.site .cloudplay-symbol img{display:block;width:100%;height:auto;object-fit:contain}
+.site .cloudplay-symbol .cloudplay-symbol-light,.site.theme-light .cloudplay-symbol .cloudplay-symbol-dark{display:none}
+.site.theme-light .cloudplay-symbol .cloudplay-symbol-light{display:block}
+.site .cloudplay-type{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.site .cloudplay-name{font-family:Arial,'Segoe UI',sans-serif;font-size:24px;letter-spacing:-1.2px;font-weight:400}
+.site .cloudplay-name b{font-weight:750}.site .cloudplay-name>span{font-weight:400}
+.site .cloudplay-type small{font-size:7px;letter-spacing:1.1px;font-weight:700;color:inherit;opacity:.8}
+.site .reference-brand{flex:0 0 auto;width:auto;direction:ltr}
+.site .header-inner{direction:ltr}
+.site .main-nav{direction:ltr}
+.site .main-nav .nav-label{display:flex;flex-direction:column;align-items:center;gap:4px;line-height:1.1;white-space:nowrap}
+.site .main-nav .nav-label small{font-size:10px;font-weight:400;opacity:.78}
+.site .nav-account{display:flex;align-items:center;gap:7px;cursor:pointer;border:0;background:transparent;color:inherit;font-size:13px}
+.site .nav-account:hover{color:#a575ff}
+.site .footer-reference-brand{display:inline-flex;width:auto;height:auto}
+.site .footer-reference-brand .cloudplay-symbol{width:34px}
+.site .footer-reference-brand .cloudplay-name{font-size:20px}
+.site .footer-reference-brand .cloudplay-type small{font-size:6px}
+.site .section-header{direction:ltr}
+.site .section-brand{display:inline-flex;letter-spacing:normal}
+.site .section-brand .cloudplay-symbol{width:40px}
+.site .section-brand .cloudplay-symbol img{width:100%;height:auto}
+@media(max-width:1100px){.site .nav-account{display:none}.site .cloudplay-symbol{width:36px}.site .cloudplay-name{font-size:21px}.site .cloudplay-type small{font-size:6px}}
+@media(max-width:700px){.site .reference-brand{flex:0 0 auto}.site .cloudplay-symbol{width:31px}.site .cloudplay-name{font-size:18px;letter-spacing:-.9px}.site .cloudplay-type small{font-size:5.4px;letter-spacing:.8px}.site .cloudplay-type{gap:4px}.site .main-nav .nav-label small{display:none}.site .main-nav{direction:inherit}.site .section-header{width:calc(100% - 32px);gap:8px}.site .section-brand .cloudplay-symbol{width:30px}.site .section-header button{font-size:11px;padding:7px}}
+@media(max-width:380px){.site .cloudplay-symbol{width:28px}.site .cloudplay-name{font-size:16px}.site .cloudplay-type small{font-size:4.8px}.site .cloudplay-brand{gap:5px}}
