@@ -532,3 +532,10 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .firebase-list .licensed-channel{flex:1;min-width:0;text-align:start}
 .licensed-channel img{object-fit:contain;border-radius:6px;flex:none}
 .licensed-favorite{flex:none;min-width:45px;font-size:1.25rem}
+.movie-filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px}
+.movie-filters button{background:transparent;color:inherit;border:1px solid currentColor;border-radius:999px;padding:9px 16px;cursor:pointer}
+.movie-filters button[aria-pressed=true]{background:#7968e8;color:#fff;border-color:#7968e8}
+.open-movie-card .movie-favorite{margin-inline-start:8px;background:transparent;border:1px solid currentColor;color:inherit}
+.open-movie-card .movie-favorite[aria-pressed=true]{color:#eab75b}
+.site .open-movie-card .movie-favorite{background:transparent;color:inherit;border:1px solid currentColor}
+.site .open-movie-card .movie-favorite[aria-pressed=true]{color:#dfaa39}

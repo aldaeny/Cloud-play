@@ -31,10 +31,16 @@ export function parseLicensedPlaylist(raw:string):LicensedChannel[] {
  }
  return result;
 }
-export async function readLicensedPlaylist():Promise<LicensedChannel[]> {
- if(process.env.CLOUDPLAY_IPTV_RIGHTS_CONFIRMED!=='true'||!process.env.CLOUDPLAY_IPTV_FILE)throw new Error('NOT_CONFIGURED');
- const file=await open(process.env.CLOUDPLAY_IPTV_FILE,'r');
- try { const st=await file.stat();if(!st.isFile()||st.size>MAX_BYTES)throw new Error('INVALID_PLAYLIST');
-  const buf=Buffer.alloc(MAX_BYTES+1);let total=0;while(total<buf.length){const x=await file.read(buf,total,buf.length-total,total);if(!x.bytesRead)break;total+=x.bytesRead;}if(total>MAX_BYTES)throw new Error('INVALID_PLAYLIST');return parseLicensedPlaylist(buf.subarray(0,total).toString('utf8'));
+/** Server-side operator configuration only; neither the filename nor a URL comes from the client. */
+export async function readOperatorText(value:string|undefined,path:string|undefined,maxBytes=MAX_BYTES):Promise<string> {
+ if(value){if(Buffer.byteLength(value,'utf8')>maxBytes)throw new Error('TOO_LARGE');return value;}
+ if(!path)throw new Error('NOT_CONFIGURED');
+ const file=await open(path,'r');
+ try { const st=await file.stat();if(!st.isFile()||st.size>maxBytes)throw new Error('INVALID_FILE');
+  const buf=Buffer.alloc(maxBytes+1);let total=0;while(total<buf.length){const x=await file.read(buf,total,buf.length-total,total);if(!x.bytesRead)break;total+=x.bytesRead;}if(total>maxBytes)throw new Error('TOO_LARGE');return buf.subarray(0,total).toString('utf8');
  } finally {await file.close();}
+}
+export async function readLicensedPlaylist():Promise<LicensedChannel[]> {
+ if(process.env.CLOUDPLAY_IPTV_RIGHTS_CONFIRMED!=='true')throw new Error('NOT_CONFIGURED');
+ return parseLicensedPlaylist(await readOperatorText(process.env.CLOUDPLAY_IPTV_M3U,process.env.CLOUDPLAY_IPTV_FILE));
 }
