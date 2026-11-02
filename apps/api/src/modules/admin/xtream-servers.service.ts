@@ -4,7 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
 
