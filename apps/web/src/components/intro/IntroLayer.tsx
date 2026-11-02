@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { readAppearance } from '../../lib/appearance';
 
 type IntroChoice = { language: 'ar' | 'en'; theme: 'dark' | 'light' };
 
@@ -24,7 +25,7 @@ export default function IntroLayer() {
     let reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     try {
       if (localStorage.getItem('cloudplay-language') === 'en') language = 'en';
-      if (localStorage.getItem('cloudplay-theme') === 'light') theme = 'light';
+      theme = readAppearance();
       if (localStorage.getItem('cloudplay-reduce-motion') === 'true') reduceMotion = true;
     } catch { /* Storage is optional. */ }
     if (reduceMotion) {

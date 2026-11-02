@@ -1,4 +1,5 @@
 import Head from 'next/head';
+import {readAppearance} from '../../lib/appearance';
 import Link from 'next/link';
 import CloudPlayBrand from '../brand/CloudPlayBrand';
 import {useRouter} from 'next/router';
@@ -7,7 +8,7 @@ export type Language='ar'|'en';
 export default function SectionLayout({title,children,noIndex=false}:{title:{ar:string;en:string};children:(language:Language)=>ReactNode;noIndex?:boolean}){
  const router=useRouter();
  const [language,setLanguage]=useState<Language>('ar');const [theme,setTheme]=useState<'dark'|'light'>('dark');
- useEffect(()=>{Promise.resolve().then(()=>{try{if(localStorage.getItem('cloudplay-language')==='en')setLanguage('en');if(localStorage.getItem('cloudplay-theme')==='light')setTheme('light')}catch{/* Storage is optional. */}})},[]);
+ useEffect(()=>{Promise.resolve().then(()=>{try{if(localStorage.getItem('cloudplay-language')==='en')setLanguage('en');setTheme(readAppearance())}catch{/* Storage is optional. */}})},[]);
  useEffect(()=>{document.documentElement.lang=language;document.documentElement.dir=language==='ar'?'rtl':'ltr'},[language]);
  function setLang(){const next=language==='ar'?'en':'ar';setLanguage(next);try{localStorage.setItem('cloudplay-language',next)}catch{/* Storage is optional. */}}
  function setMode(){const next=theme==='dark'?'light':'dark';setTheme(next);try{localStorage.setItem('cloudplay-theme',next)}catch{/* Storage is optional. */}}

@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import Image from 'next/image';
 import IntroLayer from '../src/components/intro/IntroLayer';
+import { readAppearance } from '../src/lib/appearance';
 import ReferenceReel from '../src/components/carousel/ReferenceReel';
 import CloudPlayBrand from '../src/components/brand/CloudPlayBrand';
 import LicensedTv from '../src/components/iptv/LicensedTv';
@@ -82,7 +83,7 @@ export default function Home() {
       if (cancelled) return;
       try {
         const savedLanguage = localStorage.getItem('cloudplay-language');
-        const savedTheme = localStorage.getItem('cloudplay-theme');
+        const savedTheme = readAppearance();
         const savedMotion = localStorage.getItem('cloudplay-reduce-motion');
         const savedText = localStorage.getItem('cloudplay-text-size');
         const savedGlow = localStorage.getItem('cloudplay-glow');
