@@ -544,3 +544,15 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .footer-pages{display:flex;flex-wrap:wrap;gap:12px;margin:16px 0;font-size:12px}.footer-pages a{color:inherit;text-decoration:underline;text-underline-offset:4px}
 .tv-skeleton{display:grid;gap:8px;margin-top:16px}.tv-skeleton span{display:block;height:52px;border-radius:9px;background:linear-gradient(90deg,#7772 25%,#9993 50%,#7772 75%);background-size:200% 100%;animation:tv-loading 1.5s infinite}@keyframes tv-loading{to{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.tv-skeleton span{animation:none}}
 .section-brand img{width:150px;height:auto;display:block}.section-brand .section-brand-light,.theme-light .section-brand .section-brand-dark{display:none}.theme-light .section-brand .section-brand-light{display:block}
+
+/* User-provided four-part opening; existing brand assets remain untouched. */
+.site .intro-layer.reference-intro{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:none;opacity:1;transition:opacity .35s ease;background:linear-gradient(180deg,#0d2231,#06131f)}
+.site .intro-layer.reference-intro.reference-intro-light{background:linear-gradient(180deg,#fbfcfd,#e7edf7)}
+.site .intro-layer.reference-intro::before,.site .intro-layer.reference-intro::after{display:none}
+.site .intro-layer.reference-intro.reference-intro-exit{opacity:0;pointer-events:none}
+.reference-intro-video{display:block;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.reference-intro-skip{position:absolute;inset-inline-end:clamp(18px,4vw,48px);bottom:clamp(20px,5vh,48px);z-index:2;border:1px solid #ffffff36;background:#0b1d2ba8;color:#fff;border-radius:999px;padding:10px 15px;font-size:12px;cursor:pointer;backdrop-filter:blur(8px)}
+.reference-intro-light .reference-intro-skip{border-color:#162b3b30;background:#fff9;color:#17283b}
+.reference-intro-skip:hover{border-color:currentColor}.reference-intro-skip span{font-size:17px;line-height:0;vertical-align:-1px}
+@media(prefers-reduced-motion:reduce){.site .intro-layer.reference-intro{display:none!important;transition:none}}
+.site.motion-off .intro-layer.reference-intro{display:none!important}
