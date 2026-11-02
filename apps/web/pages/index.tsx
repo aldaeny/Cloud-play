@@ -67,7 +67,6 @@ export default function Home() {
   const [scrollToPlayer, setScrollToPlayer] = useState(true);
   const [carouselPaused, setCarouselPaused] = useState(false);
   const [settingsView, setSettingsView] = useState<'main' | 'account'>('main');
-  const [activeSection, setActiveSection] = useState('featured');
   const [selectedNav, setSelectedNav] = useState<'movies' | 'series' | 'live' | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -150,21 +149,6 @@ export default function Home() {
     return () => { document.removeEventListener('pointerdown', onPointer); document.removeEventListener('keydown', onKey); };
   }, [settingsOpen]);
   useEffect(() => {
-    let frame = 0;
-    const syncSection = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        const sections = ['featured', 'browse', 'trending', 'live'];
-        const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-        let current = sections[0];
-        for (const id of sections) { const el = document.getElementById(id); if (el && el.getBoundingClientRect().top <= window.innerHeight * .38) current = id; }
-        setActiveSection(atBottom ? 'live' : current);
-      });
-    };
-    window.addEventListener('scroll', syncSection, { passive: true });
-    return () => { window.removeEventListener('scroll', syncSection); cancelAnimationFrame(frame); };
-  }, []);
-  useEffect(() => {
     if (!showDesignPreview || !autoCarousel || reduceMotion || settingsOpen || modal !== null || carouselPaused) return;
     const timer = window.setInterval(() => {
       if (!document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setActive(current => (current + 1) % items.length);
@@ -186,10 +170,10 @@ export default function Home() {
     <IntroLayer/>
     <Head><title>Cloud Play — Your world of stories</title><meta name="description" content="Cloud Play Iraq: licensed short films and an optional live TV guide."/><link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/></Head>
     <header className="header"><div className="header-inner"><HeaderBrand/><nav className="main-nav" aria-label={language === 'ar' ? 'القائمة الرئيسية' : 'Main navigation'}>
-      <a className={selectedNav === null ? 'nav-active' : undefined} href="#featured" onClick={() => { setSelectedNav(null); setActiveSection('featured'); }}>{language === 'ar' ? 'الكل' : 'All'}</a>
-      <a className={selectedNav === 'movies' ? 'nav-active' : undefined} href="#movies-library" onClick={() => { setSelectedNav('movies'); setActiveSection('browse'); }}>{t.movies}</a>
-      <a className={selectedNav === 'series' ? 'nav-active' : undefined} href="#series" onClick={() => { setSelectedNav('series'); setActiveSection('browse'); }}>{t.series}</a>
-      <a className={selectedNav === 'live' ? 'nav-active' : undefined} href="#live" onClick={() => { setSelectedNav('live'); setActiveSection('live'); }}>{t.tvShort}<span className="nav-dot"/></a>
+      <a className={selectedNav === null ? 'nav-active' : undefined} href="#featured" onClick={() => { setSelectedNav(null); }}>{language === 'ar' ? 'الكل' : 'All'}</a>
+      <a className={selectedNav === 'movies' ? 'nav-active' : undefined} href="#movies-library" onClick={() => { setSelectedNav('movies'); }}>{t.movies}</a>
+      <a className={selectedNav === 'series' ? 'nav-active' : undefined} href="#series" onClick={() => { setSelectedNav('series'); }}>{t.series}</a>
+      <a className={selectedNav === 'live' ? 'nav-active' : undefined} href="#live" onClick={() => { setSelectedNav('live'); }}>{t.tvShort}<span className="nav-dot"/></a>
       <div className="nav-search"><button type="button" className={`search-trigger${searchOpen ? ' is-open' : ''}`} aria-label={t.searchLabel} aria-controls="header-search" aria-expanded={searchOpen} onClick={() => { const next = !searchOpen; setSearchOpen(next); if (next) window.setTimeout(() => searchInputRef.current?.focus(), 0); }}><Icon name="search" size={20}/>{query && <span className="search-indicator"/>}</button>
         {searchOpen && <form id="header-search" className="search-popover" role="search" onKeyDown={e => { if (e.key === 'Escape') { setSearchOpen(false); } }} onSubmit={e => { e.preventDefault(); setSearchOpen(false); document.getElementById('movies-library')?.scrollIntoView({ behavior: reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}><label htmlFor="title-search">{t.searchLabel}</label><div className="search-input-row"><Icon name="search" size={17}/><input ref={searchInputRef} id="title-search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder={t.search}/></div><div className="search-actions"><button type="submit">{t.searchAction}</button>{query && <button type="button" className="search-clear" onClick={() => setQuery('')}>{t.clearSearch}</button>}</div></form>}
       </div>
@@ -232,13 +216,12 @@ export default function Home() {
     <section className="browse-section shell reveal-on-scroll" id="browse"><div className="section-head"><div><div className="eyebrow"><span className="tiny-line"/>{t.explore}</div><h2>{t.browseTitle}</h2><p>{t.browseSub}</p></div><span className="browse-decoration" aria-hidden="true">✦</span></div>
       <div className="browse-grid"><a href="#movies-library" id="movies" className={`browse-card browse-movies${selectedNav === 'movies' ? ' active-target' : ''}`}><div className="browse-icon"><Icon name="film" size={23}/></div><div><span className="browse-tag">{language === 'ar' ? 'متاح الآن' : 'AVAILABLE NOW'}</span><h3>{t.movies}</h3><p>{t.movieDesc}</p></div><span className="browse-orb" aria-hidden="true"/></a>
       <article id="series" className={`browse-card browse-series${selectedNav === 'series' ? ' active-target' : ''}`}><div className="browse-icon"><Icon name="play" size={23}/></div><div><span className="browse-tag">{t.coming}</span><h3>{t.series}</h3><p>{t.seriesDesc}</p></div><span className="browse-orb" aria-hidden="true"/></article>
-      <a href="#live" className="browse-card browse-live" onClick={() => setActiveSection('live')}><div className="browse-icon"><Icon name="tv" size={23}/></div><div><span className="browse-tag">{t.coming}</span><h3>{t.live}</h3><p>{t.liveDesc}</p></div><span className="browse-orb" aria-hidden="true"/></a></div>
+      <a href="#live" className="browse-card browse-live"><div className="browse-icon"><Icon name="tv" size={23}/></div><div><span className="browse-tag">{t.coming}</span><h3>{t.live}</h3><p>{t.liveDesc}</p></div><span className="browse-orb" aria-hidden="true"/></a></div>
     </section>
     <OpenMovies language={language} query={query}/>
     {showDesignPreview && <section className="collection shell reveal-on-scroll" id="trending"><div className="section-head"><div><div className="eyebrow"><span className="tiny-line"/>{t.selection}</div><h2>{t.trendingTitle}</h2><p>{t.trendingSub}</p></div><span className="section-count">03 <span>/ 03</span></span></div><div className="collection-grid">{filtered.map((item) => <button className="collection-card" key={item.id} onClick={() => setModal(items.indexOf(item))}><div className="collection-image"><Image src={item.image} alt="" fill sizes="(max-width: 600px) 80vw, 33vw"/><span className="collection-overlay"/><span className="collection-number">{item.number}</span><span className="play-icon"><Icon name="play" size={17}/></span><span className="collection-caption"><small>{language === 'ar' ? item.genreAr : item.genreEn}</small><strong>{item[language]}</strong></span></div><span className="card-bottom"><span>{t.demo}</span><Icon name="arrow" size={16}/></span></button>)}{filtered.length === 0 && <p className="empty">{t.noResults}</p>}</div></section>}
     <section className="live-section shell reveal-on-scroll" id="live"><div className={`live-panel${selectedNav === 'live' ? ' active-target' : ''}`}><div className="live-copy"><div className="eyebrow"><span className="tiny-line"/>{t.liveBadge}</div><h2>{t.liveTitle}</h2><p>{t.liveText}</p></div><div className="live-graphic" aria-hidden="true"><span className="live-orbit orbit-one"/><span className="live-orbit orbit-two"/><span className="tv-box"><Icon name="tv" size={35}/></span><span className="live-pulse"/></div></div><LicensedTv language={language}/></section></main>
     <footer className="footer shell reveal-on-scroll"><div><Brand/><p>{t.footer}</p><nav className="footer-pages" aria-label={language === 'ar' ? 'صفحات المنصة' : 'Platform pages'}><Link href="/movies">{t.movies}</Link><Link href="/series">{t.series}</Link><Link href="/live">{t.live}</Link><Link href="/search">{t.searchAction}</Link><Link href="/favorites">{language === 'ar' ? 'المفضلة' : 'Favorites'}</Link><Link href="/continue">{language === 'ar' ? 'متابعة المشاهدة' : 'Continue watching'}</Link><Link href="/settings">{t.settings}</Link><Link href="/login">{language === 'ar' ? 'تسجيل الدخول' : 'Sign in'}</Link></nav></div><span>© {new Date().getFullYear()} {t.rights}</span></footer>
-    <nav className="mobile-dock" aria-label={language === 'ar' ? 'التنقل السريع' : 'Quick navigation'}><a href="#featured" onClick={() => setActiveSection('featured')} className={activeSection === 'featured' ? 'selected' : ''} aria-current={activeSection === 'featured' ? 'page' : undefined}><Icon name="home" size={20}/><span>{t.home}</span></a><a href="#browse" onClick={() => setActiveSection('browse')} className={activeSection === 'browse' || activeSection === 'trending' ? 'selected' : ''} aria-current={activeSection === 'browse' || activeSection === 'trending' ? 'page' : undefined}><Icon name="film" size={20}/><span>{t.browse}</span></a><a href="#live" onClick={() => setActiveSection('live')} className={activeSection === 'live' ? 'selected' : ''} aria-current={activeSection === 'live' ? 'page' : undefined}><Icon name="tv" size={20}/><span>{t.live}</span></a><button onClick={() => setSettingsOpen(true)} className={settingsOpen ? 'selected' : ''} aria-label={t.settings} aria-controls="settings-panel" aria-expanded={settingsOpen}><Icon name="settings" size={20}/><span>{t.settings}</span></button></nav>
     {modal !== null && <div className="modal-backdrop" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)} aria-label={t.close}><Icon name="close"/></button><div className="modal-art"><Image src={items[modal].image} fill sizes="400px" alt=""/></div><div className="modal-body"><span className="eyebrow">{t.demo}</span><h2 id="dialog-title">{items[modal][language]}</h2><h3>{t.modalTitle}</h3><p>{t.modalBody}</p><button className="outline-button" onClick={() => setModal(null)}>{t.close}</button></div></div></div>}
   </div></PlaybackPreferencesContext.Provider>;
 }

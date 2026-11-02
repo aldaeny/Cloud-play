@@ -574,3 +574,5 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 @supports (mask-composite:intersect){
  .reference-intro-video{mask-image:linear-gradient(to right,transparent,#000 4%,#000 96%,transparent),linear-gradient(to bottom,transparent,#000 4%,#000 96%,transparent);mask-composite:intersect}
 }
+/* The duplicate mobile navigation was removed; retain a natural footer spacing. */
+@media(max-width:700px){.site .footer{padding-bottom:40px}}
