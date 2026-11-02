@@ -606,3 +606,29 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 @media(max-width:1100px){.site .nav-account{display:none}.site .cloudplay-symbol{width:36px}.site .cloudplay-name{font-size:21px}.site .cloudplay-type small{font-size:6px}}
 @media(max-width:700px){.site .reference-brand{flex:0 0 auto}.site .cloudplay-symbol{width:31px}.site .cloudplay-name{font-size:18px;letter-spacing:-.9px}.site .cloudplay-type small{font-size:5.4px;letter-spacing:.8px}.site .cloudplay-type{gap:4px}.site .main-nav .nav-label small{display:none}.site .main-nav{direction:inherit}.site .section-header{width:calc(100% - 32px);gap:8px}.site .section-brand .cloudplay-symbol{width:30px}.site .section-header button{font-size:11px;padding:7px}}
 @media(max-width:380px){.site .cloudplay-symbol{width:28px}.site .cloudplay-name{font-size:16px}.site .cloudplay-type small{font-size:4.8px}.site .cloudplay-brand{gap:5px}}
+
+/* Search: compact square expands into a search field, with real matching titles below. */
+.site .nav-search{position:relative;z-index:40;direction:ltr}
+.site:not(.theme-light) .nav-search .search-trigger,.site.theme-light .nav-search .search-trigger{width:38px;height:38px;border-radius:10px;background:#101114;border:1px solid #ffffff24;color:#fff;box-shadow:0 3px 10px #0002;transform:none}
+.site .nav-search .search-trigger:hover,.site .nav-search .search-trigger.is-open{transform:none}
+.site .search-morph{position:absolute;z-index:41;right:0;left:auto;top:50%;transform:translateY(-50%);width:38px;color:#f9f9fb;visibility:hidden;pointer-events:none;opacity:0;transition:width .38s cubic-bezier(.22,.75,.25,1),opacity .14s ease,visibility 0s linear .38s}
+.site .search-morph.is-open{visibility:visible;pointer-events:auto;opacity:1;width:min(280px,var(--search-available,calc(100vw - 52px)));transition:width .38s cubic-bezier(.22,.75,.25,1),opacity .1s ease,visibility 0s}
+.site .search-morph-bar{height:42px;display:flex;align-items:center;gap:10px;padding:0 10px;background:#171a24;border:1px solid #ffffff25;border-radius:10px;box-shadow:0 7px 24px #0005;overflow:hidden;white-space:nowrap}
+.site.theme-light .search-morph-bar{background:#fff;color:#17191d;border-color:#e3e6ed;box-shadow:0 7px 24px #18203320}
+.site .search-morph-bar>svg{flex:none}
+.site .search-morph-bar input{flex:1;min-width:0;border:0;outline:0;padding:0;background:transparent;color:inherit;font-size:13px}
+.site .search-morph-bar input::placeholder{color:#999da9}
+.site .search-morph-bar input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.site .search-morph-close{flex:none;display:grid;place-items:center;width:28px;height:28px;margin:0;padding:0;border:0;background:transparent;color:inherit;cursor:pointer;border-radius:6px}
+.site .search-morph-close:hover{background:#8883}
+.site .search-morph-results{position:absolute;top:calc(100% + 2px);left:0;right:0;max-height:220px;overflow:auto;background:#171a24;border:1px solid #ffffff25;border-radius:10px;box-shadow:0 9px 24px #0005;animation:search-results-in .25s ease both}
+.site.theme-light .search-morph-results{background:#fff;color:#17191d;border-color:#e3e6ed;box-shadow:0 9px 24px #18203320}
+.site .main-nav .search-morph-results a{height:auto;min-height:0;padding:11px 12px;display:flex;align-items:flex-start;flex-direction:column;gap:4px;border-radius:0;background:transparent;box-shadow:none;color:inherit;transform:none;white-space:normal}
+.site .main-nav .search-morph-results a+a{border-top:1px solid #8883}
+.site .main-nav .search-morph-results a:hover{background:#8882;transform:none;color:inherit}
+.site .search-morph-results a strong{font-size:12px}.site .search-morph-results a small{width:100%;text-align:start;font-size:10px;line-height:1.35;font-weight:400;opacity:.7}
+.site .search-morph-results p{margin:0;padding:14px;font-size:12px;direction:initial}
+@keyframes search-results-in{from{opacity:0;transform:translateY(-6px) scaleY(.96)}to{opacity:1;transform:none}}
+@media(max-width:700px){.site:not(.theme-light) .nav-search .search-trigger,.site.theme-light .nav-search .search-trigger{width:34px;height:34px;border-radius:9px}.site .search-morph{width:34px}.site .search-morph-bar{height:38px}}
+@media(prefers-reduced-motion:reduce){.site .search-morph{transition:none}.site .search-morph-results{animation:none}}
+.site.motion-off .search-morph{transition:none}.site.motion-off .search-morph-results{animation:none}

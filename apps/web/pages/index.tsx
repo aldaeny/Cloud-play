@@ -4,7 +4,7 @@ import Image from 'next/image';
 import IntroLayer from '../src/components/intro/IntroLayer';
 import CloudPlayBrand from '../src/components/brand/CloudPlayBrand';
 import LicensedTv from '../src/components/iptv/LicensedTv';
-import OpenMovies from '../src/components/movies/OpenMovies';
+import OpenMovies, { movies } from '../src/components/movies/OpenMovies';
 import { PlaybackPreferencesContext } from '../src/components/player/PlaybackPreferences';
 import { useEffect, useRef, useState } from 'react';
 
@@ -68,6 +68,8 @@ export default function Home() {
   const [selectedNav, setSelectedNav] = useState<'movies' | 'series' | 'live' | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const t = words[language];
@@ -122,6 +124,8 @@ export default function Home() {
   const choosePlaybackMuted = (value: boolean) => { setPlaybackMuted(value); store('cloudplay-playback-muted', String(value)); };
   const chooseScrollToPlayer = (value: boolean) => { setScrollToPlayer(value); store('cloudplay-scroll-to-player', String(value)); };
   const resetPlayback = () => { choosePlaybackAuto(true); choosePlaybackMuted(false); chooseScrollToPlayer(true); };
+  const sizeSearch = () => { const el = searchWrapRef.current; if (el) el.style.setProperty('--search-available', `${Math.max(38, Math.min(window.innerWidth - 16, el.getBoundingClientRect().right - 8))}px`); };
+  const openSearch = () => { sizeSearch(); setSearchOpen(true); window.setTimeout(() => searchInputRef.current?.focus(), 0); };
   useEffect(() => { document.documentElement.lang = language; document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'; }, [language]);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
@@ -138,6 +142,13 @@ export default function Home() {
     document.documentElement.style.scrollBehavior = reduceMotion ? 'auto' : '';
     return () => { document.documentElement.style.scrollBehavior = ''; };
   }, [reduceMotion]);
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onPointer = (event: PointerEvent) => { if (!searchWrapRef.current?.contains(event.target as Node)) setSearchOpen(false); };
+    document.addEventListener('pointerdown', onPointer);
+    window.addEventListener('resize', sizeSearch);
+    return () => { document.removeEventListener('pointerdown', onPointer); window.removeEventListener('resize', sizeSearch); };
+  }, [searchOpen]);
   useEffect(() => {
     if (!settingsOpen) return;
     const onPointer = (event: PointerEvent) => { if (!settingsRef.current?.contains(event.target as Node)) setSettingsOpen(false); };
@@ -173,8 +184,12 @@ export default function Home() {
       <a className={selectedNav === 'series' ? 'nav-active' : undefined} href="#series" onClick={() => { setSelectedNav('series'); }}><span className="nav-label"><span>{t.series}</span><small aria-hidden="true">{language === 'ar' ? 'TV Shows' : 'المسلسلات'}</small></span></a>
       <a className={selectedNav === 'live' ? 'nav-active' : undefined} href="#live" onClick={() => { setSelectedNav('live'); }}><span className="nav-label"><span>{t.tvShort}<span className="nav-dot"/></span><small aria-hidden="true">{language === 'ar' ? 'Live TV' : 'البث المباشر'}</small></span></a>
       <button className="nav-account" type="button" aria-label={t.account} onClick={() => { setSettingsView('account'); setSettingsOpen(true); }}><Icon name="user" size={21}/><span className="nav-label"><span>{language === 'ar' ? 'حسابي' : 'Account'}</span><small aria-hidden="true">{language === 'ar' ? 'Account' : 'حسابي'}</small></span></button>
-      <div className="nav-search"><button type="button" className={`search-trigger${searchOpen ? ' is-open' : ''}`} aria-label={t.searchLabel} aria-controls="header-search" aria-expanded={searchOpen} onClick={() => { const next = !searchOpen; setSearchOpen(next); if (next) window.setTimeout(() => searchInputRef.current?.focus(), 0); }}><Icon name="search" size={20}/>{query && <span className="search-indicator"/>}</button>
-        {searchOpen && <form id="header-search" className="search-popover" role="search" onKeyDown={e => { if (e.key === 'Escape') { setSearchOpen(false); } }} onSubmit={e => { e.preventDefault(); setSearchOpen(false); document.getElementById('movies-library')?.scrollIntoView({ behavior: reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}><label htmlFor="title-search">{t.searchLabel}</label><div className="search-input-row"><Icon name="search" size={17}/><input ref={searchInputRef} id="title-search" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder={t.search}/></div><div className="search-actions"><button type="submit">{t.searchAction}</button>{query && <button type="button" className="search-clear" onClick={() => setQuery('')}>{t.clearSearch}</button>}</div></form>}
+      <div className="nav-search" ref={searchWrapRef}>
+        <button ref={searchButtonRef} type="button" className={`search-trigger${searchOpen ? ' is-open' : ''}`} aria-label={t.searchLabel} aria-controls="header-search" aria-expanded={searchOpen} onClick={openSearch}><Icon name="search" size={20}/>{query && <span className="search-indicator"/>}</button>
+        <form id="header-search" className={`search-morph${searchOpen ? ' is-open' : ''}`} role="search" aria-hidden={!searchOpen} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setSearchOpen(false); searchButtonRef.current?.focus(); } }} onSubmit={e => { e.preventDefault(); setSearchOpen(false); document.getElementById('movies-library')?.scrollIntoView({ behavior: reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }}>
+          <div className="search-morph-bar"><Icon name="search" size={19}/><input ref={searchInputRef} id="title-search" tabIndex={searchOpen ? 0 : -1} type="search" dir="auto" value={query} onChange={e => setQuery(e.target.value)} placeholder={t.search} aria-label={t.searchLabel} autoComplete="off"/><button type="button" tabIndex={searchOpen ? 0 : -1} className="search-morph-close" aria-label={t.close} onClick={() => { setQuery(''); setSearchOpen(false); searchButtonRef.current?.focus(); }}><Icon name="close" size={19}/></button></div>
+          {query.trim() && <div className="search-morph-results" aria-live="polite">{movies.filter(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(m => <Link href={`/movies/${m.id}`} key={m.id} tabIndex={searchOpen ? 0 : -1}><strong>{m.title}</strong><small dir={language === 'ar' ? 'rtl' : 'ltr'}>{m[language]}</small></Link>)}{!movies.some(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && <p>{language === 'ar' ? 'لا توجد أفلام مطابقة.' : 'No matching films.'}</p>}</div>}
+        </form>
       </div>
     </nav><div className="header-actions"><button type="button" className={`sky-theme-toggle ${theme === 'dark' ? 'is-night' : 'is-day'}`} role="switch" aria-checked={theme === 'dark'} aria-label={language === 'ar' ? 'الوضع الداكن' : 'Dark mode'} title={language === 'ar' ? 'تبديل المظهر' : 'Switch appearance'} onClick={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')}>
               <span className="sky-theme-day" aria-hidden="true"><span className="sky-theme-sun"/><span className="sky-theme-birds">⌁</span></span>
