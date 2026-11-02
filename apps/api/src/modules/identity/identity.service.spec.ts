@@ -6,6 +6,10 @@ import { JwtService } from '@nestjs/jwt';
 
 describe('IdentityService', () => {
   let service: IdentityService;
+  const oldAccess = process.env.JWT_ACCESS_SECRET;
+  const oldRefresh = process.env.JWT_REFRESH_SECRET;
+  beforeAll(() => { process.env.JWT_ACCESS_SECRET = 'unit-test-access-secret'; process.env.JWT_REFRESH_SECRET = 'unit-test-refresh-secret'; });
+  afterAll(() => { if (oldAccess === undefined) delete process.env.JWT_ACCESS_SECRET; else process.env.JWT_ACCESS_SECRET = oldAccess; if (oldRefresh === undefined) delete process.env.JWT_REFRESH_SECRET; else process.env.JWT_REFRESH_SECRET = oldRefresh; });
 
   const mockPrisma = {
     appUser: {
@@ -35,6 +39,20 @@ describe('IdentityService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('fails closed before registration when signing secrets are absent or identical', async () => {
+    delete process.env.JWT_ACCESS_SECRET;
+    await expect(service.register({email:'test@test.com',password:'password123',name:'Test User',phone:'+1234567890'})).rejects.toThrow('not configured securely');
+    process.env.JWT_ACCESS_SECRET = process.env.JWT_REFRESH_SECRET;
+    await expect(service.login({email:'test@test.com',password:'password123'})).rejects.toThrow('not configured securely');
+    process.env.JWT_ACCESS_SECRET = 'unit-test-access-secret';
+  });
+  it('denies inactive users at login and refresh', async () => {
+    mockPrisma.appUser.findUnique.mockResolvedValue({id:'user-id', status:'disabled', passwordHash:'unused', profiles:[]});
+    await expect(service.login({email:'test@test.com',password:'password123'})).rejects.toThrow('Invalid email or password');
+    mockJwt.verifyAsync.mockResolvedValueOnce({sub:'user-id'});
+    await expect(service.refresh('token')).rejects.toThrow('Invalid refresh token');
   });
 
   describe('register', () => {
@@ -88,6 +106,7 @@ describe('IdentityService', () => {
       mockPrisma.appUser.findUnique.mockResolvedValue({
         id: 'user-id',
         email: 'test@test.com',
+        status: 'active',
         passwordHash: '$argon2id$v=19$m=65536,t=3,p=1$hash',
         tenantId: '00000000-0000-0000-0000-000000000000',
         profiles: [{ id: 'profile-id' }],

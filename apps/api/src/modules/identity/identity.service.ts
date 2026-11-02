@@ -16,7 +16,14 @@ export class IdentityService {
     private readonly jwtService: JwtService,
   ) {}
 
+  private requireTokenSecrets() {
+    const access = process.env.JWT_ACCESS_SECRET;
+    const refresh = process.env.JWT_REFRESH_SECRET;
+    if (!access || !refresh || access === refresh) throw new ServiceUnavailableException('User authentication is not configured securely');
+  }
+
   async register(dto: RegisterDto) {
+    this.requireTokenSecrets();
     const existing = await this.prisma.appUser.findUnique({
       where: { email: dto.email },
     });
@@ -93,12 +100,13 @@ export class IdentityService {
   }
 
   async login(dto: LoginDto) {
+    this.requireTokenSecrets();
     const user = await this.prisma.appUser.findUnique({
       where: { email: dto.email },
       include: { profiles: { select: publicProfileSelect } },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user || user.status !== 'active' || !user.passwordHash) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -136,12 +144,13 @@ export class IdentityService {
   }
 
   async loginWithPhone(dto: LoginPhoneDto) {
+    this.requireTokenSecrets();
     const user = await this.prisma.appUser.findFirst({
       where: { phone: dto.phone },
       include: { profiles: { select: publicProfileSelect } },
     });
 
-    if (!user || !user.passwordHash) {
+    if (!user || user.status !== 'active' || !user.passwordHash) {
       throw new UnauthorizedException('Invalid phone or password');
     }
 
@@ -179,9 +188,11 @@ export class IdentityService {
   }
 
   async refresh(refreshToken: string) {
+    this.requireTokenSecrets();
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
+        algorithms: ['HS256'],
       });
 
       const user = await this.prisma.appUser.findUnique({
@@ -189,7 +200,7 @@ export class IdentityService {
         include: { profiles: { select: publicProfileSelect } },
       });
 
-      if (!user) {
+      if (!user || user.status !== 'active') {
         throw new UnauthorizedException('Invalid refresh token');
       }
 

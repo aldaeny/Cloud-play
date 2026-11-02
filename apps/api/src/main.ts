@@ -4,36 +4,13 @@ import { AppModule } from './app.module';
 import { PrismaService } from './prisma.service';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 
-// ── Simple in-memory rate limiter ──────────────────────────
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 60_000; // 1 minute
-const RATE_LIMIT_MAX = 100; // max requests per window per IP
-
-function rateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-
-  if (!entry || entry.resetTime < now) {
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return next();
-  }
-
-  entry.count++;
-  if (entry.count > RATE_LIMIT_MAX) {
-    res.status(429).json({
-      code: 'RATE_LIMITED',
-      message: 'Too many requests. Please try again later.',
-      retryAfter: Math.ceil((entry.resetTime - now) / 1000),
-    });
-    return;
-  }
-  next();
-}
+import { rateLimiter } from './common/rate-limiter';
+import { validateProductionConfig } from './common/production-config';
 
 async function bootstrap() {
+  validateProductionConfig(process.env);
   const app = await NestFactory.create(AppModule);
   const prisma = app.get(PrismaService);
 
@@ -93,7 +70,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log(`Aether API is running on port ${port}`);
   logger.log(`CORS origins: ${process.env.CORS_ORIGINS || 'localhost:3001,3002,3003'}`);
-  logger.log(`Rate limiting: ${RATE_LIMIT_MAX} requests/min per IP`);
+  logger.log('Rate limiting: 100 requests/min per IP; 10 auth requests/min per IP (per instance)');
 
 
 }

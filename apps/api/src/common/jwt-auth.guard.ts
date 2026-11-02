@@ -30,9 +30,11 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('No authentication token provided');
     }
 
+    if (!process.env.JWT_ACCESS_SECRET) throw new UnauthorizedException('Authentication is not configured');
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_ACCESS_SECRET,
+        algorithms: ['HS256'],
       });
 
       // Verify user still exists and is active

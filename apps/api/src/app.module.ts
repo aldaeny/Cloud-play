@@ -22,7 +22,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.register({
       global: true,
-      secret: process.env.JWT_ACCESS_SECRET || 'dev-secret-change-me',
+      secret: process.env.JWT_ACCESS_SECRET,
       signOptions: { expiresIn: jwtTtlSeconds('JWT_ACCESS_TTL', 900) },
     }),
     PrismaModule,
