@@ -41,20 +41,33 @@ async function main() {
     });
   }
 
-  // Create admin role
+  // Create admin role without discarding any permissions already configured.
   console.log('  Creating admin role...');
+  const adminRoleId = '00000000-0000-0000-0000-000000000001';
+  const existingAdminRole = await prisma.role.findUnique({ where: { id: adminRoleId } });
+  let existingPermissions: string[] = [];
+  if (existingAdminRole) {
+    try {
+      const parsed: unknown = JSON.parse(existingAdminRole.permissions);
+      if (Array.isArray(parsed)) existingPermissions = parsed.filter((item): item is string => typeof item === 'string');
+    } catch {
+      existingPermissions = existingAdminRole.permissions.split(',').map(item => item.trim()).filter(Boolean);
+    }
+  }
+  const adminPermissions = [...new Set([
+    ...existingPermissions,
+    'titles:create', 'titles:edit', 'titles:delete',
+    'users:manage', 'devices:manage', 'staff:manage',
+    'rights:manage', 'home:manage', 'xtream:manage',
+  ])];
   await prisma.role.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: { permissions: JSON.stringify(['titles:create', 'titles:edit', 'titles:delete', 'users:manage', 'devices:manage', 'staff:manage', 'rights:manage', 'home:manage', 'xtream:manage']) },
+    where: { id: adminRoleId },
+    update: { permissions: JSON.stringify(adminPermissions) },
     create: {
-      id: '00000000-0000-0000-0000-000000000001',
+      id: adminRoleId,
       tenantId: DEFAULT_TENANT_ID,
       name: 'Administrator',
-      permissions: JSON.stringify([
-        'titles:create', 'titles:edit', 'titles:delete',
-        'users:manage', 'devices:manage', 'staff:manage',
-        'rights:manage', 'home:manage', 'xtream:manage',
-      ]),
+      permissions: JSON.stringify(adminPermissions),
     },
   });
 
