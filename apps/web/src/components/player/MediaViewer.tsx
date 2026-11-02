@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
+import CastControls from './CastControls';
 type Language='ar'|'en';
 type State='loading'|'ready'|'playing'|'blocked'|'failed';
 type Track={label:string;id:number};
@@ -32,6 +33,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  function playFromClick(){const video=videoRef.current;if(!video)return;void video.play().catch(e=>{if(e?.name==='NotAllowedError')setState('blocked');else if(e?.name!=='AbortError')setState('failed')})}
  return <div ref={viewerRef} className={`firebase-viewer media-viewer ${className}`}><div className="firebase-viewer-top"><strong>{title}</strong><button onClick={closePlayer}>{ar?'إغلاق المشغّل':'Close player'}</button></div>
   <video key={attempt} ref={videoRef} controls playsInline preload="metadata" onPlaying={()=>setState('playing')} onLoadedMetadata={e=>restoreProgress(e.currentTarget)} onTimeUpdate={e=>{if(Date.now()-lastSaved.current>=5000)saveProgress(e.currentTarget)}} onPause={e=>{saveProgress(e.currentTarget);setState(s=>s==='playing'?'ready':s)}} onEnded={e=>saveProgress(e.currentTarget,true)} onError={()=>setState('failed')}/>
+  <CastControls language={language} title={title} url={url} kind={kind} videoRef={videoRef}/>
   {(levels.length>1||audio.length>1||subtitles.length>0)&&<div className="media-tracks" aria-label={ar?'خيارات البث':'Stream options'}>
    {levels.length>1&&<label>{ar?'الجودة':'Quality'} <select value={qualityChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current){hlsRef.current.currentLevel=n;setQualityChoice(n)}}}><option value={-1}>{ar?'تلقائي':'Auto'}</option>{levels.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
    {audio.length>1&&<label>{ar?'الصوت':'Audio'} <select value={audioChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current&&n>=0){hlsRef.current.audioTrack=n;setAudioChoice(n)}}}><option value={-1} disabled>{ar?'اختر':'Select'}</option>{audio.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}

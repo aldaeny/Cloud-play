@@ -6,10 +6,26 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Cloud Play uses your local network to find the TV you choose for casting.",
+        "NSBonjourServices": [
+          "_googlecast._tcp",
+          "_CC1AD845._googlecast._tcp"
+        ]
+      }
     },
     "android": {},
-    "plugins": [],
+    "plugins": [
+      [
+        "react-native-google-cast",
+        {
+          "receiverAppId": "CC1AD845",
+          "androidPlayServicesCastFrameworkVersion": "22.0.0",
+          "iosStartDiscoveryAfterFirstTapOnCastButton": true
+        }
+      ]
+    ],
     "icon": "./assets/icon.png"
   }
 }

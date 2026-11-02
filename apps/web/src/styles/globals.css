@@ -813,3 +813,11 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .site.solid-panels .home-about-link{background:#233143;backdrop-filter:none;-webkit-backdrop-filter:none}
 .site.theme-light.solid-panels .home-about-link{background:#f0f5f9}
 @media(max-width:700px){.site .home-highlight-grid{grid-template-columns:1fr;gap:12px}.site .home-highlight-card{min-height:180px}.site .home-about-panel{align-items:start;flex-direction:column;gap:20px}.site .home-highlights{padding-top:32px}.site .home-about{padding-bottom:45px}}
+/* Playback-to-TV controls use the same neutral glass as the existing actions. */
+.site .media-cast{margin:14px 0 4px}
+.site .media-cast-buttons{display:flex;flex-wrap:wrap;gap:8px}
+.site .media-cast-button{position:relative;min-height:42px;padding:9px 14px;border:1px solid #d0e8ff66;border-radius:10px;background:linear-gradient(155deg,#ffffff40,#d9ebff10),#101824a1;color:#f8fbff;box-shadow:inset 0 1px 1px #ffffff8c;backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);cursor:pointer}
+.site.theme-light .media-cast-button{background:linear-gradient(155deg,#ffffffb8,#dfedfa20),#f7fbffc2;color:#182a3c;border-color:#7492ac66}
+.site .media-cast-button:disabled{opacity:.5;cursor:not-allowed}.site .media-cast-button:focus-visible{outline:2px solid #92c9ff;outline-offset:3px}
+.site .media-cast-hint{font-size:12px;line-height:1.7;color:#b3c0d0;margin:8px 0}.site.theme-light .media-cast-hint{color:#455667}
+.site.solid-panels .media-cast-button{background:#233143;backdrop-filter:none;-webkit-backdrop-filter:none}.site.theme-light.solid-panels .media-cast-button{background:#f0f5f9}
