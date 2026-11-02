@@ -556,3 +556,21 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .reference-intro-skip:hover{border-color:currentColor}.reference-intro-skip span{font-size:17px;line-height:0;vertical-align:-1px}
 @media(prefers-reduced-motion:reduce){.site .intro-layer.reference-intro{display:none!important;transition:none}}
 .site.motion-off .intro-layer.reference-intro{display:none!important}
+/* Keep the portrait reference legible on wide desktop and TV screens without cropping the brand. */
+@media (min-width:800px) and (min-aspect-ratio:4/3){.reference-intro-video{transform:scale(1.45)}}
+.reference-intro-skip{min-height:44px;min-width:44px}
+.site[dir=rtl] .reference-intro-skip{inset-inline-end:auto;left:20px;right:auto}
+.site[dir=ltr] .reference-intro-skip{inset-inline-end:auto;right:20px;left:auto}
+@supports (bottom:max(20px, env(safe-area-inset-bottom))){
+ .reference-intro-skip{bottom:max(20px, env(safe-area-inset-bottom))}
+ .site[dir=rtl] .reference-intro-skip{left:max(20px, env(safe-area-inset-left))}
+ .site[dir=ltr] .reference-intro-skip{right:max(20px, env(safe-area-inset-right))}
+}
+@media (min-width:1600px){.reference-intro-skip{font-size:18px;min-height:56px;padding:14px 22px}.site[dir=rtl] .reference-intro-skip{left:5vw}.site[dir=ltr] .reference-intro-skip{right:5vw}.reference-intro-skip{bottom:5vh}}
+/* Fade only the edges of the portrait video into the matching full-screen background. */
+@supports (width:min(100vw,56.25vh)){
+ .reference-intro-video{width:min(100vw,56.25vh);height:min(100vh,177.778vw)}
+}
+@supports (mask-composite:intersect){
+ .reference-intro-video{mask-image:linear-gradient(to right,transparent,#000 4%,#000 96%,transparent),linear-gradient(to bottom,transparent,#000 4%,#000 96%,transparent);mask-composite:intersect}
+}

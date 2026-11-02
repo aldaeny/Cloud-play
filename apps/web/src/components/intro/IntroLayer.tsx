@@ -9,6 +9,7 @@ export default function IntroLayer() {
   const [leaving, setLeaving] = useState(false);
   const finished = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipRef = useRef<HTMLButtonElement>(null);
 
   function finish() {
     if (finished.current) return;
@@ -20,7 +21,7 @@ export default function IntroLayer() {
   useEffect(() => {
     let language: IntroChoice['language'] = 'ar';
     let theme: IntroChoice['theme'] = 'dark';
-    let reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     try {
       if (localStorage.getItem('cloudplay-language') === 'en') language = 'en';
       if (localStorage.getItem('cloudplay-theme') === 'light') theme = 'light';
@@ -43,7 +44,17 @@ export default function IntroLayer() {
     const bodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
-    return () => { document.documentElement.style.overflow = htmlOverflow; document.body.style.overflow = bodyOverflow; };
+    // An arrow key brings TV-remote focus to the skip control.
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key) && document.activeElement !== skipRef.current) {
+        event.preventDefault();
+        try { skipRef.current?.focus({ preventScroll: true }); } catch { skipRef.current?.focus(); }
+      } else if (event.key === 'Escape' || event.key === 'BrowserBack' || event.keyCode === 461) {
+        event.preventDefault(); finish();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => { window.removeEventListener('keydown', onKeyDown); document.documentElement.style.overflow = htmlOverflow; document.body.style.overflow = bodyOverflow; };
   }, [visible, choice]);
 
   if (!visible || !choice) return null;
@@ -57,9 +68,9 @@ export default function IntroLayer() {
         aria-hidden="true"
         onEnded={finish}
         onError={finish}
-        onCanPlay={event => { void event.currentTarget.play().catch(finish); }}
+        onCanPlay={event => { const playback = event.currentTarget.play(); if (playback && typeof playback.catch === 'function') void playback.catch(finish); }}
       />
-      <button type="button" className="reference-intro-skip" onClick={finish} aria-label={ar ? 'تخطي المقدمة' : 'Skip intro'}>
+      <button ref={skipRef} type="button" className="reference-intro-skip" onClick={finish} aria-label={ar ? 'تخطي المقدمة' : 'Skip intro'}>
         {ar ? 'تخطي المقدمة' : 'Skip intro'} <span aria-hidden="true">›</span>
       </button>
     </div>
