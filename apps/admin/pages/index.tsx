@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import XtreamServersPanel from '../components/xtream-servers-panel';
 
 type Title = { id: string; titleAr: string; titleEn: string; state: string };
 
@@ -67,6 +68,7 @@ export default function AdminDashboard() {
               <article key={title.id} className="p-4 bg-[#0a0a0c] rounded-xl border border-white/10"><p className="font-bold">{title.titleAr || title.titleEn}</p><p className="text-sm text-gray-400">الحالة: {title.state}</p></article>
             ))}</div>
           )}
+          <XtreamServersPanel token={token} />
         </main>
       )}
     </div>
