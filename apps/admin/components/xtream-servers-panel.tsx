@@ -20,6 +20,7 @@ export default function XtreamServersPanel({ token }: Props) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -44,17 +45,26 @@ export default function XtreamServersPanel({ token }: Props) {
     event.preventDefault();
     setSaving(true); setError(''); setNotice('');
     try {
-      const response = await fetch('/api/admin/xtream-servers', {
-        method: 'POST', headers, body: JSON.stringify({ name, baseUrl, username, password }),
+      const response = await fetch(editingId ? `/api/admin/xtream-servers/${encodeURIComponent(editingId)}` : '/api/admin/xtream-servers', {
+        method: editingId ? 'PATCH' : 'POST', headers,
+        body: JSON.stringify({ name, baseUrl, username, ...(password ? { password } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(typeof data?.message === 'string' ? data.message : 'فشل حفظ السيرفر');
-      setName(''); setBaseUrl(''); setUsername(''); setPassword('');
-      setNotice('تمت إضافة السيرفر. لم يتم اختبار الاتصال بعد.');
+      setName(''); setBaseUrl(''); setUsername(''); setPassword(''); setEditingId(null);
+      setNotice(editingId ? 'تم تحديث السيرفر.' : 'تمت إضافة السيرفر. لم يتم اختبار الاتصال بعد.');
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'فشل حفظ السيرفر');
     } finally { setSaving(false); }
+  }
+
+  function beginEdit(server: XtreamServer) {
+    setEditingId(server.id); setName(server.name); setBaseUrl(server.baseUrl); setUsername(server.username); setPassword(''); setError(''); setNotice('');
+  }
+
+  function cancelEdit() {
+    setEditingId(null); setName(''); setBaseUrl(''); setUsername(''); setPassword('');
   }
 
   async function toggleServer(server: XtreamServer) {
@@ -90,8 +100,8 @@ export default function XtreamServersPanel({ token }: Props) {
         <label className="text-sm">اسم السيرفر<input required minLength={2} maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder="Main Server" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
         <label className="text-sm">رابط السيرفر<input required type="url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="http://example.com:2052" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
         <label className="text-sm">اسم المستخدم<input required value={username} onChange={e => setUsername(e.target.value)} autoComplete="off" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
-        <label className="text-sm">كلمة المرور<input required type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
-        <div className="md:col-span-2 flex justify-end"><button disabled={saving} className="px-5 py-2 rounded-lg bg-[#00e5ff] text-black font-bold disabled:opacity-50">{saving ? 'جاري الحفظ…' : 'إضافة السيرفر'}</button></div>
+        <label className="text-sm">كلمة المرور<input required={!editingId} type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
+        <div className="md:col-span-2 flex justify-end gap-2">{editingId && <button type="button" onClick={cancelEdit} className="px-4 py-2 rounded-lg border border-white/15">إلغاء</button>}<button disabled={saving} className="px-5 py-2 rounded-lg bg-[#00e5ff] text-black font-bold disabled:opacity-50">{saving ? 'جاري الحفظ…' : editingId ? 'حفظ التعديلات' : 'إضافة السيرفر'}</button></div>
       </form>
 
       {error && <p role="alert" className="text-red-400 text-sm">{error}</p>}
@@ -100,7 +110,7 @@ export default function XtreamServersPanel({ token }: Props) {
         <div className="space-y-3">{servers.map(server => (
           <article key={server.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0a0a0c] p-4">
             <div className="min-w-0"><div className="font-bold">{server.name} <span className={server.enabled ? 'text-emerald-400 text-xs' : 'text-gray-500 text-xs'}>{server.enabled ? 'مفعّل' : 'متوقف'}</span></div><p dir="ltr" className="text-sm text-gray-400 truncate">{server.baseUrl}</p><p className="text-xs text-gray-500">الحساب: {server.username} · حالة الاتصال: {server.connectionStatus}</p></div>
-            <div className="flex gap-2 shrink-0"><button onClick={() => void toggleServer(server)} className="px-3 py-2 rounded-lg border border-white/15 text-sm">{server.enabled ? 'تعطيل' : 'تفعيل'}</button><button onClick={() => void deleteServer(server)} className="px-3 py-2 rounded-lg border border-red-500/30 text-red-300 text-sm">حذف</button></div>
+            <div className="flex gap-2 shrink-0"><button onClick={() => beginEdit(server)} className="px-3 py-2 rounded-lg border border-white/15 text-sm">تعديل</button><button onClick={() => void toggleServer(server)} className="px-3 py-2 rounded-lg border border-white/15 text-sm">{server.enabled ? 'تعطيل' : 'تفعيل'}</button><button onClick={() => void deleteServer(server)} className="px-3 py-2 rounded-lg border border-red-500/30 text-red-300 text-sm">حذف</button></div>
           </article>
         ))}</div>
       )}
