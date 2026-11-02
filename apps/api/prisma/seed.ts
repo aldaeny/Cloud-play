@@ -45,7 +45,7 @@ async function main() {
   console.log('  Creating admin role...');
   await prisma.role.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
-    update: {},
+    update: { permissions: JSON.stringify(['titles:create', 'titles:edit', 'titles:delete', 'users:manage', 'devices:manage', 'staff:manage', 'rights:manage', 'home:manage', 'xtream:manage']) },
     create: {
       id: '00000000-0000-0000-0000-000000000001',
       tenantId: DEFAULT_TENANT_ID,
