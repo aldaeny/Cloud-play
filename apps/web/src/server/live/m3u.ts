@@ -55,7 +55,17 @@ export type ParseReport = {
   raw: number;
 };
 
-export type ParseResult = { channels: LiveChannel[]; report: ParseReport };
+/**
+ * Server-only side table: channel id -> provider URL.
+ *
+ * It is deliberately NOT a field on LiveChannel. A side table cannot be
+ * serialised by accident when a channel is spread into an API response, so a
+ * signed provider URL cannot leak to the browser even if a future handler
+ * forgets to strip it.
+ */
+export type UrlTable = Map<string, string>;
+
+export type ParseResult = { channels: LiveChannel[]; report: ParseReport; urls: UrlTable };
 
 const MAX_BYTES = 8 * 1024 * 1024;
 const MAX_CHANNELS = 7500;
@@ -119,7 +129,7 @@ function dedupeKey(name: string): string {
     .trim();
 }
 
-export function parseM3U(raw: string): ParseResult {
+export function parseM3U(raw: string, defaultGroup = ''): ParseResult {
   const report: ParseReport = { total: 0, duplicates: 0, invalid: 0, playerOptionOnly: 0, unnamed: 0, raw: 0 };
   if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') > MAX_BYTES) throw new Error('PLAYLIST_TOO_LARGE');
   const lines = raw.replace(/^\uFEFF/, '').split(/\r?\n/);
@@ -128,6 +138,7 @@ export function parseM3U(raw: string): ParseResult {
   if ((lines[index] ?? '').trim().toUpperCase() !== '#EXTM3U') throw new Error('NOT_A_PLAYLIST');
 
   const channels: LiveChannel[] = [];
+  const urls: UrlTable = new Map();
   const seenIds = new Set<string>();
   const seenNames = new Set<string>();
   let pending: { attributes: string; display: string } | undefined;
@@ -158,7 +169,8 @@ export function parseM3U(raw: string): ParseResult {
       report.unnamed += 1;
       continue;
     }
-    const group = cleanText(attribute(attributes, 'group-title').replace(/\s*;\s*/g, '/'), MAX_GROUP);
+    const group =
+      cleanText(attribute(attributes, 'group-title').replace(/\s*;\s*/g, '/'), MAX_GROUP) || cleanText(defaultGroup, MAX_GROUP);
     const epgId = cleanText(attribute(attributes, 'tvg-id'), 80);
     const language = cleanText(attribute(attributes, 'tvg-language') || attribute(attributes, 'tvg-country'), 40);
     const logo = safeLogo(attribute(attributes, 'tvg-logo'));
@@ -199,10 +211,11 @@ export function parseM3U(raw: string): ParseResult {
       playable: true,
       needsPlayerOptions: false,
     });
+    urls.set(identity, line);
   }
 
   report.total = channels.length;
-  return { channels, report };
+  return { channels, report, urls };
 }
 
 /**
@@ -211,6 +224,7 @@ export function parseM3U(raw: string): ParseResult {
  */
 export function mergeFeeds(feeds: ParseResult[]): ParseResult {
   const channels: LiveChannel[] = [];
+  const urls: UrlTable = new Map();
   const report: ParseReport = { total: 0, duplicates: 0, invalid: 0, playerOptionOnly: 0, unnamed: 0, raw: 0 };
   const seenIds = new Set<string>();
   const seenNames = new Set<string>();
@@ -226,6 +240,8 @@ export function mergeFeeds(feeds: ParseResult[]): ParseResult {
       seenIds.add(channel.id);
       seenNames.add(key);
       channels.push(channel);
+      const sourceUrl = feed.urls.get(channel.id);
+      if (sourceUrl) urls.set(channel.id, sourceUrl);
       if (channel.playable) report.total += 1;
       else {
         report.invalid += 1;
@@ -233,7 +249,7 @@ export function mergeFeeds(feeds: ParseResult[]): ParseResult {
       }
     }
   }
-  return { channels, report };
+  return { channels, report, urls };
 }
 
 export const PARSER_LIMITS = { MAX_BYTES, MAX_CHANNELS, MAX_NAME, MAX_GROUP, MAX_LOGO } as const;

@@ -185,6 +185,30 @@ test('parser never leaks query secrets into the channel record', () => {
   assert.ok(!JSON.stringify(channels).includes('supersecret'), 'token must not be serialised');
 });
 
+test('provider URLs live in a side table, never on the channel object', () => {
+  const { channels, urls } = parser.parseM3U(FIXTURE);
+  const serialised = JSON.stringify(channels);
+  assert.ok(!serialised.includes('esite-lab.com'), 'channel objects must not carry provider hosts');
+  assert.ok(!serialised.includes('supersecret'), 'channel objects must not carry tokens');
+  const deepLink = channels.find((channel) => channel.name === 'Deep link');
+  assert.equal(urls.get(deepLink.id), 'https://cdn.example.net/a.m3u8?token=supersecret&user=42', 'the server keeps the real URL separately');
+  for (const channel of channels) {
+    assert.ok(!Object.values(channel).some((value) => typeof value === 'string' && value.includes('token=')), channel.name);
+  }
+});
+
+test('mergeFeeds preserves the url side table', () => {
+  const operator = parser.parseM3U(`#EXTM3U\n#EXTINF:-1,Al Iraqia\nhttps://operator.example.net/a.m3u8\n`);
+  const merged = parser.mergeFeeds([operator, parser.parseM3U(FIXTURE)]);
+  const iraqia = merged.channels.find((channel) => channel.name === 'Al Iraqia');
+  assert.equal(merged.urls.get(iraqia.id), 'https://operator.example.net/a.m3u8');
+  // The inline FIXTURE has two playable entries, and the operator adds one more.
+  assert.equal(merged.urls.size, 3);
+  for (const channel of merged.channels.filter((entry) => entry.playable)) {
+    assert.ok(merged.urls.has(channel.id), `${channel.name} must keep a server-side url`);
+  }
+});
+
 test('parser produces stable ids across identical runs', () => {
   const first = parser.parseM3U(FIXTURE).channels.map((channel) => channel.id);
   const second = parser.parseM3U(FIXTURE).channels.map((channel) => channel.id);
