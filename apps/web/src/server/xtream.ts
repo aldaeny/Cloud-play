@@ -94,6 +94,9 @@ async function cached(key: string, action: 'get_live_categories' | 'get_live_str
 export async function categories() { limit(); return cached('categories', 'get_live_categories'); }
 export async function channels(category: string) {
   limit();
+  // Configuration is checked before the argument: a disabled adapter must say
+  // DISABLED, not INVALID_CATEGORY, or the operator is told to fix the wrong thing.
+  settings();
   if (!/^\d{1,18}$/.test(category)) throw new CatalogError('INVALID_CATEGORY');
   const groups = await cached('categories', 'get_live_categories');
   if (!groups.some(group => group.id === category)) throw new CatalogError('INVALID_CATEGORY');
