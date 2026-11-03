@@ -875,7 +875,7 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 /* ------------------------------------------------------- built-in player --- */
 /* CloudPlayer: an in-page, VLC-style player. All chrome is ours so the control
    set and layout are identical in Chrome, Firefox, Safari and iOS. */
-.cloud-player{position:relative;margin-top:18px;border:1px solid #ffffff1f;border-radius:12px;background:#06070c;overflow:hidden;color:#f4f5fb}
+.cloud-player{position:relative;margin-top:18px;border:1px solid #ffffff1f;border-radius:12px;background:#06070c;overflow:hidden;color:#f4f5fb;direction:ltr;text-align:start}
 .cloud-player-stage{position:relative;display:block;background:#000;cursor:pointer;line-height:0}
 .cloud-player-video{display:block;width:100%;max-height:min(72vh,620px);aspect-ratio:16/9;background:#000;object-fit:contain}
 .cloud-player-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px;text-align:center;background:radial-gradient(circle at 50% 45%,#0b1020e0,#04050ae6);line-height:1.6;cursor:default}
@@ -916,6 +916,7 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .cloud-select{display:flex;align-items:center;gap:6px;font-size:10px;color:#b9b7c8}
 .cloud-select select{background:#151827;color:#eef0f8;border:1px solid #ffffff2b;border-radius:7px;padding:5px 7px;font-size:11px;max-width:150px}
 .cloud-stats{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;padding-top:8px;border-top:1px dashed #ffffff1f;font-size:10px;color:#a9a7b8}
+.cloud-stats span{display:inline-flex;gap:5px;align-items:baseline}
 .cloud-stats strong{color:#e9e8f2;font-weight:700}
 .cloud-player-caption{display:flex;flex-direction:column;gap:2px;padding:10px 14px 12px;border-top:1px solid #ffffff10;background:#080a11}
 .cloud-player-caption strong{font-size:13px}

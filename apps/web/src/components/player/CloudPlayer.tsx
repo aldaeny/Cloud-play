@@ -479,6 +479,10 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
   return (
     <div
       ref={containerRef}
+      // dir=ltr is deliberate: an RTL page mirrors flex rows, which would put
+      // the play button on the far right and reverse the time labels. Media
+      // transport controls keep the physical convention on every locale.
+      dir="ltr"
       className={`cloud-player ${className}${fullscreen ? ' is-fullscreen' : ''}${controlsVisible ? ' controls-on' : ' controls-off'}`}
       data-testid={testId}
       data-status={status}
@@ -527,14 +531,14 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
             <p className="cloud-player-error-code">
               {labels.errorKind}: <code>{error?.code ?? 'UNKNOWN'}</code>
             </p>
-            <button className="cloud-btn cloud-btn-primary" onClick={retryNow}>
+            <button className="cloud-btn cloud-btn-primary" data-action="retry" onClick={retryNow}>
               {labels.retry}
             </button>
           </div>
         )}
 
         {status === 'ready' && error?.kind === 'blocked' && (
-          <button className="cloud-player-bigplay" onClick={togglePlay} aria-label={labels.play}>
+          <button className="cloud-player-bigplay" data-action="bigplay" onClick={togglePlay} aria-label={labels.play}>
             <span aria-hidden="true">▶</span>
           </button>
         )}
@@ -543,7 +547,9 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
       {/* Control bar — our own, so the look is identical on every platform. */}
       <div className="cloud-controls" role="group" aria-label={labels.seek}>
         <div className="cloud-progress-row">
-          <span className="cloud-time">{formatTime(currentTime, false)}</span>
+          <span className="cloud-time" title={ar ? 'الوقت الحالي' : 'Current time'}>
+            {formatTime(currentTime, false)}
+          </span>
           <div className="cloud-progress">
             <div className="cloud-progress-buffer" style={{ width: `${bufferedPercent}%` }} aria-hidden="true" />
             <div className="cloud-progress-played" style={{ width: `${progress}%` }} aria-hidden="true" />
@@ -562,20 +568,22 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
               }}
             />
           </div>
-          <span className="cloud-time">{isLive ? labels.live : formatTime(duration, false)}</span>
+          <span className="cloud-time" title={isLive ? labels.live : ar ? 'المدة' : 'Duration'}>
+            {isLive ? labels.live : formatTime(duration, false)}
+          </span>
         </div>
 
         <div className="cloud-controls-row">
-          <button className="cloud-icon-btn" onClick={togglePlay} aria-label={playing ? labels.pause : labels.play} title={playing ? labels.pause : labels.play}>
+          <button className="cloud-icon-btn" data-action={playing ? 'pause' : 'play'} onClick={togglePlay} aria-label={playing ? labels.pause : labels.play} title={playing ? labels.pause : labels.play}>
             {playing ? '❚❚' : '▶'}
           </button>
-          <button className="cloud-icon-btn" onClick={() => skip(-SEEK_STEP)} aria-label={labels.back} title={labels.back}>
+          <button className="cloud-icon-btn" data-action="back" onClick={() => skip(-SEEK_STEP)} aria-label={labels.back} title={labels.back}>
             ⟲
           </button>
-          <button className="cloud-icon-btn" onClick={() => skip(SEEK_STEP)} aria-label={labels.forward} title={labels.forward}>
+          <button className="cloud-icon-btn" data-action="forward" onClick={() => skip(SEEK_STEP)} aria-label={labels.forward} title={labels.forward}>
             ⟳
           </button>
-          <button className="cloud-icon-btn" onClick={toggleMute} aria-label={muted ? labels.unmute : labels.mute} title={muted ? labels.unmute : labels.mute}>
+          <button className="cloud-icon-btn" data-action="mute" onClick={toggleMute} aria-label={muted ? labels.unmute : labels.mute} title={muted ? labels.unmute : labels.mute}>
             {muted || volume === 0 ? '🔇' : '🔊'}
           </button>
           <input
@@ -634,19 +642,19 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
             </label>
           )}
 
-          <button className="cloud-icon-btn" onClick={() => setShowStats((value) => !value)} aria-label={labels.stats} aria-pressed={showStats} title={labels.stats}>
+          <button className="cloud-icon-btn" data-action="stats" onClick={() => setShowStats((value) => !value)} aria-label={labels.stats} aria-pressed={showStats} title={labels.stats}>
             ⓘ
           </button>
-          <button className="cloud-icon-btn" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? labels.exitFullscreen : labels.fullscreen} title={fullscreen ? labels.exitFullscreen : labels.fullscreen}>
+          <button className="cloud-icon-btn" data-action="fullscreen" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? labels.exitFullscreen : labels.fullscreen} title={fullscreen ? labels.exitFullscreen : labels.fullscreen}>
             {fullscreen ? '🗗' : '⛶'}
           </button>
-          <button className="cloud-icon-btn cloud-close-btn" onClick={close} aria-label={labels.close} title={labels.close}>
+          <button className="cloud-icon-btn cloud-close-btn" data-action="close" onClick={close} aria-label={labels.close} title={labels.close}>
             ✕
           </button>
         </div>
 
         {showStats && (
-          <div className="cloud-stats" role="status">
+          <div className="cloud-stats" role="status" dir="ltr">
             <span>
               {labels.engine}: <strong>{engine}</strong>
             </span>
@@ -670,7 +678,7 @@ export default function CloudPlayer({ language, title, url, kind, onClose, class
         )}
       </div>
 
-      <div className="cloud-player-caption">
+      <div className="cloud-player-caption" dir={ar ? 'rtl' : 'ltr'}>
         <strong>{title}</strong>
         <small>{labels.hint}</small>
       </div>

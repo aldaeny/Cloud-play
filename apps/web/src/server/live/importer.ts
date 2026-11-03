@@ -57,7 +57,13 @@ async function fromInitialState(): Promise<LiveSnapshot | null> {
 }
 
 /** Convert a source read into the stored shape. */
-function toSnapshot(origin: string, sources: LiveSnapshot['sources'], parsed: ReturnType<typeof mergeFeeds>, bundled = false): LiveSnapshot {
+function toSnapshot(
+  origin: string,
+  sources: LiveSnapshot['sources'],
+  parsed: ReturnType<typeof mergeFeeds>,
+  sourceKeys: Map<string, string>,
+  bundled = false,
+): LiveSnapshot {
   return {
     version: 1,
     createdAt: new Date().toISOString(),
@@ -73,6 +79,7 @@ function toSnapshot(origin: string, sources: LiveSnapshot['sources'], parsed: Re
       playable: channel.playable,
       ...(channel.blockedReason ? { blockedReason: channel.blockedReason } : {}),
       url: channel.playable ? parsed.urls.get(channel.id) : undefined,
+      ...(sourceKeys.has(channel.id) ? { sourceKey: sourceKeys.get(channel.id) } : {}),
     })),
     report: parsed.report,
     sources,
@@ -87,13 +94,16 @@ async function refreshFromNetwork(region: Region): Promise<{ snapshot: LiveSnaps
   const sources = sourcesFor(region);
   const report: LiveSnapshot['sources'] = [];
   const parsedFeeds: Array<{ key: string; parsed: ReturnType<typeof parseM3U> }> = [];
+  const sourceKeys = new Map<string, string>();
 
   await Promise.all(
     sources.map(async (source) => {
       const inline = source.key === 'operator' ? process.env.CLOUDPLAY_LIVE_FEED_INLINE : undefined;
       if (inline) {
         try {
-          parsedFeeds.push({ key: source.key, parsed: parseM3U(inline, source.category) });
+          const inlineParsed = parseM3U(inline, source.category);
+          for (const channel of inlineParsed.channels) sourceKeys.set(channel.id, source.key);
+          parsedFeeds.push({ key: source.key, parsed: inlineParsed });
           report.push({ key: source.key, url: 'inline', ok: true, bytes: Buffer.byteLength(inline, 'utf8'), ms: 0 });
         } catch (error) {
           report.push({ key: source.key, url: 'inline', ok: false, error: error instanceof Error ? error.message : 'PARSE_ERROR' });
@@ -124,6 +134,7 @@ async function refreshFromNetwork(region: Region): Promise<{ snapshot: LiveSnaps
             report.push({ key: source.key, url: candidate, ok: false, error: 'NO_PLAYABLE_CHANNELS', bytes: outcome.bytes, ms: outcome.ms });
             continue;
           }
+          for (const channel of parsed.channels) sourceKeys.set(channel.id, source.key);
           parsedFeeds.push({ key: source.key, parsed });
           report.push({ key: source.key, url: candidate, ok: true, bytes: outcome.bytes, ms: outcome.ms });
           return;
@@ -141,7 +152,7 @@ async function refreshFromNetwork(region: Region): Promise<{ snapshot: LiveSnaps
   const merged = mergeFeeds(parsedFeeds.map((feed) => feed.parsed));
   if (!merged.channels.some((channel) => channel.playable)) return { snapshot: null, sources: report, error: 'NO_PLAYABLE_CHANNELS' };
 
-  return { snapshot: toSnapshot(parsedFeeds.map((feed) => feed.key).join('+'), report, merged), sources: report };
+  return { snapshot: toSnapshot(parsedFeeds.map((feed) => feed.key).join('+'), report, merged, sourceKeys), sources: report };
 }
 
 /**
@@ -164,9 +175,33 @@ export async function getLiveSnapshot(region: Region = 'iq', force = false): Pro
     try {
       const { snapshot, sources: report, error } = await refreshFromNetwork(region);
       if (snapshot) {
+        // Carry forward channels whose feed failed this round, so a partial
+        // outage (one provider down) never shrinks the published catalogue.
+        const failed = new Set(report.filter((entry) => !entry.ok).map((entry) => entry.key));
+        const previous = served?.snapshot ?? (await fromInitialState());
+        // A bundled snapshot written before per-channel attribution existed is
+        // by construction the build of the region's primary feed, so attribute
+        // its channels to that feed instead of dropping them on the floor.
+        const primaryKey = LIVE_SOURCES[region === 'world' ? 'world' : region].key;
+        const carried = previous
+          ? previous.channels.filter((channel) => {
+              const key = channel.sourceKey ?? (previous.bundled ? primaryKey : undefined);
+              return key !== undefined && failed.has(key);
+            })
+          : [];
+        let merged = snapshot;
+        if (carried.length) {
+          const present = new Set(snapshot.channels.map((channel) => channel.id));
+          const names = new Set(snapshot.channels.map((channel) => channel.name.toLowerCase()));
+          const extra = carried.filter((channel) => !present.has(channel.id) && !names.has(channel.name.toLowerCase()));
+          if (extra.length) {
+            merged = { ...snapshot, channels: [...snapshot.channels, ...extra] };
+            merged.report = { ...snapshot.report, total: merged.channels.length };
+          }
+        }
         producedAt = Date.now();
-        served = { snapshot, stale: false };
-        await writeStoredSnapshot(snapshot);
+        served = { snapshot: merged, stale: false };
+        await writeStoredSnapshot(merged);
         return served;
       }
       // Last-known-good: whatever we already had, else the stored/bundled copy.

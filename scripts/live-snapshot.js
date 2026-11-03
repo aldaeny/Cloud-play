@@ -19,6 +19,7 @@ const { parseM3U } = loadTs(path.join(ROOT, 'apps/web/src/server/live/m3u.ts'));
 
 const args = process.argv.slice(2);
 const input = args.find((arg) => !arg.startsWith('--'));
+const sourceKeyArg = args.find((arg) => arg.startsWith('--source-key='));
 const originArg = args.find((arg) => arg.startsWith('--origin='));
 if (!input) {
   console.error('usage: node scripts/live-snapshot.js <playlist.m3u> [--origin=label]');
@@ -27,6 +28,9 @@ if (!input) {
 
 const raw = fs.readFileSync(input, 'utf8');
 const { channels, report, urls } = parseM3U(raw, 'العراق · Iraq');
+// Attribute every channel to the feed it came from so the importer can carry it
+// forward when that feed is temporarily unreachable.
+const SOURCE_KEY = sourceKeyArg ? sourceKeyArg.split('=')[1] : 'iptv-org:iq';
 const epoch = Number(process.env.SOURCE_DATE_EPOCH) * 1000;
 const createdAt = Number.isFinite(epoch) && epoch > 0 ? new Date(epoch).toISOString() : new Date().toISOString();
 
@@ -45,9 +49,10 @@ const snapshot = {
     playable: channel.playable,
     ...(channel.blockedReason ? { blockedReason: channel.blockedReason } : {}),
     ...(channel.playable && urls.get(channel.id) ? { url: urls.get(channel.id) } : {}),
+    sourceKey: SOURCE_KEY,
   })),
   report,
-  sources: [{ key: path.basename(input), url: '', ok: true, bytes: Buffer.byteLength(raw, 'utf8'), ms: 0 }],
+  sources: [{ key: SOURCE_KEY, url: '', ok: true, bytes: Buffer.byteLength(raw, 'utf8'), ms: 0 }],
 };
 
 const target = path.join(ROOT, 'apps/web/src/server/live/snapshot/iq.json');

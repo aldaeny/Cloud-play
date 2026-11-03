@@ -75,6 +75,12 @@ export type LiveSnapshot = {
     /** Provider URL. Never leaves the server: the API replaces it with a token. */
     url?: string;
     blockedReason?: string;
+    /**
+     * Which feed produced this channel. Used to carry a channel forward from the
+     * last good snapshot when only some feeds fail, so a partial outage never
+     * shrinks the catalogue.
+     */
+    sourceKey?: string;
   }>;
   report: { total: number; duplicates: number; invalid: number; playerOptionOnly: number; unnamed: number; raw: number };
   sources: LiveHealth['sources'];
