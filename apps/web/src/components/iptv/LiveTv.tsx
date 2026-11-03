@@ -2,7 +2,7 @@
  * Live TV section.
  *
  * Data path: GET /api/iptv/live -> channel list (id, name, group, opaque stream
- * id) -> MediaViewer -> GET /api/stream/<token> -> rewritten manifest -> segments.
+ * id) -> CloudPlayer -> GET /api/stream/<token> -> rewritten manifest -> segments.
  *
  * There is no hardcoded playlist and no placeholder video anywhere in this
  * component. Every row that says "Play" has a real stream id minted by the
@@ -10,7 +10,7 @@
  */
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import MediaViewer from '../player/MediaViewer';
+import CloudPlayer from '../player/CloudPlayer';
 import type { PublicChannel } from '../../server/live/types';
 
 type Language = 'ar' | 'en';
@@ -359,13 +359,14 @@ export default function LiveTv({ language }: { language: Language }) {
       )}
 
       {selected?.stream && (
-        <MediaViewer
+        <CloudPlayer
           key={selected.id}
           language={language}
           title={selected.name}
           url={selected.stream}
           kind="hls"
           onClose={() => setSelected(null)}
+          testId="live-cloud-player"
         />
       )}
     </div>

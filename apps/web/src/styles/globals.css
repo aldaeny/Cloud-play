@@ -871,3 +871,80 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .theme-light .live-card-state.blocked{color:#8a8798}
 @media(max-width:1100px){.live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.live-tv{padding:17px}.live-banner{flex-direction:column;align-items:stretch}.live-grid{grid-template-columns:1fr;max-height:none}.live-regions{gap:6px}.live-region{flex:1;text-align:center;padding:9px 10px}}
+
+/* ------------------------------------------------------- built-in player --- */
+/* CloudPlayer: an in-page, VLC-style player. All chrome is ours so the control
+   set and layout are identical in Chrome, Firefox, Safari and iOS. */
+.cloud-player{position:relative;margin-top:18px;border:1px solid #ffffff1f;border-radius:12px;background:#06070c;overflow:hidden;color:#f4f5fb}
+.cloud-player-stage{position:relative;display:block;background:#000;cursor:pointer;line-height:0}
+.cloud-player-video{display:block;width:100%;max-height:min(72vh,620px);aspect-ratio:16/9;background:#000;object-fit:contain}
+.cloud-player-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:18px;text-align:center;background:radial-gradient(circle at 50% 45%,#0b1020e0,#04050ae6);line-height:1.6;cursor:default}
+.cloud-player-overlay p{margin:0;font-size:13px;color:#c9c8d6}
+.cloud-player-error-title{font-size:15px;font-weight:700;color:#ffd0dd}
+.cloud-player-error-code{font-size:11px;color:#a9a7b8}
+.cloud-player-error-code code{background:#ffffff12;border-radius:5px;padding:2px 6px;font-size:11px;color:#ffc4d8}
+.cloud-spinner{width:34px;height:34px;border-radius:50%;border:3px solid #ffffff2b;border-top-color:#c074f0;animation:cloud-spin .9s linear infinite}
+@keyframes cloud-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.cloud-spinner{animation-duration:2.4s}}
+.cloud-player-bigplay{position:absolute;inset:0;margin:auto;width:78px;height:78px;border-radius:50%;border:1px solid #ffffff4d;background:#0d0f19d9;color:#fff;font-size:26px;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(6px);transition:transform .2s,background .2s}
+.cloud-player-bigplay:hover{transform:scale(1.06);background:#a64ee0d9}
+.cloud-btn{border:1px solid #ffffff2e;background:#ffffff12;color:#f4f5fb;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer}
+.cloud-btn-primary{background:linear-gradient(110deg,#7a3cff,#a83cff);border-color:transparent}
+.cloud-controls{position:relative;background:linear-gradient(180deg,#0c0e16f2,#070810);border-top:1px solid #ffffff14;padding:8px 12px 10px;transition:opacity .25s,transform .25s}
+.cloud-player.controls-off .cloud-controls{opacity:0;transform:translateY(6px);pointer-events:none}
+.cloud-player:focus-within .cloud-controls,.cloud-player:hover .cloud-controls{opacity:1;transform:none;pointer-events:auto}
+.cloud-progress-row{display:flex;align-items:center;gap:10px}
+.cloud-time{font-variant-numeric:tabular-nums;font-size:11px;color:#b9b7c8;min-width:52px;text-align:center}
+.cloud-progress{position:relative;flex:1;height:16px;display:flex;align-items:center}
+.cloud-progress-buffer,.cloud-progress-played{position:absolute;inset-inline-start:0;height:4px;border-radius:3px;pointer-events:none}
+.cloud-progress-buffer{background:#ffffff2b}
+.cloud-progress-played{background:linear-gradient(90deg,#32d4f4,#a83cff)}
+.cloud-progress-input{width:100%;margin:0;appearance:none;-webkit-appearance:none;background:transparent;height:16px;cursor:pointer;position:relative;z-index:2}
+.cloud-progress-input:disabled{cursor:not-allowed}
+.cloud-progress-input::-webkit-slider-runnable-track{height:4px;border-radius:3px;background:transparent}
+.cloud-progress-input::-moz-range-track{height:4px;border-radius:3px;background:transparent}
+.cloud-progress-input::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid #a83cff;margin-top:-4.5px;box-shadow:0 0 0 3px #a83cff33}
+.cloud-progress-input::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid #a83cff}
+.cloud-controls-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.cloud-icon-btn{flex:none;min-width:36px;height:34px;display:grid;place-items:center;border:1px solid transparent;border-radius:8px;background:transparent;color:#e7e6f1;font-size:14px;cursor:pointer;transition:background .18s,border-color .18s}
+.cloud-icon-btn:hover{background:#ffffff14;border-color:#ffffff24}
+.cloud-icon-btn:focus-visible{outline:2px solid #36d8ee;outline-offset:2px}
+.cloud-close-btn:hover{background:#f12f7626;border-color:#f12f7655}
+.cloud-volume{width:86px;accent-color:#a83cff;cursor:pointer}
+.cloud-live-badge{font-size:10px;font-weight:800;letter-spacing:.8px;color:#ffd1e2;background:#f12f7626;border:1px solid #f12f7655;border-radius:999px;padding:4px 9px;margin-inline-start:4px}
+.cloud-spacer{flex:1 1 auto}
+.cloud-select{display:flex;align-items:center;gap:6px;font-size:10px;color:#b9b7c8}
+.cloud-select select{background:#151827;color:#eef0f8;border:1px solid #ffffff2b;border-radius:7px;padding:5px 7px;font-size:11px;max-width:150px}
+.cloud-stats{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;padding-top:8px;border-top:1px dashed #ffffff1f;font-size:10px;color:#a9a7b8}
+.cloud-stats strong{color:#e9e8f2;font-weight:700}
+.cloud-player-caption{display:flex;flex-direction:column;gap:2px;padding:10px 14px 12px;border-top:1px solid #ffffff10;background:#080a11}
+.cloud-player-caption strong{font-size:13px}
+.cloud-player-caption small{font-size:10px;color:#8f8d9b;line-height:1.6}
+.cloud-player.is-fullscreen{border-radius:0;border:0;margin:0;height:100vh;display:flex;flex-direction:column;justify-content:center}
+.cloud-player.is-fullscreen .cloud-player-video{max-height:none;height:100vh;flex:1}
+.cloud-player.is-fullscreen .cloud-controls{position:absolute;inset-inline:0;bottom:0;background:linear-gradient(0deg,#000000e6,#00000000)}
+.cloud-player.is-fullscreen .cloud-player-caption{display:none}
+.theme-light .cloud-player{background:#f4f6fb;border-color:#e2e6f0;color:#171a23}
+.theme-light .cloud-player-caption{background:#fff;border-color:#eceaf2}
+.theme-light .cloud-player-caption small{color:#6b6879}
+.theme-light .cloud-controls{background:linear-gradient(180deg,#fffffff2,#f3f4f9);border-top-color:#e7e5ee}
+.theme-light .cloud-time,.theme-light .cloud-select,.theme-light .cloud-stats{color:#5d5a6b}
+.theme-light .cloud-stats strong{color:#171a23}
+.theme-light .cloud-icon-btn{color:#22242e}
+.theme-light .cloud-icon-btn:hover{background:#0000000f;border-color:#00000014}
+.theme-light .cloud-select select{background:#fff;color:#171a23;border-color:#d8d5e2}
+.theme-light .cloud-progress-buffer{background:#0000001f}
+.theme-light .cloud-btn{background:#0000000a;border-color:#00000024;color:#171a23}
+.theme-light .cloud-btn-primary{background:linear-gradient(110deg,#7a3cff,#a83cff);color:#fff;border-color:transparent}
+@media(max-width:700px){
+  .cloud-controls{padding:7px 8px 9px}
+  .cloud-controls-row{gap:2px}
+  .cloud-icon-btn{min-width:32px;height:32px;font-size:13px}
+  .cloud-volume{width:60px}
+  .cloud-time{min-width:44px;font-size:10px}
+  .cloud-live-badge{display:none}
+  .cloud-select span{display:none}
+  .cloud-select select{max-width:96px;font-size:10px}
+  .cloud-player-video{max-height:52vh}
+  .cloud-stats{font-size:9px;gap:4px 10px}
+}

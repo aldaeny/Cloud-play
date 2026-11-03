@@ -81,9 +81,15 @@ export function checkManifestUrl(raw: string): UrlVerdict {
   return checkUrl(raw, MANIFEST_RE, 'UNSUPPORTED_PATH');
 }
 
-/** Validate a child URL referenced from a manifest. */
+/**
+ * Validate a child URL referenced from a manifest.
+ *
+ * Extensionless paths are allowed on purpose: providers serve variants and
+ * segments as `/playlist`, `/index`, `/chunk` all the time. The host policy is
+ * what actually protects the server; the extension list only helps when present.
+ */
 export function checkChildUrl(raw: string): UrlVerdict {
-  return checkUrl(raw, /\.(m4s|ts|aac|mp4|m4a|m4v|cmfv|cmfa|vtt|webvtt|key|bin)$/i, null);
+  return checkUrl(raw, /\.(m4s|ts|aac|mp4|m4a|m4v|cmfv|cmfa|vtt|webvtt|key|bin)$|\/[^/.]+$/i, null);
 }
 
 function checkUrl(raw: string, extent: RegExp | null, pathCode: UrlRejection | null): UrlVerdict {

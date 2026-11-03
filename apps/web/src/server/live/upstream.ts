@@ -23,6 +23,12 @@ export type UpstreamResult =
   | { kind: 'binary'; body: Uint8Array; finalUrl: string; contentType: string }
   | { kind: 'error'; code: string; status: number };
 
+/** Sniff a playlist without trusting the URL extension or the content type. */
+export function looksLikeManifest(bytes: Uint8Array): boolean {
+  const head = Buffer.from(bytes.subarray(0, 64)).toString('utf8').replace(/^\uFEFF/, '').trimStart();
+  return head.startsWith('#EXTM3U');
+}
+
 export function isManifestPath(url: string): boolean {
   try {
     return /\.m3u8?$/i.test(new URL(url).pathname);
@@ -109,13 +115,13 @@ export async function fetchUpstream(
       if (!read.ok) return { kind: 'error', code: read.code, status: 502 };
 
       const contentType = response.headers.get('content-type') ?? '';
-      if (!wantsManifest) return { kind: 'binary', body: read.bytes, finalUrl: current, contentType };
-
       const text = Buffer.from(read.bytes).toString('utf8');
-      // A master playlist may point at an absolute manifest path; the rewriter
-      // handles that. Anything that is not a playlist at all is an upstream bug.
-      if (!/^\s*#EXTM3U/.test(text)) return { kind: 'error', code: 'NOT_A_MANIFEST', status: 502 };
-      return { kind: 'manifest', body: text, finalUrl: current, contentType };
+
+      // The body decides. A variant requested as a "child" can be a playlist,
+      // and a manifest URL can legitimately return media on some CDNs.
+      if (looksLikeManifest(read.bytes)) return { kind: 'manifest', body: text, finalUrl: current, contentType };
+      if (!wantsManifest) return { kind: 'binary', body: read.bytes, finalUrl: current, contentType };
+      return { kind: 'error', code: 'NOT_A_MANIFEST', status: 502 };
     } catch (error) {
       const name = error instanceof Error ? error.name : '';
       return { kind: 'error', code: name === 'AbortError' ? 'UPSTREAM_TIMEOUT' : 'UPSTREAM_NETWORK', status: 504 };
