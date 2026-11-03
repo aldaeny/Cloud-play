@@ -24,8 +24,8 @@ import { isIP } from 'node:net';
 const BLOCKED_SUFFIXES = ['.localhost', '.local', '.localdomain', '.internal', '.intranet', '.home.arpa', '.lan', '.corp', '.private'];
 /** Exact hostnames that must never be reachable from the server. */
 const BLOCKED_HOSTS = new Set(['localhost', 'ip6-localhost', 'ip6-loopback', 'metadata', 'metadata.google.internal', 'instance-data']);
-/** HLS manifest + HLS media segment + init section extensions. */
-const MANIFEST_RE = /\.m3u8?$/i;
+/** HLS manifest: an .m3u8/.m3u path, or an extensionless path such as /playlist or /live. */
+const MANIFEST_RE = /\.m3u8?$|\/[^/.]+$/i;
 const SEGMENT_RE = /\.(m4s|ts|aac|mp4|m4a|m4v|cmfv|cmfa|vtt|webvtt)$/i;
 const KEY_RE = /\.(key|bin)$/i;
 const MAX_URL_LENGTH = 2048;
@@ -58,7 +58,8 @@ export function checkHost(url: URL): UrlRejection | null {
   if (BLOCKED_SUFFIXES.some((suffix) => host.endsWith(suffix))) return 'BLOCKED_HOST';
   // A public host must be a dotted name with at least one dot.
   if (!host.includes('.') || !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/.test(host)) return 'MALFORMED';
-  // A numerically-looking last label means someone encoded an IPv4 literal in a name.
+  // The WHATWG parser already converts numeric-last-label hosts to IPv4 (or throws).
+  // Keep the check as defence in depth for hosts supplied by non-parser code paths.
   if (/^\d+$/.test(host.split('.').pop() || '')) return 'IP_LITERAL';
   const allowed = parseHostList(process.env.CLOUDPLAY_LIVE_HOST_ALLOWLIST);
   if (allowed.length && !allowed.some((entry) => host === entry || host.endsWith(`.${entry}`))) return 'BLOCKED_ALLOWLIST';
