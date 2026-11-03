@@ -821,3 +821,53 @@ body{font-family:CloudJakarta,CloudArabic,Arial,sans-serif}
 .site .media-cast-button:disabled{opacity:.5;cursor:not-allowed}.site .media-cast-button:focus-visible{outline:2px solid #92c9ff;outline-offset:3px}
 .site .media-cast-hint{font-size:12px;line-height:1.7;color:#b3c0d0;margin:8px 0}.site.theme-light .media-cast-hint{color:#455667}
 .site.solid-panels .media-cast-button{background:#233143;backdrop-filter:none;-webkit-backdrop-filter:none}.site.theme-light.solid-panels .media-cast-button{background:#f0f5f9}
+
+/* ---------------------------------------------------------------- Live TV --- */
+/* The live section reuses the firebase/iptv panel language above so it inherits
+   the dark/light theming instead of introducing a second visual system. */
+.live-tv{margin-top:16px;padding:24px;border:1px solid #ffffff17;border-radius:9px;background:#11121a}
+.live-banner{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.live-banner-copy{flex:1 1 320px;min-width:0}
+.live-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #f12f7644;background:#f12f7614;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:700;letter-spacing:.4px;color:#ffa7c4}
+.live-pill .live-dot{margin:0;background:#f12f76;box-shadow:0 0 10px #f12f76;animation:live-pulse 2s ease-in-out infinite}
+@keyframes live-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.82)}}
+@media(prefers-reduced-motion:reduce){.live-pill .live-dot{animation:none}}
+.live-banner-copy p{margin:9px 0 0;font-size:12px;line-height:1.85;color:#a5a3b4;max-width:640px}
+.live-stats{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:11px;color:#8f8d9b!important}
+.live-stats strong{color:#e9e8f2;font-weight:700;font-size:13px}
+.live-warning{margin:10px 0 0;border:1px solid #ffbf4755;background:#ffbf4714;border-radius:8px;padding:9px 12px;font-size:11px;color:#ffd79a!important;line-height:1.7}
+.live-regions{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+.live-region{border:1px solid #ffffff24;background:#ffffff08;color:#dedee7;border-radius:999px;padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;transition:background .2s,border-color .2s}
+.live-region:hover{border-color:#c07ae466;background:#a44fe614}
+.live-region.active{background:linear-gradient(110deg,#7a3cff,#a83cff);border-color:transparent;color:#fff}
+.live-filters{margin-top:16px}
+.live-filters button[aria-pressed=true]{border-color:#b66cea;background:#9845d91b;color:#e3c4f7}
+.live-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0 0;padding:0;list-style:none;max-height:620px;overflow:auto;overscroll-behavior:contain}
+.live-card{display:flex;align-items:stretch;gap:6px;min-width:0}
+.live-card-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;text-align:start;padding:10px;background:#ffffff08;border:1px solid #ffffff18;border-radius:9px;color:#eee;cursor:pointer;transition:border-color .2s,background .2s}
+.live-card-main:hover:not(:disabled){border-color:#b66cea;background:#9845d91b}
+.live-card-main:disabled{opacity:.5;cursor:not-allowed}
+.live-card.selected .live-card-main{border-color:#b66cea;background:#9845d91b}
+.live-card-logo{width:40px;height:40px;flex:none;display:grid;place-items:center;border-radius:8px;background:#9b45dc24;overflow:hidden}
+.live-card-logo img{object-fit:contain;border-radius:6px}
+.live-card-play{font-size:11px;color:#ce89ed}
+.live-card-play.muted{color:#8f8d9b}
+.live-card-body{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+.live-card-body strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-card-body small{font-size:10px;color:#a7a5b1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.live-card-state{flex:none;font-size:10px;font-weight:700;color:#bf8ee0;white-space:nowrap}
+.live-card-state.blocked{color:#8f8d9b;font-weight:400}
+.live-inline-button{border:1px solid currentColor;border-radius:7px;background:transparent;color:inherit;padding:4px 10px;font-size:11px;cursor:pointer;margin-inline-start:8px}
+.theme-light .live-tv{background:#fff;border-color:#ece7f1;box-shadow:0 8px 24px #4632530a}
+.theme-light .live-banner-copy p{color:#686577}
+.theme-light .live-stats{color:#686577!important}
+.theme-light .live-stats strong{color:#25232d}
+.theme-light .live-region{background:#f6f3fa;border-color:#e8e2f0;color:#514b5d}
+.theme-light .live-region.active{background:linear-gradient(110deg,#7a3cff,#a83cff);border-color:transparent;color:#fff}
+.theme-light .live-card-main{background:#faf9fc;border-color:#ede9f1;color:#25232d}
+.theme-light .live-card-main:hover:not(:disabled){background:#f6effb;border-color:#b66cea}
+.theme-light .live-card-body small{color:#686577}
+.theme-light .live-card-state{color:#7c3bbb}
+.theme-light .live-card-state.blocked{color:#8a8798}
+@media(max-width:1100px){.live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.live-tv{padding:17px}.live-banner{flex-direction:column;align-items:stretch}.live-grid{grid-template-columns:1fr;max-height:none}.live-regions{gap:6px}.live-region{flex:1;text-align:center;padding:9px 10px}}

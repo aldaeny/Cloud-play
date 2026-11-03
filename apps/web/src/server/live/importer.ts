@@ -162,7 +162,7 @@ export async function getLiveSnapshot(region: Region = 'iq', force = false): Pro
 
   inflight = (async (): Promise<ServeState> => {
     try {
-      const { snapshot, error } = await refreshFromNetwork(region);
+      const { snapshot, sources: report, error } = await refreshFromNetwork(region);
       if (snapshot) {
         producedAt = Date.now();
         served = { snapshot, stale: false };
@@ -173,11 +173,27 @@ export async function getLiveSnapshot(region: Region = 'iq', force = false): Pro
       const fallback = served?.snapshot ?? (await fromInitialState());
       if (fallback) {
         if (!served) producedAt = Date.parse(fallback.createdAt) || 0;
-        served = { snapshot: fallback, stale: true, reason: error };
+        // Keep the *attempted* feed report so health can explain the failure
+        // instead of pretending nothing was tried.
+        served = {
+          snapshot: { ...fallback, sources: report.length ? report : fallback.sources },
+          stale: true,
+          reason: error,
+        };
         return served;
       }
       return {
-        snapshot: { version: 1, createdAt: new Date(0).toISOString(), origin: 'none', bundled: false, channels: [], report: { total: 0, duplicates: 0, invalid: 0, playerOptionOnly: 0, unnamed: 0, raw: 0 }, sources: [] },
+        snapshot: {
+          version: 1,
+          // A 1970 timestamp would make "age" meaningless; use now and let the
+          // health endpoint report an empty catalog instead.
+          createdAt: new Date().toISOString(),
+          origin: 'none',
+          bundled: false,
+          channels: [],
+          report: { total: 0, duplicates: 0, invalid: 0, playerOptionOnly: 0, unnamed: 0, raw: 0 },
+          sources: report,
+        },
         stale: true,
         reason: error,
       };
