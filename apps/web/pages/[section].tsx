@@ -1,0 +1,22 @@
+import {useEffect,useState} from 'react';
+import {useRouter} from 'next/router';
+import Link from 'next/link';
+import type {GetStaticPaths,GetStaticProps} from 'next';
+import SectionLayout,{type Language} from '../src/components/layout/SectionLayout';
+import OpenMovies from '../src/components/movies/OpenMovies';
+import LicensedTv from '../src/components/iptv/LicensedTv';
+type Section='exclusive'|'latest'|'about'|'movies'|'series'|'live'|'favorites'|'continue'|'search'|'settings'|'login';
+const titles:Record<Section,{ar:string;en:string}>={exclusive:{ar:'الحصريات',en:'Exclusives'},latest:{ar:'الأفلام الحديثة',en:'New films'},about:{ar:'عن المنصة',en:'About the platform'},movies:{ar:'الأفلام',en:'Movies'},series:{ar:'المسلسلات',en:'Series'},live:{ar:'البث المباشر',en:'Live TV'},favorites:{ar:'المفضلة',en:'Favorites'},continue:{ar:'متابعة المشاهدة',en:'Continue watching'},search:{ar:'البحث',en:'Search'},settings:{ar:'الإعدادات',en:'Settings'},login:{ar:'تسجيل الدخول',en:'Sign in'}};
+export const getStaticPaths:GetStaticPaths=async()=>({paths:Object.keys(titles).map(section=>({params:{section}})),fallback:false});
+export const getStaticProps:GetStaticProps=async ctx=>({props:{section:ctx.params?.section}});
+function Settings({language}:{language:Language}){const ar=language==='ar';return <div className="section-empty"><p>{ar?'استخدم زري اللغة والمظهر أعلى الصفحة. تتوفر إعدادات الحركة والمشغّل الإضافية من الصفحة الرئيسية.':'Use the language and appearance buttons above. More motion and player preferences are available on the home page.'}</p><Link href="/">{ar?'العودة إلى الرئيسية والإعدادات':'Return to home and settings'}</Link></div>}
+export default function Section({section}:{section:Section}){const [query,setQuery]=useState('');const router=useRouter();useEffect(()=>{if(section==='search'&&typeof router.query.q==='string'){const q=router.query.q.slice(0,200);Promise.resolve().then(()=>setQuery(q))}},[section,router.query.q]);return <SectionLayout title={titles[section]} noIndex={['favorites','continue','search','settings','login'].includes(section)}>{language=>{
+ const ar=language==='ar';
+ if(section==='exclusive'||section==='latest')return <div className="section-empty" role="status"><h2>{section==='exclusive'?(ar?'لا توجد أعمال حصرية مؤكدة حالياً':'No confirmed exclusives yet'):(ar?'لا توجد أفلام حديثة مرخّصة حالياً':'No recently released licensed films yet')}</h2><p>{ar?'ستظهر الأعمال هنا بعد توفير المحتوى المرخّص والتحقق منه.':'Titles will appear here once licensed content is available and verified.'}</p><Link href="/movies">{ar?'تصفّح الأفلام المتاحة':'Browse available films'} ↗</Link></div>;
+ if(section==='about')return <div className="section-empty platform-details"><h2>{ar?'كلاود بلاي العراق':'Cloud Play Iraq'}</h2><p>{ar?'تتوفر حالياً أفلام قصيرة مرخّصة مجاناً تُشغّل من Internet Archive. تُحفظ المفضلة وتقدم المشاهدة على جهازك فقط.':'Freely licensed short films are currently available and play from Internet Archive. Favorites and watch progress are stored only on your device.'}</p><p>{ar?'المسلسلات والبث المباشر غير متاحين دون مصادر مرخّصة، وخدمة الحسابات غير متصلة بعد.':'Series and live TV require licensed sources, and account services are not yet connected.'}</p><Link href="/movies">{ar?'تصفّح الأفلام المتاحة':'Browse available films'} ↗</Link></div>;
+ if(section==='live')return <LicensedTv language={language}/>;
+ if(section==='series')return <div className="section-empty" role="status"><h2>{ar?'لا توجد مسلسلات متاحة حالياً':'No series are available yet'}</h2><p>{ar?'ستظهر الأعمال هنا بعد توفير محتوى مرخّص وربطه بالمكتبة.':'Series will appear here after licensed content is connected to the library.'}</p></div>;
+ if(section==='login')return <div className="section-empty" role="status"><h2>{ar?'الحسابات غير متصلة بعد':'Accounts are not connected yet'}</h2><p>{ar?'لا يمكن تسجيل الدخول حالياً؛ لا تدخل بياناتك في أي نموذج غير موثوق.':'Sign-in is not available yet. Do not enter credentials into an untrusted form.'}</p></div>;
+ if(section==='settings')return <Settings language={language}/>;
+ return <>{section==='search'&&<label className="section-search">{ar?'ابحث في الأفلام المتاحة':'Search available movies'}<input value={query} onChange={e=>setQuery(e.target.value)} type="search" maxLength={200}/></label>}<OpenMovies key={section} language={language} query={query} initialFilter={section==='favorites'?'favorites':section==='continue'?'continue':'all'}/></>;
+ }}</SectionLayout>}

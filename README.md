@@ -1,75 +1,262 @@
-# Cloud-play ☁️
+# Aether / Cloud Play — Streaming Platform
 
-**مساحة تجريب سحابية** — محرّر HTML/CSS/JavaScript كامل يعمل داخل المتصفح، بواجهة عربية (RTL) ومعاينة لحظية وطرفية مدمجة.
+## Status: PARTIAL — NOT READY FOR PRODUCTION
 
-**A cloud playground** — a full in-browser HTML/CSS/JS editor with an Arabic-first (RTL) interface, live preview and built-in console.
+The sections below are historical and may contain outdated claims. `FINAL_REPORT.md` and `INFRASTRUCTURE_TEST_REPORT.md` supersede them: playback is fail-closed, storage privacy is not proven, Docker/CDN/payment/DRM and mobile playback are unverified, and API lint passes, but dependency audit reports remaining vulnerabilities. Server-side logout/revocation and payment cancellation are not implemented and return 503.
 
 ---
 
-## ✨ المزايا · Features
+## Overview
 
-| | |
-|---|---|
-| 🧩 **ثلاثة محرّرات** | HTML و CSS و JavaScript في تبويبات، مع تلوين نحوي مكتوب من الصفر (بدون مكتبات) |
-| ⚡ **معاينة لحظية** | إعادة تشغيل تلقائية بعد كل تعديل، أو يدويًا عبر `Ctrl + Enter` |
-| 🖥️ **الطرفية** | `console.log / info / warn / error` وأخطاء التشغيل تُعرض داخل التطبيق |
-| 📱 **أحجام الأجهزة** | معاينة على سطح المكتب / جهاز لوحي / هاتف |
-| 🌗 **مظهران** | داكن وفاتح، مع حفظ التفضيل |
-| 🌐 **عربي / English** | تبديل لغة الواجهة واتجاه الصفحة بنقرة واحدة |
-| 💾 **حفظ تلقائي** | الكود يبقى في `localStorage` بعد إغلاق المتصفح |
-| 🔗 **مشاركة برابط** | يُضغط الكود داخل الرابط (`#p=...`) — دون خادم |
-| ⬇️ **تنزيل** | تصدير المشروع كملف HTML واحد مستقل |
-| 📚 **قوالب جاهزة** | البداية · ساعة رقمية · سحابة جسيمات · آلة حاسبة |
+A full-stack streaming platform (VOD/IPTV) built with:
+- **Backend**: NestJS + Prisma + PostgreSQL
+- **Web**: Next.js (React)
+- **Admin**: Next.js Admin Dashboard
+- **Mobile**: Android (Kotlin), iOS (Swift), webOS (HTML)
+- **Infrastructure**: Docker Compose, MinIO, Redis, FFmpeg worker
 
-## 🚀 البدء · Getting started
+---
 
-لا توجد تبعيات ولا خطوة بناء — التطبيق ملفات ثابتة فقط.
+## Quick Start
+
+### Prerequisites
+- Node.js 20+
+- PostgreSQL 16+
+- Redis 7+
+- Docker (for production)
+- FFmpeg (for media transcoding)
+
+### Development
+
+1. **Copy environment file:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Start infrastructure (Docker):**
+   ```bash
+   cd infra/docker
+   docker-compose -f compose.yml up -d
+   ```
+
+3. **Install API dependencies:**
+   ```bash
+   cd apps/api
+   npm install
+   ```
+
+4. **Generate Prisma client:**
+   ```bash
+   npx prisma generate
+   ```
+
+5. **Run database migrations:**
+   ```bash
+   npx prisma migrate dev --name init
+   ```
+
+6. **Start API server:**
+   ```bash
+   npm run dev
+   ```
+   API runs on http://localhost:3000
+
+7. **Start Web app:**
+   ```bash
+   cd apps/web
+   npm install
+   npm run dev
+   ```
+   Web app runs on http://localhost:3001
+
+8. **Start Admin app:**
+   ```bash
+   cd apps/admin
+   npm install
+   npm run dev
+   ```
+   Admin app runs on http://localhost:3002
+
+---
+
+## API Endpoints
+
+> ✅ **OpenAPI 3.0.3 spec متوفر** في [`docs/api/openapi.yaml`](docs/api/openapi.yaml) — يطابق الكود الفعلي في `apps/api/src` (16 مساراً، موسوّم بـ tags، مع security schemes و schemas).
+
+### Authentication
+- `POST /auth/register` — Register a new user (email, password, name, phone)
+- `POST /auth/login` — Login with email/password
+- `POST /auth/refresh` — Refresh access token (refresh_token)
+- `POST /auth/logout` — Logout
+
+### Profiles
+- `GET /profiles` — List user profiles
+- `POST /profiles` — Create profile (name, is_kid, maturity_max, pin)
+- `POST /profiles/{id}/verify-pin` — Verify PIN
+
+### Catalog
+- `GET /home` — Home page (editorial rows + continue watching)
+- `GET /search` — Filtered search (q, genre, year, lang, rating)
+- `GET /titles/{id}` — Title details
+- `GET /titles/{id}/episodes` — Series episodes (published only)
+
+### Playback
+- `POST /playback/sessions` — Start playback session (entitlement check)
+- `POST /playback/sessions/{id}/heartbeat` — Session heartbeat
+- `POST /playback/sessions/{id}/end` — End session
+- `GET/PUT /me/progress` — Watch progress
+
+### Billing
+- `POST /billing/checkout` — Stripe checkout session
+- `POST /billing/webhooks/stripe` — Stripe webhook
+
+### Admin
+- `GET/POST/PUT/DELETE /api/admin/titles` — Manage titles (Next.js admin API route)
+
+---
+
+## Architecture
+
+### Backend Modules
+- **IdentityModule**: User registration, login, JWT authentication (Argon2id password hashing)
+- **CatalogModule**: Title search and discovery
+- **ProfilesModule**: User profiles with PIN protection
+- **RightsModule**: Rights window management
+- **PlaybackModule**: Playback session management with entitlement checks
+- **EntitlementModule**: Subscription and entitlement checking
+- **MediaModule**: Media asset management
+- **BillingModule**: Subscription billing
+- **EditorialModule**: Content editorial workflow
+- **AdminModule**: Admin API routes
+- **NotificationsModule**: User notifications
+- **SupportModule**: Support tickets
+- **AnalyticsModule**: Analytics and metrics
+
+### Database Models (Prisma)
+- Tenant, TenantBranding, FeatureFlag
+- AppUser, Profile, Device
+- Plan, Subscription, Invoice, Payment, Coupon
+- Title, Season, Episode
+- MediaAsset, TranscodeJob
+- PlaybackSession, WatchProgress
+- Favorite, WatchlistItem
+- HomeRow, HomeRowItem, Banner
+- StaffUser, Role, AuditLog
+- OutboxEvent, Notification, SupportTicket
+
+### Security
+- Argon2id password hashing
+- JWT authentication (access + refresh tokens)
+- CORS configuration
+- Global validation pipes
+- Admin token verification
+
+---
+
+## Testing
 
 ```bash
-# الطريقة الأسهل: افتح الملف مباشرة
-open index.html
-
-# أو شغّل خادمًا محليًا (يفضّل لضمان عمل الروابط)
-python3 -m http.server 8000
-# ثم افتح http://localhost:8000
+cd apps/api
+npm test
 ```
 
-## ⌨️ اختصارات · Shortcuts
+Test Coverage:
+- IdentityService: 9 tests (register, login, refresh, logout)
+- ProfilesService: 5 tests (createProfile, getProfiles, verifyPin)
+- RightsService: 4 tests (checkRights, getTerritories)
+- EntitlementService: 5 tests (check, grantSubscription, revokeSubscription)
 
-| الاختصار | الوظيفة |
-|---|---|
-| `Ctrl / ⌘ + Enter` | تشغيل الكود |
-| `Ctrl / ⌘ + S` | تنزيل ملف HTML |
-| `Alt + 1 / 2 / 3` | التبديل بين HTML / CSS / JS |
-| `Tab` | إدراج مسافتين داخل المحرّر |
-
-## 🗂️ هيكل المشروع · Project structure
-
-```
-Cloud-play/
-├── index.html              # الهيكل والواجهة
-├── assets/
-│   ├── css/styles.css      # التصميم، المظهر الداكن/الفاتح، الاستجابة
-│   └── js/app.js           # المحرّك: التلوين، المعاينة، الطرفية، الحفظ، المشاركة
-└── README.md
-```
-
-## 🔧 كيف يعمل · How it works
-
-1. كل تعديل يُحدّث حالة الكود في الذاكرة ويُحفظ في `localStorage` (بتأخير بسيط).
-2. تُبنى صفحة كاملة من الملفات الثلاثة وتُحقن في `<iframe sandbox>` عبر `srcdoc`.
-3. قبل كود المستخدم تُحقن أداة صغيرة تعيد توجيه `console.*` والأخطاء إلى النافذة الأب عبر `postMessage`، فتظهر في الطرفية.
-4. التلوين النحوي محرّك صغير يعتمد على تعبيرات نمطية «لاصقة» (sticky) مع تهريب آمن للنص، دون أي مكتبة خارجية.
-
-## 🛡️ الأمان · Sandboxing
-
-يُشغَّل كود المستخدم داخل `iframe` بـ `sandbox="allow-scripts allow-modals allow-forms allow-popups allow-downloads"`
-وبدون `allow-same-origin`، أي أن الكود معزول عن أصل الصفحة ولا يصل إلى تخزين التطبيق أو الجلسة.
-
-## 🌐 المتصفحات · Browser support
-
-أحدث إصدارات Chrome و Edge و Firefox و Safari (يستخدم CSS Grid و `dvh` و `backdrop-filter`).
+**Total: 23 tests, all passing**
 
 ---
 
-صُنع بشغف للمتعلّمين والفضوليين · Built for learners and tinkerers.
+## Documentation
+
+- **[OpenAPI 3.0.3 Spec](docs/api/openapi.yaml)** — Full API reference (16 paths, auth, profiles, catalog, playback, billing, admin)
+- **[Architecture](docs/architecture.md)** — System architecture, data flow, DB models, security, phases
+- **[Implementation Plan](IMPLEMENTATION_PLAN.md)** — Phase-by-phase plan
+- **[Project Audit](PROJECT_AUDIT.md)** — Audit findings
+- **[Errors & Fixes Log](ERRORS_AND_FIXES.md)** — All errors encountered and their resolutions
+
+---
+
+## Mobile & TV Apps
+
+Three native client apps, all integrating with the same OpenAPI spec:
+
+### Android / Android TV (Kotlin + Compose)
+- **Location**: [`mobile/android/`](mobile/android/)
+- **Player**: ExoPlayer (media3) — signed HLS playback + DRM
+- **Network**: Retrofit + OkHttp (matches OpenAPI spec)
+- **TV**: Leanback + D-Pad focus engine
+- **Screens**: Auth, Home, Search, Profiles, Player
+- **Theme**: Dark default (#0a0a0c), RTL/LTR Arabic/English
+
+### iOS / iPadOS / tvOS (SwiftUI)
+- **Location**: [`mobile/ios/`](mobile/ios/)
+- **Player**: AVPlayer — signed HLS playback
+- **Network**: URLSession + Codable (matches OpenAPI spec)
+- **TV**: Focus Engine (tvOS)
+- **Screens**: Auth, Home, Search, Profiles, Player
+- **Accessibility**: VoiceOver support
+
+### LG webOS (HTML/JS)
+- **Location**: [`mobile/webos/`](mobile/webos/)
+- **Player**: Video.js — signed HLS playback
+- **Network**: fetch-based API client
+- **TV**: D-Pad navigation, webOS focus
+- **Build**: `mobile/webos/tools/build.sh`
+
+### Shared Design System
+All apps use the same brand identity:
+- `brandDark`: `#0a0a0c` · `brandCard`: `#121217`
+- `cyanGlow`: `#00e5ff` · `magentaGlow`: `#ff2085`
+- `violetGlow`: `#7b30ff` · `amberGlow`: `#ffb000`
+- **Fonts**: Cairo (Arabic/RTL), Inter (Latin/LTR)
+- **UI Kit**: [`packages/ui-tokens/tokens.json`](packages/ui-tokens/tokens.json)
+
+---
+
+## Docker Production Deployment
+
+```bash
+# Set environment variables
+export DATABASE_URL="postgresql://aether:aether@postgres:5432/aether"
+export JWT_ACCESS_SECRET="your-secret-key"
+export JWT_REFRESH_SECRET="your-refresh-secret"
+export ADMIN_JWT_SECRET="your-admin-secret"
+
+# Build and start
+docker-compose -f infra/docker/compose.prod.yml up -d --build
+```
+
+Services:
+- **postgres**: PostgreSQL 16
+- **redis**: Redis 7
+- **minio**: Object storage
+- **api**: NestJS API on port 3000
+- **web**: Next.js web app on port 3001
+- **admin**: Next.js admin app on port 3002
+- **worker-media**: FFmpeg transcoding worker on port 3004
+
+---
+
+## Brand Identity
+
+### Colors
+- `brandDark`: `#0a0a0c`
+- `brandCard`: `#121217`
+- `cyanGlow`: `#00e5ff`
+- `magentaGlow`: `#ff2085`
+- `violetGlow`: `#7b30ff`
+- `amberGlow`: `#ffb000`
+
+### Typography
+- **Cairo**: Arabic text (RTL)
+- **Inter**: Latin text (LTR)
+
+---
+
+## License
+
+UNLICENSED — Private Project

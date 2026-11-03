@@ -1,4 +1,66 @@
+# Dependencies
 node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database
+*.sqlite
+*.sqlite3
+prisma/migrations/dev.db
+prisma/dev.db
+
+# Uploads
+apps/api/uploads/
+apps/api/media/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
-*.log
+desktop.ini
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+
+# Certificates
+*.pem
+*.key
+*.crt
+
+# Cache
+.cache/
+.eslintcache
+.turbo/
+
+# Operator playlists may expose stream endpoints or licensed content configuration.
+*.m3u
+*.m3u8

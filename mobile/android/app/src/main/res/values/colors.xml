@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- colors.xml — Aether Brand Colors -->
+<resources>
+    <color name="brandDark">#0a0a0c</color>
+    <color name="brandCard">#121217</color>
+    <color name="cyanGlow">#00e5ff</color>
+    <color name="magentaGlow">#ff2085</color>
+    <color name="violetGlow">#7b30ff</color>
+    <color name="amberGlow">#ffb000</color>
+    <color name="white">#ffffff</color>
+    <color name="gray">#888888</color>
+</resources>

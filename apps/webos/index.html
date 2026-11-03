@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether webOS</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- webOSTV.js -->
+  <script src="https://cdn.lge.com/webOSTV/js/webOSTV.js"></script>
+  <!-- Tailwind CSS CDN (for Stage 4 consistency) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandDark: '#0a0a0c',
+            brandCard: '#121217',
+            cyanGlow: '#00e5ff',
+            magentaGlow: '#ff2085',
+            violetGlow: '#7b30ff',
+            amberGlow: '#ffb000'
+          },
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+            inter: ['Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brandDark text-white antialiased selection:bg-magentaGlow selection:text-white font-cairo overflow-hidden">
+
+  <!-- Stage 7: webOS Shell (Hosting Next.js Viewer or Native HTML) -->
+  <div id="webos-shell" class="w-full h-full flex flex-col">
+    <!-- Header -->
+    <header class="p-4 flex justify-between items-center border-b border-white/10 bg-brandCard/80">
+      <span class="font-black text-xl text-[#00e5ff]">Aether webOS</span>
+      <div class="flex gap-4 text-sm">
+        <span id="channel-name" class="text-[#ff2085]">قناة: الرئيسية</span>
+        <span id="time" class="text-gray-400">12:00 PM</span>
+      </div>
+    </header>
+
+    {/* Main Content (Stage 4 Viewer bundled) */}
+    <main class="flex-1 overflow-hidden relative">
+      <iframe
+        src="/viewer/index.html" <!-- Points to Stage 4 Next.js Viewer (compiled) -->
+        class="w-full h-full border-none bg-transparent"
+        sandbox="allow-scripts allow-same-origin"
+      ></iframe>
+    </main>
+
+    {/* Footer / Remote Controls Info */}
+    <footer class="p-4 bg-brandCard/90 border-t border-white/10 flex justify-between items-center text-xs text-gray-400">
+      <div>Aether webOS v1.0.0</div>
+      <div class="flex gap-4">
+        <span><i class="fa-solid fa-arrow-left"></i> رجوع</span>
+        <span><i class="fa-solid fa-circle-play"></i> تشغيل</span>
+        <span><i class="fa-solid fa-arrow-right"></i> التالي</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // webOSTV Integration
+    webOSTV.onSystemInfo(function (info) {
+      console.log("webOS System Info:", info);
+    });
+
+    // Remote Key Handling
+    document.addEventListener('keydown', function(e) {
+      switch(e.keyCode) {
+        case 37: // Left
+          console.log("Remote Left");
+          break;
+        case 39: // Right
+          console.log("Remote Right");
+          break;
+        case 38: // Up
+          console.log("Remote Up");
+          break;
+        case 40: // Down
+          console.log("Remote Down");
+          break;
+        case 13: // Enter
+          console.log("Remote Enter");
+          break;
+        case 461: // Back
+          webOSTV.closeApp();
+          break;
+      }
+    });
+  </script>
+</body>
+</html>

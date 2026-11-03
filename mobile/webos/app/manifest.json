@@ -1,0 +1,16 @@
+{
+  "id": "com.aether.webos",
+  "title": "Aether",
+  "version": "1.0.0",
+  "type": "webapp",
+  "icon": "./assets/icons/icon.png",
+  "main": "./index.html",
+  "appType": "media",
+  "category": "entertainment",
+  "description": "منصة VOD/IPTV — Aether Streaming",
+  "config": {
+    "multiview": { "enabled": false },
+    "audio": { "enabled": true }
+  },
+  "launchParams": {}
+}

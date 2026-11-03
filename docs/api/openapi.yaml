@@ -1,0 +1,356 @@
+# OpenAPI Specification - Aether API v1
+# مطابق للكود الفعلي في apps/api/src
+
+openapi: 3.0.3
+info:
+  title: Aether API
+  description: منصة VOD/IPTV بيضاء العلامة ومغلقة على المحتوى المرخّص فقط.
+  version: 1.0.0
+  contact:
+    name: Aether Team
+servers:
+  - url: https://api.{tenant}/v1
+    description: الإنتاج
+  - url: http://localhost:3000
+    description: التطوير المحلي
+
+tags:
+  - name: Auth
+    description: التسجيل والدخول والتجديد
+  - name: Profiles
+    description: الملفات الشخصية مع PIN
+  - name: Catalog
+    description: البحث والاكتشاف
+  - name: Playback
+    description: جلسات التشغيل والاستحقاق
+  - name: Billing
+    description: الدفع والاشتراكات
+  - name: Admin
+    description: إدارة المحتوى
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: تسجيل حساب جديد
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name, phone]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 6 }
+                name: { type: string, minLength: 2 }
+                phone: { type: string, description: رقم الهاتف }
+                profileId: { type: string, description: ملف شخصي موجود (اختياري) }
+      responses:
+        '201': { description: تم الإنشاء، بيانات المستخدم }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { description: المستخدم موجود }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: تسجيل الدخول
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200': { description: نجاح — accessToken و refreshToken }
+        '401': { description: بيانات غير صحيحة }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: تجديد رمز الوصول
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string }
+      responses:
+        '200': { description: رموز جديدة }
+        '401': { description: الرمز غير صالح أو منتهٍ }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: تسجيل الخروج
+      responses:
+        '200': { description: تم تسجيل الخروج }
+
+  /profiles:
+    get:
+      tags: [Profiles]
+      summary: قائمة الملفات الشخصية
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: قائمة الملفات }
+    post:
+      tags: [Profiles]
+      summary: إنشاء ملف شخصي
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                is_kid: { type: boolean, default: false }
+                maturity_max: { type: string }
+                pin: { type: string, description: رمز PIN (4-6 أرقام) }
+      responses:
+        '201': { description: تم الإنشاء }
+
+  /profiles/{id}/verify-pin:
+    post:
+      tags: [Profiles]
+      summary: التحقق من PIN
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [pin]
+              properties:
+                pin: { type: string }
+      responses:
+        '200': { description: PIN صحيح }
+        '403': { description: PIN غير صحيح }
+
+  /home:
+    get:
+      tags: [Catalog]
+      summary: الصفحة الرئيسية (صفوف تحريرية + متابعة)
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: بيانات الصفحة الرئيسية }
+
+  /search:
+    get:
+      tags: [Catalog]
+      summary: بحث مفلتر
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          type: string
+        - name: genre
+          in: query
+          type: string
+        - name: year
+          in: query
+          type: integer
+        - name: lang
+          in: query
+          type: string
+        - name: rating
+          in: query
+          type: string
+      responses:
+        '200': { description: نتائج البحث }
+
+  /titles/{id}:
+    get:
+      tags: [Catalog]
+      summary: تفاصيل العنوان
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: تفاصيل العنوان }
+        '404': { description: غير موجود }
+
+  /titles/{id}/episodes:
+    get:
+      tags: [Catalog]
+      summary: حلقات المسلسل (حالة النشر فقط)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: قائمة الحلقات }
+
+  /playback/sessions:
+    post:
+      tags: [Playback]
+      summary: بدء جلسة تشغيل (فحص الاستحقاق)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title_id]
+              properties:
+                title_id: { type: string, format: uuid }
+                episode_id: { type: string, format: uuid }
+                profile_id: { type: string, format: uuid }
+                device_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: جلسة تشغيل
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId: { type: string }
+                  manifestUrl: { type: string }
+                  drm: { type: string, enum: [widevine, fairplay] }
+                  resumeAtSec: { type: integer }
+        '402': { description: SUBSCRIPTION_REQUIRED }
+        '403': { description: RIGHTS_OR_RATING }
+        '409': { description: STREAM_LIMIT / DEVICE_LIMIT }
+
+  /playback/sessions/{id}/heartbeat:
+    post:
+      tags: [Playback]
+      summary: نبض الجلسة (تجديد التوقيع، تقدم)
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: نجاح }
+        '409': { description: انتهاء الجلسة أو تجاوز الحد }
+
+  /playback/sessions/{id}/end:
+    post:
+      tags: [Playback]
+      summary: إنهاء الجلسة
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: نجاح }
+
+  /me/progress:
+    get:
+      tags: [Playback]
+      summary: استكمال المشاهدة
+      security:
+        - BearerAuth: []
+      responses:
+        '200': { description: تقدم المشاهدة }
+    put:
+      tags: [Playback]
+      summary: تحديث تقدم المشاهدة
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title_id, episode_id, position_sec]
+              properties:
+                title_id: { type: string, format: uuid }
+                episode_id: { type: string, format: uuid }
+                position_sec: { type: integer }
+                completed: { type: boolean }
+      responses:
+        '200': { description: تم التحديث }
+
+  /billing/checkout:
+    post:
+      tags: [Billing]
+      summary: جلسة دفع (Stripe)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_id]
+              properties:
+                plan_id: { type: string, format: uuid }
+      responses:
+        '200': { description: جلسة دفع }
+
+  /billing/webhooks/stripe:
+    post:
+      tags: [Billing]
+      summary: Webhook Stripe (حدث موقّع)
+      responses:
+        '200': { description: نجاح }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: بيانات غير صالحة
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        details: { type: object }
+        traceId: { type: string }
+    PaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { type: object }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+security: []

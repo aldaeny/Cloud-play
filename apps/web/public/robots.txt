@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Sitemap: https://cloud-play-iraq.vercel.app/sitemap.xml
