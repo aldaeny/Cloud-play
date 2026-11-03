@@ -220,6 +220,62 @@ test('mergeFeeds lets the operator feed win over the public feed', () => {
   assert.ok(merged.report.duplicates >= 1);
 });
 
+
+/* --------------------------------------------------- real iptv-org iq fixture */
+/* Numbers below were produced by parsing the committed fixture. If the parser
+ * changes, this test tells us exactly which counter moved. */
+
+const fs = require('fs');
+const crypto = require('crypto');
+
+const FIXTURE_PATH = path.join(ROOT, 'apps/web/test-fixtures/iptv-org-iq-2026-11-03.m3u');
+
+test('real Iraq fixture is present and byte-identical to the pinned export', () => {
+  const bytes = fs.readFileSync(FIXTURE_PATH);
+  assert.equal(bytes.length, 8445);
+  assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'), 'd68091aec7d3383f1f52f7918d6a7dcf1966bf0ae8574c9274501e7c4dab3464');
+});
+
+test('real Iraq fixture parses to the measured numbers', () => {
+  const { channels, report } = parser.parseM3U(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  assert.deepEqual(report, { total: 61, duplicates: 11, invalid: 6, playerOptionOnly: 1, unnamed: 0, raw: 72 });
+  assert.equal(channels.length, 61);
+  assert.equal(channels.filter((channel) => channel.playable).length, 55);
+});
+
+test('real Iraq fixture: only http:// and player-option entries are blocked', () => {
+  const { channels } = parser.parseM3U(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const blocked = channels.filter((channel) => !channel.playable);
+  assert.equal(blocked.length, 6);
+  for (const channel of blocked) {
+    assert.ok(['INSECURE_SCHEME', 'PLAYER_OPTIONS'].includes(channel.blockedReason), `${channel.name}: ${channel.blockedReason}`);
+  }
+});
+
+test('real Iraq fixture: duplicate names are collapsed, not duplicated in the UI', () => {
+  const { channels } = parser.parseM3U(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const names = channels.map((channel) => channel.name.replace(/\s*\(\d{3,4}p\)\s*/g, '').toLowerCase());
+  assert.equal(new Set(names).size, names.length, 'no two visible channel names may collide');
+});
+
+test('real Iraq fixture: every playable channel has a stable id and no query secrets', () => {
+  const raw = fs.readFileSync(FIXTURE_PATH, 'utf8');
+  const first = parser.parseM3U(raw).channels;
+  const second = parser.parseM3U(raw).channels;
+  assert.deepEqual(first.map((channel) => channel.id), second.map((channel) => channel.id));
+  const serialised = JSON.stringify(first);
+  assert.ok(!/token=|password=|api[_-]?key=/i.test(serialised), 'no credential-shaped strings');
+});
+
+function realFixtureSummary() {
+  const { channels, report } = parser.parseM3U(fs.readFileSync(FIXTURE_PATH, 'utf8'));
+  const playable = channels.filter((channel) => channel.playable).length;
+  return `${report.raw} raw entries -> ${report.total} channels ` +
+    `(${report.duplicates} duplicates collapsed, ${report.invalid} unplayable, ${report.unnamed} unnamed) -> ` +
+    `${playable} playable, ${channels.length - playable} blocked`;
+}
+
+/* -------------------------------------------------------------------- report */
 /* -------------------------------------------------------------------- report */
 
 const failed = results.filter((result) => !result.ok);
@@ -227,7 +283,8 @@ for (const result of results) {
   if (result.ok) console.log(`  ok   ${result.name}`);
   else console.log(`  FAIL ${result.name}\n         ${result.error}`);
 }
-console.log(`\n${results.length - failed.length}/${results.length} live parser + URL policy tests passed`);
+console.log(`\nREAL FIXTURE  ${realFixtureSummary()}`);
+console.log(`${results.length - failed.length}/${results.length} live parser + URL policy tests passed`);
 if (failed.length) {
   process.exitCode = 1;
   console.error(`${failed.length} FAILED`);
