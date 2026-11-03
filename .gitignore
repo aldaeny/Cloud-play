@@ -64,3 +64,4 @@ docker-compose.override.yml
 # Operator playlists may expose stream endpoints or licensed content configuration.
 *.m3u
 *.m3u8
+*.tsbuildinfo
