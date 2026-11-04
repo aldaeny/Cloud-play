@@ -72,24 +72,40 @@ body {
     border-radius: 16px;
 }
 
+/* Button Design System — Liquid Glass (dark reference), button surfaces only. */
 .btn-primary {
-    background: var(--cyan-glow);
-    color: var(--brand-dark);
-    border: none;
-    border-radius: 8px;
+    background-color: var(--cp-btn-fill);
+    background-image: var(--cp-btn-sheen);
+    color: var(--cp-btn-text);
+    border: 1px solid var(--cp-btn-border);
+    border-radius: 14px;
     padding: 14px;
     font-size: 18px;
     font-weight: bold;
     cursor: pointer;
+    box-shadow: var(--cp-btn-shadow);
+    position: relative;
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .btn-secondary {
-    background: transparent;
-    color: var(--gray);
-    border: none;
+    background-color: var(--cp-btn-fill);
+    background-image: var(--cp-btn-sheen);
+    color: var(--cp-btn-text);
+    border: 1px solid var(--cp-btn-border);
+    border-radius: 999px;
     padding: 12px;
     cursor: pointer;
     font-size: 16px;
+    box-shadow: var(--cp-btn-shadow);
+    position: relative;
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .error {
@@ -150,12 +166,60 @@ body {
     position: absolute;
     top: 24px;
     right: 24px;
-    background: var(--brand-card);
-    color: var(--white);
-    border: none;
+    background-color: var(--cp-btn-fill);
+    background-image: var(--cp-btn-sheen);
+    color: var(--cp-btn-text);
+    border: 1px solid var(--cp-btn-border);
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: 14px;
     cursor: pointer;
     z-index: 10;
     font-size: 16px;
+    box-shadow: var(--cp-btn-shadow);
+    isolation: isolate;
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* ---- Liquid Glass button tokens, animated edge and states (dark reference) ---- */
+:root {
+    --cp-btn-fill: rgba(126, 138, 148, 0.26);
+    --cp-btn-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.04) 52%, rgba(255, 255, 255, 0.09));
+    --cp-btn-border: rgba(226, 236, 242, 0.52);
+    --cp-btn-border-hover: rgba(244, 250, 253, 0.82);
+    --cp-btn-text: #f4f8fb;
+    --cp-btn-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.42), inset 0 -1px 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.26);
+    --cp-btn-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.58), inset 0 -1px 1px rgba(255, 255, 255, 0.16), 0 6px 18px rgba(0, 0, 0, 0.32);
+    --cp-btn-edge-a: rgba(255, 255, 255, 0.95);
+    --cp-btn-edge-b: rgba(220, 232, 240, 0.55);
+}
+@property --cp-btn-edge { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+:is(.btn-primary, .btn-secondary, .back-btn)::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    padding: 1px;
+    background: conic-gradient(from var(--cp-btn-edge), transparent 0deg, var(--cp-btn-edge-a) 38deg, transparent 86deg, transparent 180deg, var(--cp-btn-edge-b) 218deg, transparent 266deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: cp-btn-edge-spin 5.5s linear infinite;
+}
+@keyframes cp-btn-edge-spin { to { --cp-btn-edge: 360deg; } }
+:is(.btn-primary, .btn-secondary, .back-btn):hover:not(:disabled),
+:is(.btn-primary, .btn-secondary, .back-btn):focus-visible {
+    border-color: var(--cp-btn-border-hover);
+    box-shadow: var(--cp-btn-shadow-hover);
+}
+:is(.btn-primary, .btn-secondary, .back-btn):focus-visible { outline: 2px solid #dcebf5; outline-offset: 3px; }
+:is(.btn-primary, .btn-secondary, .back-btn):disabled { opacity: 0.45; cursor: not-allowed; }
+:is(.btn-primary, .btn-secondary, .back-btn):disabled::after { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+    :is(.btn-primary, .btn-secondary, .back-btn)::after { animation: none; }
+    :is(.btn-primary, .btn-secondary, .back-btn) { transition: none; }
 }

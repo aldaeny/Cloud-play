@@ -1,0 +1,125 @@
+/* ============================================================================
+   CLOUD PLAY IRAQ — CENTRAL MOTION SYSTEM
+   ----------------------------------------------------------------------------
+   One motion language for the whole app. Tokens below are the single source of
+   truth for duration / easing / perspective. The main Home·Movie·Series·TV
+   navigation uses a single 3D "fold-away → unfold-open" transition (P0); inner
+   navigation reuses the same character at a lighter intensity.
+
+   Note: the supplied screen-recording / Pinterest reference could not be fetched
+   from the build environment (network policy). The motion below reproduces the
+   character described in the brief — perspective, shrink, fold and unfold — as
+   one unified system rather than a plain fade/slide/zoom.
+   ========================================================================== */
+:root {
+  --cp-motion-fast: 160ms;
+  --cp-motion-base: 260ms;
+  --cp-motion-slow: 420ms;
+  --cp-motion-page-out: 300ms;
+  --cp-motion-page-in: 480ms;
+  --cp-motion-ease: cubic-bezier(.22, .61, .36, 1);
+  --cp-motion-ease-fold: cubic-bezier(.55, .06, .68, .19);
+  --cp-motion-ease-unfold: cubic-bezier(.16, .84, .3, 1);
+  --cp-motion-perspective: 1400px;
+  --cp-motion-press-scale: .97;
+}
+
+/* Keep the page backdrop in the active theme so the fold/unfold never flashes a
+   wrong-coloured frame (the body shows through while .site is transformed). */
+body:has(.site.theme-light) { background: #f6f7fb; }
+body:has(.site:not(.theme-light)) { background: #08090d; }
+
+/* ---- P0 · Main page transition (Home / Movie / Series / TV) ----------------- */
+/* Driven by data-* attributes (not classes): React owns .site's className and a
+   post-mount state update (theme/language) would wipe manually-added classes
+   mid-animation. Attributes we set imperatively survive React re-renders. */
+.site[data-cp-transition] {
+  will-change: transform, opacity;
+  transform-origin: 50% 42%;
+  backface-visibility: hidden;
+}
+.site[data-cp-transition='leaving'] { animation: cp-page-fold-out var(--cp-motion-page-out) var(--cp-motion-ease-fold) both; }
+.site[data-cp-transition='entering'] { animation: cp-page-unfold-in var(--cp-motion-page-in) var(--cp-motion-ease-unfold) both; }
+.site[data-cp-transition='leaving'][data-cp-dir='back'] { animation-name: cp-page-fold-out-back; }
+.site[data-cp-transition='entering'][data-cp-dir='back'] { animation-name: cp-page-unfold-in-back; }
+
+@keyframes cp-page-fold-out {
+  0%   { transform: perspective(var(--cp-motion-perspective)) rotateX(0) scale(1) translateZ(0) translateY(0); opacity: 1; }
+  100% { transform: perspective(var(--cp-motion-perspective)) rotateX(7deg) scale(.9) translateZ(-160px) translateY(-2.5%); opacity: 0; }
+}
+@keyframes cp-page-unfold-in {
+  0%   { transform: perspective(var(--cp-motion-perspective)) rotateX(-9deg) scale(.92) translateZ(-180px) translateY(2.5%); opacity: 0; }
+  55%  { opacity: 1; }
+  100% { transform: perspective(var(--cp-motion-perspective)) rotateX(0) scale(1) translateZ(0) translateY(0); opacity: 1; }
+}
+@keyframes cp-page-fold-out-back {
+  0%   { transform: perspective(var(--cp-motion-perspective)) rotateX(0) scale(1) translateZ(0) translateY(0); opacity: 1; }
+  100% { transform: perspective(var(--cp-motion-perspective)) rotateX(-7deg) scale(.9) translateZ(-160px) translateY(2.5%); opacity: 0; }
+}
+@keyframes cp-page-unfold-in-back {
+  0%   { transform: perspective(var(--cp-motion-perspective)) rotateX(9deg) scale(.92) translateZ(-180px) translateY(-2.5%); opacity: 0; }
+  55%  { opacity: 1; }
+  100% { transform: perspective(var(--cp-motion-perspective)) rotateX(0) scale(1) translateZ(0) translateY(0); opacity: 1; }
+}
+
+/* ---- Inner navigation · same character, lighter intensity ------------------ */
+@keyframes cp-inner-unfold {
+  0%   { transform: perspective(1000px) rotateX(-5deg) scale(.97) translateZ(-60px); opacity: 0; }
+  100% { transform: perspective(1000px) rotateX(0) scale(1) translateZ(0); opacity: 1; }
+}
+@keyframes cp-inner-rise {
+  0%   { transform: translateY(14px) scale(.985); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+/* Opening the player / channel viewer unfolds into place. */
+.site .media-viewer,
+.site .firebase-viewer.media-viewer { animation: cp-inner-unfold var(--cp-motion-slow) var(--cp-motion-ease-unfold) both; transform-origin: 50% 0; }
+/* Category / filter results settle in with a light stagger. */
+.site .open-movies-grid.cp-filter-swap > * { animation: cp-inner-rise var(--cp-motion-base) var(--cp-motion-ease) both; }
+.site .open-movies-grid.cp-filter-swap > *:nth-child(2) { animation-delay: 60ms; }
+.site .open-movies-grid.cp-filter-swap > *:nth-child(3) { animation-delay: 120ms; }
+.site .firebase-list.cp-list-swap > * { animation: cp-inner-rise var(--cp-motion-base) var(--cp-motion-ease) both; }
+
+/* ---- Glass button press compression + loading ------------------------------ */
+.site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .main-nav a, .nav-reveal-item, .language-options button,
+  .account-entry, .account-back, .playback-reset, .search-trigger, .search-morph-close,
+  .section-header button, .section-nav a, .movie-filters button, .open-movie-card button,
+  .movie-favorite, .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel, .licensed-filters button,
+  .licensed-favorite, .world-search button, .world-pagination button, .media-play, .media-cast-button,
+  .firebase-viewer-top button, .open-movie-viewer-head button, .reference-intro-skip) {
+  transition: border-color var(--cp-motion-base) var(--cp-motion-ease),
+              box-shadow var(--cp-motion-base) var(--cp-motion-ease),
+              background-color var(--cp-motion-base) var(--cp-motion-ease),
+              transform var(--cp-motion-fast) var(--cp-motion-ease);
+}
+.site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .main-nav a, .nav-reveal-item, .language-options button,
+  .account-entry, .account-back, .playback-reset, .search-trigger, .search-morph-close,
+  .section-header button, .section-nav a, .movie-filters button, .open-movie-card button,
+  .movie-favorite, .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel, .licensed-filters button,
+  .licensed-favorite, .world-search button, .world-pagination button, .media-play, .media-cast-button,
+  .firebase-viewer-top button, .open-movie-viewer-head button, .reference-intro-skip):active:not(:disabled) {
+  transform: scale(var(--cp-motion-press-scale));
+}
+/* Loading: faster travelling rim + busy cursor (text label already changes). */
+.site :is(.iptv-load, .media-play, .open-movie-card button, .world-search button)[aria-busy='true'] { cursor: progress; opacity: .85; }
+.site :is(.iptv-load, .media-play, .open-movie-card button, .world-search button)[aria-busy='true']::after { animation-duration: 1.1s; }
+
+/* ---- Reduced motion: no 3D, instant swaps ---------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .site[data-cp-transition] { animation: none !important; }
+  .site .media-viewer, .site .open-movies-grid.cp-filter-swap > *, .site .firebase-list.cp-list-swap > * { animation: none !important; }
+  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+    .language, .nav-account, .main-nav a, .nav-reveal-item, .language-options button,
+    .account-entry, .account-back, .playback-reset, .search-trigger, .search-morph-close,
+    .section-header button, .section-nav a, .movie-filters button, .open-movie-card button,
+    .movie-favorite, .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel, .licensed-filters button,
+    .licensed-favorite, .world-search button, .world-pagination button, .media-play, .media-cast-button,
+    .firebase-viewer-top button, .open-movie-viewer-head button, .reference-intro-skip):active:not(:disabled) { transform: none; }
+}
+.site.motion-off[data-cp-transition] { animation: none !important; }
+.site.motion-off .media-viewer, .site.motion-off .open-movies-grid.cp-filter-swap > *, .site.motion-off .firebase-list.cp-list-swap > * { animation: none !important; }

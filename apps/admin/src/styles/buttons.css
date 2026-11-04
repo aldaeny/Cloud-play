@@ -1,0 +1,64 @@
+/* ============================================================================
+   CLOUD PLAY IRAQ — ADMIN BUTTON DESIGN SYSTEM (Liquid Glass)
+   ----------------------------------------------------------------------------
+   Button surfaces only. The admin dashboard renders on a light page, so the
+   navy liquid-glass treatment (Reference 1) is used for readable white labels.
+   Geometry (padding, size, font, layout) is left untouched.
+   ========================================================================== */
+:root {
+  --cp-btn-fill: rgba(23, 42, 82, 0.88);
+  --cp-btn-sheen: linear-gradient(160deg, rgba(146, 176, 234, 0.30), rgba(78, 108, 176, 0.10) 52%, rgba(128, 156, 220, 0.16));
+  --cp-btn-border: rgba(188, 210, 248, 0.55);
+  --cp-btn-border-hover: rgba(216, 230, 255, 0.85);
+  --cp-btn-text: #f3f7ff;
+  --cp-btn-shadow: inset 0 1px 1px rgba(222, 234, 255, 0.45), inset 0 -1px 1px rgba(170, 196, 244, 0.18), 0 4px 14px rgba(13, 28, 60, 0.28);
+  --cp-btn-shadow-hover: inset 0 1px 1px rgba(232, 242, 255, 0.62), inset 0 -1px 1px rgba(178, 202, 248, 0.24), 0 6px 18px rgba(13, 28, 60, 0.34);
+  --cp-btn-edge-a: rgba(232, 242, 255, 0.95);
+  --cp-btn-edge-b: rgba(176, 202, 248, 0.60);
+}
+
+button {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--cp-btn-border);
+  border-radius: 14px;
+  background-color: var(--cp-btn-fill);
+  background-image: var(--cp-btn-sheen);
+  box-shadow: var(--cp-btn-shadow);
+  color: var(--cp-btn-text);
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+@property --cp-btn-edge { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: conic-gradient(from var(--cp-btn-edge), transparent 0deg, var(--cp-btn-edge-a) 38deg, transparent 86deg, transparent 180deg, var(--cp-btn-edge-b) 218deg, transparent 266deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: cp-btn-edge-spin 5.5s linear infinite;
+}
+@keyframes cp-btn-edge-spin { to { --cp-btn-edge: 360deg; } }
+
+@media (hover: hover) {
+  button:hover:not(:disabled) { border-color: var(--cp-btn-border-hover); box-shadow: var(--cp-btn-shadow-hover); }
+}
+button:active:not(:disabled) { box-shadow: inset 0 2px 5px rgba(6, 16, 40, 0.42); }
+button:focus-visible { outline: 2px solid #2f5fae; outline-offset: 3px; }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled::after { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  button::after { animation: none; }
+  button { transition: none; }
+}

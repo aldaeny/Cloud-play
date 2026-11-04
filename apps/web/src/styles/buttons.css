@@ -1,0 +1,327 @@
+/* ============================================================================
+   CLOUD PLAY IRAQ — UNIFIED BUTTON DESIGN SYSTEM (Liquid Glass)
+   ----------------------------------------------------------------------------
+   Single source of truth for every button surface in the web app (desktop,
+   tablet and phone — the phone app renders this same UI in a WebView).
+
+   Phase 2 mapping (per the transformation brief):
+     DARK theme  (.site / .theme-dark)  -> dark semi-transparent glass, clear silver rims
+     LIGHT theme (.site.theme-light)    -> LIGHT semi-transparent glass, soft silver rims,
+                                           dark text for excellent contrast
+   Glass is applied to BUTTONS ONLY — never to cards or page backgrounds.
+
+   Scope is strictly limited to button surfaces: background, border, radius,
+   shadow, label colour and interaction states. Geometry (size, padding, margin,
+   display, gap, font) is inherited from the existing layout and never altered
+   here. Cards, icons, menus, inputs, text and page layout are out of scope.
+   ========================================================================== */
+
+/* ---- Design tokens -------------------------------------------------------- */
+.site {
+  /* DARK — dark semi-transparent glass with a clear silver rim */
+  --cp-btn-fill: rgba(38, 50, 66, 0.42);
+  --cp-btn-fill-selected: rgba(74, 90, 112, 0.56);
+  --cp-btn-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.04) 52%, rgba(255, 255, 255, 0.09));
+  --cp-btn-border: rgba(226, 236, 242, 0.52);
+  --cp-btn-border-hover: rgba(244, 250, 253, 0.82);
+  --cp-btn-border-selected: rgba(248, 252, 255, 0.9);
+  --cp-btn-text: #f4f8fb;
+  --cp-btn-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.42), inset 0 -1px 1px rgba(255, 255, 255, 0.12), 0 4px 14px rgba(0, 0, 0, 0.26);
+  --cp-btn-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.58), inset 0 -1px 1px rgba(255, 255, 255, 0.16), 0 6px 18px rgba(0, 0, 0, 0.32);
+  --cp-btn-shadow-pressed: inset 0 2px 5px rgba(0, 0, 0, 0.30), inset 0 -1px 1px rgba(255, 255, 255, 0.10);
+  --cp-btn-focus: #dcebf5;
+  --cp-btn-edge-a: rgba(255, 255, 255, 0.95);
+  --cp-btn-edge-b: rgba(220, 232, 240, 0.55);
+  --cp-btn-solid: #2b343c;
+}
+.site.theme-light {
+  /* LIGHT — light frosted glass, soft silver rim, dark text for strong contrast */
+  --cp-btn-fill: rgba(255, 255, 255, 0.55);
+  --cp-btn-fill-selected: rgba(255, 255, 255, 0.80);
+  --cp-btn-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.22) 52%, rgba(255, 255, 255, 0.42));
+  --cp-btn-border: rgba(148, 163, 184, 0.60);
+  --cp-btn-border-hover: rgba(100, 120, 150, 0.78);
+  --cp-btn-border-selected: rgba(74, 96, 132, 0.88);
+  --cp-btn-text: #16233c;
+  --cp-btn-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(148, 163, 184, 0.22), 0 4px 14px rgba(30, 50, 90, 0.14);
+  --cp-btn-shadow-hover: inset 0 1px 1px rgba(255, 255, 255, 0.95), inset 0 -1px 1px rgba(148, 163, 184, 0.30), 0 6px 18px rgba(30, 50, 90, 0.18);
+  --cp-btn-shadow-pressed: inset 0 2px 5px rgba(30, 50, 90, 0.20), inset 0 -1px 1px rgba(255, 255, 255, 0.55);
+  --cp-btn-focus: #2f5fae;
+  --cp-btn-edge-a: rgba(255, 255, 255, 0.98);
+  --cp-btn-edge-b: rgba(150, 170, 200, 0.72);
+  --cp-btn-solid: #e9eef6;
+}
+
+/* ---- Base glass surface --------------------------------------------------- */
+.site :is(
+  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle,
+  .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button,
+  .section-header button, .section-nav a,
+  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
+  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite,
+  .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip, .mobile-dock a, .mobile-dock button
+) {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--cp-btn-border);
+  background-color: var(--cp-btn-fill);
+  background-image: var(--cp-btn-sheen);
+  box-shadow: var(--cp-btn-shadow);
+  color: var(--cp-btn-text);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+}
+
+/* ---- Shape categories (match the reference rounded-rect / pill / circle) --- */
+.site :is(
+  .outline-button, .iptv-load, .media-play, .open-movie-card button, .movie-favorite,
+  .firebase-viewer-top button, .open-movie-viewer-head button, .section-header button,
+  .section-nav a, .home-about-link, .cp-reel-link, .media-cast-button, .account-entry,
+  .firebase-list button, .licensed-channel
+) { border-radius: 14px; }
+
+.site :is(
+  .main-nav a, .nav-reveal-item, .language, .nav-account, .movie-filters button,
+  .language-options button, .licensed-filters button, .iptv-groups button,
+  .world-search button, .world-pagination button, .search-actions button,
+  .account-back, .playback-reset, .sky-theme-toggle, .reference-intro-skip, .movie-details-link
+) { border-radius: 999px; }
+
+.site :is(.settings-trigger, .carousel-arrow, .modal-close, .settings-close, .cp-reel-controls > button) { border-radius: 50%; }
+.site :is(.search-trigger, .licensed-favorite) { border-radius: 12px; }
+.site .search-morph-close { border-radius: 8px; }
+
+/* Preserve the original positioning of overlay controls (the base rule above
+   sets position:relative only to anchor the edge light; these stay absolute). */
+.site :is(.carousel-arrow, .modal-close, .reference-intro-skip) { position: absolute; }
+
+/* ---- Animated edge light (the moving rim required by the brief) ------------ */
+@property --cp-btn-edge { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.site :is(
+  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle,
+  .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button,
+  .section-header button, .section-nav a,
+  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
+  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite,
+  .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip
+)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  padding: 1px;
+  background: conic-gradient(from var(--cp-btn-edge),
+    transparent 0deg, var(--cp-btn-edge-a) 38deg, transparent 86deg,
+    transparent 180deg, var(--cp-btn-edge-b) 218deg, transparent 266deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: cp-btn-edge-spin 5.5s linear infinite;
+}
+@keyframes cp-btn-edge-spin { to { --cp-btn-edge: 360deg; } }
+
+/* ---- Interaction states --------------------------------------------------- */
+@media (hover: hover) {
+  .site :is(
+    .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+    .language, .nav-account, .sky-theme-toggle,
+    .main-nav a, .nav-reveal-item,
+    .language-options button, .account-entry, .account-back, .playback-reset,
+    .search-trigger, .search-morph-close, .search-actions button,
+    .section-header button, .section-nav a,
+    .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
+    .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+    .licensed-filters button, .licensed-favorite,
+    .world-search button, .world-pagination button,
+    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+    .reference-intro-skip, .mobile-dock a, .mobile-dock button
+  ):hover:not(:disabled) {
+    border-color: var(--cp-btn-border-hover);
+    box-shadow: var(--cp-btn-shadow-hover);
+  }
+}
+.site :is(
+  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle,
+  .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button,
+  .section-header button, .section-nav a,
+  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
+  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite,
+  .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip
+):active:not(:disabled) {
+  border-color: var(--cp-btn-border);
+  box-shadow: var(--cp-btn-shadow-pressed);
+}
+
+/* Selected / pressed / current — illuminated glass, no legacy colour fills */
+.site :is(
+  .language-options button.selected, .iptv-groups button.selected,
+  .firebase-list button.selected, .licensed-channel.selected,
+  .movie-filters button[aria-pressed="true"], .licensed-filters button[aria-pressed="true"],
+  .licensed-favorite[aria-pressed="true"], .movie-favorite[aria-pressed="true"],
+  .main-nav a.nav-active, .main-nav .nav-reveal-item.nav-active,
+  .settings-trigger.is-open, .search-trigger.is-open
+) {
+  background-color: var(--cp-btn-fill-selected);
+  border-color: var(--cp-btn-border-selected);
+  box-shadow: var(--cp-btn-shadow-hover);
+  color: var(--cp-btn-text);
+}
+
+/* Focus — visible, high-contrast ring preserved for keyboard users */
+.site :is(
+  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle,
+  .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button,
+  .section-header button, .section-nav a,
+  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
+  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite,
+  .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip, .mobile-dock a, .mobile-dock button
+):focus-visible {
+  outline: 2px solid var(--cp-btn-focus);
+  outline-offset: 3px;
+}
+.site.high-contrast :is(button, a):focus-visible { outline-width: 3px; }
+
+/* Disabled — dimmed, inert, no moving edge */
+.site :is(
+  .iptv-load, .media-play, .media-cast-button, .firebase-list button, .licensed-channel,
+  .world-search button, .world-pagination button, .open-movie-card button, .search-actions button
+):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: var(--cp-btn-shadow);
+}
+.site :is(.iptv-load, .media-play, .media-cast-button, .firebase-list button, .licensed-channel,
+  .world-search button, .world-pagination button, .open-movie-card button, .search-actions button):disabled::after {
+  animation: none;
+}
+
+/* ---- Pagination dots (indicator controls: geometry kept, rim recoloured) --- */
+.site .dot { background: rgba(255, 255, 255, 0.38); border: 0; box-shadow: none; border-radius: 50%; }
+.site .dot.active { background: var(--cp-btn-edge-a); border-radius: 5px; }
+.site.theme-light .dot { background: rgba(23, 42, 82, 0.35); }
+.site.theme-light .dot.active { background: #2f5fae; }
+.site .cp-reel-dots button { background: transparent; border: 0; box-shadow: none; }
+.site .cp-reel-dots button::after { background: rgba(255, 255, 255, 0.5); border-radius: 20px; }
+.site .cp-reel-dots button.active::after { background: var(--cp-btn-edge-a); }
+.site.theme-light .cp-reel-dots button::after { background: rgba(23, 42, 82, 0.4); }
+.site.theme-light .cp-reel-dots button.active::after { background: #2f5fae; }
+
+/* ---- Accessibility & viewing preferences ---------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+    .language-options button, .account-entry, .account-back, .playback-reset,
+    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+    .reference-intro-skip)::after { animation: none; }
+  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+    .language-options button, .account-entry, .account-back, .playback-reset,
+    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+    .reference-intro-skip) { transition: none; }
+}
+.site.motion-off :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip)::after { animation: none; }
+.site.motion-off :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip) { transition: none; }
+
+/* Ambient glow off: keep the static rim, drop the moving light */
+.site.no-glow :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip)::after { display: none; }
+
+/* Reduce transparency: solid glass equivalents, no blur */
+.site.solid-panels :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+  .language-options button, .account-entry, .account-back, .playback-reset,
+  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+  .reference-intro-skip, .mobile-dock a, .mobile-dock button) {
+  background-image: none;
+  background-color: var(--cp-btn-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
+    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
+    .language-options button, .account-entry, .account-back, .playback-reset,
+    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
+    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
+    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
+    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
+    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
+    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
+    .reference-intro-skip, .mobile-dock a, .mobile-dock button) {
+    background-color: var(--cp-btn-solid);
+  }
+}
