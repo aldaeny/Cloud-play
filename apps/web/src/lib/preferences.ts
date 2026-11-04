@@ -64,12 +64,18 @@ export function readPrefs(): Prefs {
   };
 }
 
-/** Remove saved favorites (films + channels). Returns how many keys were cleared. */
+/** Remove saved favorites (films + channels) AND locally stored watch progress.
+ *  Returns how many keys were cleared. */
 export function clearFavorites(): number {
   let n = 0;
-  for (const key of ['cloudplay-movie-favorites-v1', 'cloudplay-tv-favorites-v1']) {
-    try { if (localStorage.getItem(key) !== null) { localStorage.removeItem(key); n++; } } catch { /* optional */ }
-  }
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k === 'cloudplay-movie-favorites-v1' || k === 'cloudplay-tv-favorites-v1' || k.startsWith('cloudplay-progress-v1-'))) keys.push(k);
+    }
+    keys.forEach(k => { localStorage.removeItem(k); n++; });
+  } catch { /* storage optional */ }
   notifyPrefsChanged();
   return n;
 }
