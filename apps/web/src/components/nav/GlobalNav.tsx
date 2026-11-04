@@ -149,8 +149,12 @@ export default function GlobalNav() {
               aria-label={ar ? route.ar : route.en}
               onClick={onNavClick(route)}
             >
-              <Icon name={route.icon} size={19} />
+              <span className="cp-nav-ico">
+                <span className="cp-nav-glow" aria-hidden="true" />
+                <Icon name={route.icon} size={21} />
+              </span>
               <span className="cp-nav-label">{ar ? route.ar : route.en}</span>
+              <span className="cp-nav-dot" aria-hidden="true" />
             </Link>
           );
         })}
