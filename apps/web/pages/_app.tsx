@@ -2,10 +2,12 @@ import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useEffect } from 'react';
 import PageTransition from '../src/components/motion/PageTransition';
+import GlobalNav from '../src/components/nav/GlobalNav';
 import '../src/styles/globals.css';
 import '../src/styles/typography.css';
 import '../src/styles/buttons.css';
 import '../src/styles/motion.css';
+import '../src/styles/global-nav.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Remove only the offline worker introduced in the rolled-back design.
@@ -23,5 +25,5 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     }).catch(() => {});
   }, []);
-  return <><Head><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" href="/cloudplay-icon.png" type="image/png"/></Head><PageTransition><Component {...pageProps}/></PageTransition></>;
+  return <><Head><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" href="/cloudplay-icon.png" type="image/png"/></Head><PageTransition><Component {...pageProps}/></PageTransition><GlobalNav/></>;
 }
