@@ -11,6 +11,7 @@ import { PlaybackPreferencesContext } from '../src/components/player/PlaybackPre
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../src/components/icons/Icon';
 import AppHeader from '../src/components/layout/AppHeader';
+import SearchField from '../src/components/search/SearchField';
 
 type Language = 'ar' | 'en';
 // Sample art is retained solely for explicit local design preview, never shown by default.
@@ -47,10 +48,8 @@ export default function Home() {
   const [playbackMuted, setPlaybackMuted] = useState(false);
   const [scrollToPlayer, setScrollToPlayer] = useState(true);
   const [carouselPaused, setCarouselPaused] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
-  const searchWrapRef = useRef<HTMLDivElement>(null);
   const searchRowRef = useRef<HTMLDivElement>(null);
   const t = words[language];
   useEffect(() => {
@@ -92,7 +91,7 @@ export default function Home() {
   const store = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* Settings still work for this page. */ } };
   const chooseLanguage = (value: Language) => { setLanguage(value); store('cloudplay-language', value); };
   const chooseTheme = (value: 'dark' | 'light') => { setTheme(value); store('cloudplay-theme', value); };
-  const openSearch = () => { setSearchOpen(true); window.setTimeout(() => searchInputRef.current?.focus(), 0); };
+  const openSearch = () => { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); window.setTimeout(() => searchInputRef.current?.focus(), reduceMotion ? 0 : 250); };
   useEffect(() => { document.documentElement.lang = language; document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'; }, [language]);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
@@ -109,12 +108,6 @@ export default function Home() {
     document.documentElement.style.scrollBehavior = reduceMotion ? 'auto' : '';
     return () => { document.documentElement.style.scrollBehavior = ''; };
   }, [reduceMotion]);
-  useEffect(() => {
-    if (!searchOpen) return;
-    const onPointer = (event: PointerEvent) => { if (!searchWrapRef.current?.contains(event.target as Node) && !searchRowRef.current?.contains(event.target as Node)) setSearchOpen(false); };
-    document.addEventListener('pointerdown', onPointer);
-    return () => document.removeEventListener('pointerdown', onPointer);
-  }, [searchOpen]);
   useEffect(() => {
     if (!showDesignPreview || !autoCarousel || reduceMotion || modal !== null || carouselPaused) return;
     const timer = window.setInterval(() => {
@@ -135,17 +128,26 @@ export default function Home() {
   return <PlaybackPreferencesContext.Provider value={{ autoPlay: playbackAuto, startMuted: playbackMuted, scrollToPlayer }}><div className={`site theme-${theme} text-${textSize}${reduceMotion ? ' motion-off' : ''}${glowEnabled ? '' : ' no-glow'}${highContrast ? ' high-contrast' : ''}${solidPanels ? ' solid-panels' : ''}${hideCover ? ' hide-cover' : ''}${staticCover ? ' static-cover' : ''}`} id="top" dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <IntroLayer/>
     <Head><title>Cloud Play — Your world of stories</title><meta name="description" content="Cloud Play Iraq: licensed short films and an optional live TV guide."/><link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/></Head>
-    <AppHeader language={language} theme={theme} onToggleLanguage={() => chooseLanguage(language === 'ar' ? 'en' : 'ar')} onToggleTheme={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')} onSearchClick={openSearch} searchOpen={searchOpen} hasQuery={!!query.trim()} searchButtonRef={searchButtonRef}/>
-    <div ref={searchRowRef} className={`search-row${searchOpen ? ' is-open' : ''}`}><div className="search-row-content">
-        <form id="header-search" className={`search-morph${searchOpen ? ' is-open' : ''}`} role="search" aria-hidden={!searchOpen} onKeyDown={e => { if (e.key === 'Escape') { e.preventDefault(); setSearchOpen(false); searchButtonRef.current?.focus(); } }} onSubmit={e => { e.preventDefault(); setSearchOpen(false); void router.push({ pathname: '/search', query: query.trim() ? { q: query.trim() } : {} }); }}>
-          <div className="search-morph-bar"><Icon name="search" size={19}/><input ref={searchInputRef} id="title-search" tabIndex={searchOpen ? 0 : -1} type="search" dir="auto" value={query} onChange={e => setQuery(e.target.value)} placeholder={language === 'ar' ? 'ابحث عن فيلم، مسلسل، أو عرض حصري...' : 'Search movies, series, or exclusives...'} aria-label={t.searchLabel} autoComplete="off"/><button type="button" tabIndex={searchOpen ? 0 : -1} className="search-morph-close" aria-label={t.close} onClick={() => { setQuery(''); setSearchOpen(false); searchButtonRef.current?.focus(); }}><Icon name="close" size={19}/></button></div>
-          {query.trim() && <div className="search-morph-results" aria-live="polite">{movies.filter(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(m => <Link href={`/movies/${m.id}`} key={m.id} tabIndex={searchOpen ? 0 : -1}><strong>{m.title}</strong><small dir={language === 'ar' ? 'rtl' : 'ltr'}>{m[language]}</small></Link>)}{!movies.some(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && <p>{language === 'ar' ? 'لا توجد أفلام مطابقة.' : 'No matching films.'}</p>}</div>}
-        </form>
-      </div></div>
+    <AppHeader language={language} theme={theme} onToggleLanguage={() => chooseLanguage(language === 'ar' ? 'en' : 'ar')} onToggleTheme={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')} onSearchClick={openSearch} hasQuery={!!query.trim()} searchButtonRef={searchButtonRef}/>
+    <div ref={searchRowRef} className="home-search shell">
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        onClear={() => { setQuery(''); searchInputRef.current?.focus(); }}
+        placeholder={language === 'ar' ? 'ابحث عن فيلم، مسلسل، أو عرض حصري...' : 'Search movies, series, exclusives...'}
+        label={t.searchLabel}
+        inputRef={searchInputRef}
+        onSubmit={() => { void router.push({ pathname: '/search', query: query.trim() ? { q: query.trim() } : {} }); }}
+      />
+      {query.trim() && <div className="home-search-results" aria-live="polite">
+        {movies.filter(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(m => <Link href={`/movies/${m.id}`} key={m.id}><strong>{m.title}</strong><small dir={language === 'ar' ? 'rtl' : 'ltr'}>{m[language]}</small></Link>)}
+        {!movies.some(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && <p>{language === 'ar' ? 'لا توجد أفلام مطابقة.' : 'No matching films.'}</p>}
+      </div>}
+    </div>
     <main><section className="hero shell" id="featured"><div className="feature-banner"><div className="hero-scene" aria-hidden="true"><Image src="/art/cloud-city-hero.jpg" alt="" fill priority sizes="100vw"/><span className="hero-scene-shade"/><span className="color-ribbon ribbon-a"/><span className="color-ribbon ribbon-b"/></div><div className="hero-copy"><div className="eyebrow"><span className="tiny-line"/>{t.spotlight}</div><h1>{t.tagline.split('\n').map((line, i) => <span key={line}>{line}{i === 0 && <br/>}</span>)}</h1><p className="hero-description">{language === 'ar' ? 'الحصريات • أحدث الأفلام • تفاصيل المنصة' : 'Exclusives • New films • Platform details'}</p><Link className="outline-button" href="/latest">{language === 'ar' ? 'اكتشف أحدث الأفلام' : 'Explore new films'}<Icon name="arrow" size={17}/></Link>{showDesignPreview && <div className="hero-index"><span>0{active + 1}</span><span className="index-line"/><span>0{items.length}</span></div>}</div></div>
       {showDesignPreview && <><div className="carousel-heading"><div><span className="tiny-line"/><h2>{t.featured}</h2></div><span>{language === 'ar' ? 'اختيارات كلاود بلاي' : 'THE CLOUD PLAY EDIT'}</span></div><div className="carousel-area" onMouseEnter={() => setCarouselPaused(true)} onMouseLeave={e => setCarouselPaused(e.currentTarget.contains(document.activeElement))} onFocusCapture={() => setCarouselPaused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCarouselPaused(e.currentTarget.matches(':hover')); }} aria-label={language === 'ar' ? 'العناوين المختارة' : 'Featured titles'}><div className="magic-dust" aria-hidden="true"><i/><i/><i/><i/><i/><i/></div><div className="glow glow-one"/><div className="glow glow-two"/><div className="carousel-stage" ref={carouselStageRef}>{items.map((item, i) => { const diff = (i - active + items.length) % items.length; const position = diff === 0 ? 'center' : diff === 1 ? 'right' : 'left'; return <button type="button" key={item.id} className={`poster poster-${position}`} onClick={() => position === 'center' ? setModal(i) : setActive(i)} aria-label={position === 'center' ? `${t.details}: ${item[language]}` : item[language]}><Image src={item.image} alt="" fill sizes="(max-width: 700px) 220px, 300px" priority={i === 0} className="poster-image"/><span className="poster-shade"/><span className="poster-content"><span className="poster-genre">{language === 'ar' ? item.genreAr : item.genreEn}</span><strong>{item[language]}</strong>{position === 'center' && <span className="poster-action"><Icon name="play" size={15}/>{t.details}</span>}</span></button>; })}</div><button className="carousel-arrow arrow-left" onClick={() => move(-1)} aria-label={t.prev}><span>‹</span></button><button className="carousel-arrow arrow-right" onClick={() => move(1)} aria-label={t.next}><span>›</span></button><div className="dots" aria-label={language === 'ar' ? 'اختيار عنوان' : 'Choose a title'}>{items.map((item, i) => <button key={item.id} className={i === active ? 'dot active' : 'dot'} onClick={() => setActive(i)} aria-label={item[language]} aria-current={i === active ? 'true' : undefined}/>)}</div></div>
       <div className="hero-foot"><span><span className="live-dot"/> {t.demo}</span><span>{t.demoNote}</span></div></>}</section>
-    <ReferenceReel language={language} autoAdvance={autoCarousel} reduceMotion={reduceMotion} paused={modal !== null || searchOpen}/>
+    <ReferenceReel language={language} autoAdvance={autoCarousel} reduceMotion={reduceMotion} paused={modal !== null || query.trim() !== ''}/>
     <section className="home-highlights shell reveal-on-scroll" aria-labelledby="home-highlights-title">
       <div className="section-head"><div><div className="eyebrow"><span className="tiny-line"/>{language === 'ar' ? 'اكتشف كلاود بلاي' : 'DISCOVER CLOUD PLAY'}</div><h2 id="home-highlights-title">{language === 'ar' ? 'الحصريات وأحدث الأفلام' : 'Exclusives and new films'}</h2><p>{language === 'ar' ? 'تابع الأقسام لمعرفة ما يتوفر عند إضافة محتوى مرخّص.' : 'Explore these sections as licensed content becomes available.'}</p></div></div>
       <div className="home-highlight-grid">

@@ -14,14 +14,13 @@ import type { Language, Theme } from '../../lib/preferences';
  */
 export default function AppHeader({
   language, theme, onToggleLanguage, onToggleTheme,
-  onSearchClick, searchOpen = false, hasQuery = false, searchButtonRef, accountHref = '/settings',
+  onSearchClick, hasQuery = false, searchButtonRef, accountHref = '/settings',
 }: {
   language: Language;
   theme: Theme;
   onToggleLanguage: () => void;
   onToggleTheme: () => void;
   onSearchClick?: () => void;
-  searchOpen?: boolean;
   hasQuery?: boolean;
   searchButtonRef?: Ref<HTMLButtonElement>;
   accountHref?: string;
@@ -42,7 +41,6 @@ export default function AppHeader({
             type="button"
             className="app-icon-btn"
             aria-label={ar ? 'البحث في الأفلام المتاحة' : 'Search available films'}
-            aria-expanded={onSearchClick ? searchOpen : undefined}
             onClick={handleSearch}
           >
             <Icon name="search" size={19} />

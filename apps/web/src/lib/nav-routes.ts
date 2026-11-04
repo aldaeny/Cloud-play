@@ -17,9 +17,9 @@ export type NavRoute = {
 
 const norm = (p: string) => p.replace(/\/$/, '') || '/';
 
-// The dock shows the 5 most essential routes. Series, Search and Continue remain
-// fully reachable (header search button, home browse cards and the footer) — no
-// route is disabled; the dock is simply decluttered to the core five.
+// The 5 core dock items requested: Home · Movies · Series · Favorites · Settings.
+// Live TV, Search and Continue remain fully reachable (header search, home cards
+// and the footer) — no route is disabled; the dock is just the core five.
 export const NAV_ROUTES: NavRoute[] = [
   { href: '/', icon: 'home', ar: 'الرئيسية', en: 'Home',
     descAr: 'واجهتك الأولى: أحدث الأفلام والبث المباشر والحصريات.',
@@ -29,10 +29,10 @@ export const NAV_ROUTES: NavRoute[] = [
     descAr: 'أفلام قصيرة مرخّصة متاحة للمشاهدة المجانية مع حفظ التقدم.',
     descEn: 'Licensed short films, free to watch, with saved progress.',
     match: p => norm(p) === '/movies' || norm(p).startsWith('/movies/') },
-  { href: '/live', icon: 'tv', ar: 'البث المباشر', en: 'Live TV',
-    descAr: 'قنوات مرخّصة منظّمة حسب الدولة ثم التصنيف، مع مفضلة وبحث.',
-    descEn: 'Licensed channels organised by country, then category, with favorites and search.',
-    match: p => norm(p) === '/live' },
+  { href: '/series', icon: 'play', ar: 'المسلسلات', en: 'Series',
+    descAr: 'قسم المسلسلات؛ تُضاف الأعمال بعد ربط محتوى مرخّص بالمكتبة.',
+    descEn: 'The series section; titles arrive once licensed content is linked.',
+    match: p => norm(p) === '/series' },
   { href: '/favorites', icon: 'star', ar: 'المفضلة', en: 'Favorites',
     descAr: 'أفلامك المحفوظة على هذا الجهاز فقط، للوصول السريع إليها.',
     descEn: 'Your saved films, stored on this device only, for quick access.',

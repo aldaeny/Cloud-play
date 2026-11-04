@@ -20,12 +20,79 @@ export default function GlobalNav() {
   const [popover, setPopover] = useState<NavRoute | null>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; placement: 'top' | 'bottom' } | null>(null);
   const btnRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
+  const barRef = useRef<HTMLElement | null>(null);
+  const [notchX, setNotchX] = useState<number | null>(null);
+  const notchRef = useRef<HTMLSpanElement | null>(null);
+  const notchDisplayX = useRef<number | null>(null);
+  const notchAnim = useRef<number>(0);
   const pendingPopover = useRef<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const pathname = router.asPath.split('?')[0];
   const active = activeRoute(pathname);
   const ar = lang === 'ar';
+
+  // Slide the notch to sit behind the active button. We observe the DOM directly
+  // (the active class moving between buttons, and direction/theme flips on the
+  // wrapper) rather than React render timing, so it stays correct through the
+  // page transition and the RTL↔LTR boot. Screen coordinates work in both dirs.
+  useEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const wrap = bar.closest('.cp-global-nav');
+    let raf = 0; let commit: ReturnType<typeof setTimeout> | undefined;
+    let settle: ReturnType<typeof setTimeout>[] = [];
+    const measure = () => {
+      const btn = bar.querySelector<HTMLElement>('.cp-nav-btn.cp-nav-active');
+      if (!btn) { setNotchX(null); return; }
+      const br = bar.getBoundingClientRect();
+      const nr = btn.getBoundingClientRect();
+      const x = nr.left + nr.width / 2 - br.left;
+      // Debounce the commit: during a page transition the destination boots
+      // RTL→LTR, which would otherwise retarget the slide mid-flight and lock it.
+      // We wait for the position to settle, then animate once to the final spot.
+      clearTimeout(commit);
+      commit = setTimeout(() => setNotchX(x), 60);
+    };
+    const schedule = () => {
+      cancelAnimationFrame(raf); settle.forEach(clearTimeout); settle = [];
+      raf = requestAnimationFrame(measure);
+      settle.push(setTimeout(measure, 160));
+    };
+    measure();
+    const mo = new MutationObserver(schedule);
+    mo.observe(bar, { subtree: true, attributes: true, attributeFilter: ['class'] });
+    if (wrap) mo.observe(wrap, { attributes: true, attributeFilter: ['dir', 'class'] });
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
+    ro?.observe(bar);
+    window.addEventListener('resize', schedule);
+    return () => { cancelAnimationFrame(raf); clearTimeout(commit); settle.forEach(clearTimeout); mo.disconnect(); ro?.disconnect(); window.removeEventListener('resize', schedule); };
+  }, []);
+
+  // Slide the notch with a timer-driven tween. CSS transitions can lock during
+  // the page fold/unfold and rAF/WAAPI can be throttled when the compositor goes
+  // idle; a setInterval tween writes the transform directly each tick, so it
+  // always lands on the measured position (and still animates smoothly).
+  useEffect(() => {
+    const el = notchRef.current;
+    if (!el) return;
+    if (notchX === null) { notchDisplayX.current = null; return; }
+    const target = notchX;
+    const from = notchDisplayX.current;
+    const setX = (x: number) => { el.style.transform = `translateX(calc(${x}px - 50%))`; };
+    clearInterval(notchAnim.current);
+    if (from === null || Math.abs(from - target) < 1 || flags.motionOff) {
+      notchDisplayX.current = target; setX(target); return;
+    }
+    const start = Date.now(); const dur = 450;
+    notchAnim.current = window.setInterval(() => {
+      const t = Math.min(1, (Date.now() - start) / dur);
+      const x = from + (target - from) * (1 - Math.pow(1 - t, 3));
+      notchDisplayX.current = x; setX(x);
+      if (t >= 1) { clearInterval(notchAnim.current); notchDisplayX.current = target; }
+    }, 16);
+  }, [notchX, flags.motionOff]);
+  useEffect(() => () => clearInterval(notchAnim.current), []);
 
   // Keep theme / language / viewing preferences in sync with the active page
   // (pages own `.site` classes and <html lang/dir>; we observe, never duplicate).
@@ -136,7 +203,14 @@ export default function GlobalNav() {
       className={`cp-global-nav theme-${theme}${flags.motionOff ? ' motion-off' : ''}${flags.noGlow ? ' no-glow' : ''}${flags.solid ? ' solid-panels' : ''}${playerOpen ? ' cp-nav-hidden' : ''}`}
       dir={ar ? 'rtl' : 'ltr'}
     >
-      <nav className="cp-nav-bar" aria-label={ar ? 'التنقل الرئيسي' : 'Main navigation'}>
+      <nav className="cp-nav-bar" ref={barRef} aria-label={ar ? 'التنقل الرئيسي' : 'Main navigation'}>
+        <span
+          ref={notchRef}
+          className={`cp-nav-notch${notchX === null ? ' is-hidden' : ''}`}
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 100 34" preserveAspectRatio="none"><path d="M0,34 L0,31 C16,31 22,27 30,18 C38,8 43,3 50,3 C57,3 62,8 70,18 C78,27 84,31 100,31 L100,34 Z" /></svg>
+        </span>
         {NAV_ROUTES.map(route => {
           const isActive = active?.href === route.href;
           return (
@@ -149,12 +223,8 @@ export default function GlobalNav() {
               aria-label={ar ? route.ar : route.en}
               onClick={onNavClick(route)}
             >
-              <span className="cp-nav-ico">
-                <span className="cp-nav-glow" aria-hidden="true" />
-                <Icon name={route.icon} size={21} />
-              </span>
+              <span className="cp-nav-ico"><Icon name={route.icon} size={21} /></span>
               <span className="cp-nav-label">{ar ? route.ar : route.en}</span>
-              <span className="cp-nav-dot" aria-hidden="true" />
             </Link>
           );
         })}
