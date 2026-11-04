@@ -2,6 +2,7 @@ import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useEffect } from 'react';
 import '../src/styles/globals.css';
+import '../src/styles/buttons.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Remove only the offline worker introduced in the rolled-back design.
