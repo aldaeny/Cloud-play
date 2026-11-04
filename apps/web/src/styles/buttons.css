@@ -17,7 +17,8 @@
    ========================================================================== */
 
 /* ---- Design tokens -------------------------------------------------------- */
-.site {
+/* Shared with the global navigation bar so every platform uses one glass system. */
+.site, .cp-global-nav {
   /* DARK — dark semi-transparent glass with a clear silver rim */
   --cp-btn-fill: rgba(38, 50, 66, 0.42);
   --cp-btn-fill-selected: rgba(74, 90, 112, 0.56);
@@ -34,7 +35,7 @@
   --cp-btn-edge-b: rgba(220, 232, 240, 0.55);
   --cp-btn-solid: #2b343c;
 }
-.site.theme-light {
+.site.theme-light, .cp-global-nav.theme-light {
   /* LIGHT — light frosted glass, soft silver rim, dark text for strong contrast */
   --cp-btn-fill: rgba(255, 255, 255, 0.55);
   --cp-btn-fill-selected: rgba(255, 255, 255, 0.80);

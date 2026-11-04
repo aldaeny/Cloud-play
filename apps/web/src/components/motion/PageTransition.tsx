@@ -53,6 +53,27 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       el.style.willChange = '';
     };
 
+    // Robust completion: only the element's OWN cp-page-* animation counts (child
+    // animations bubble up and must not finish the page transition early), the
+    // callback runs exactly once, and the fallback timer is cancelled on completion.
+    const animate = (node: HTMLElement, duration: number, onDone: () => void) => {
+      let finished = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        node.removeEventListener('animationend', onEnd);
+        clearTimeout(timer);
+        onDone();
+      };
+      const onEnd = (e: AnimationEvent) => {
+        if (e.target === node && typeof e.animationName === 'string' && e.animationName.startsWith('cp-page-')) finish();
+      };
+      node.addEventListener('animationend', onEnd);
+      timer = setTimeout(finish, duration + 150);
+      timers.push(timer);
+    };
+
     const playEnter = () => {
       const el = siteEl();
       if (!el) return;
@@ -69,9 +90,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
         paintBackdrop();
         node.dataset.cpTransition = 'entering';
         if (dir < 0) node.dataset.cpDir = 'back'; else delete node.dataset.cpDir;
-        const done = () => { clearTransition(node); clearBackdrop(); locked = false; };
-        node.addEventListener('animationend', done, { once: true });
-        timers.push(setTimeout(done, readMs('--cp-motion-page-in', 480) + 120));
+        animate(node, readMs('--cp-motion-page-in', 480), () => { clearTransition(node); clearBackdrop(); locked = false; });
       });
     };
 
@@ -98,12 +117,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       paintBackdrop();
       el.dataset.cpTransition = 'leaving';
       if (dir < 0) el.dataset.cpDir = 'back'; else delete el.dataset.cpDir;
-      const go = () => {
-        clearTransition(el);
-        void router.push(url.pathname + url.search);
-      };
-      el.addEventListener('animationend', go, { once: true });
-      timers.push(setTimeout(go, readMs('--cp-motion-page-out', 300) + 120));
+      animate(el, readMs('--cp-motion-page-out', 300), () => { clearTransition(el); void router.push(url.pathname + url.search); });
     };
 
     const onComplete = () => { playEnter(); };
