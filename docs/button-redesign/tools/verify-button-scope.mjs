@@ -24,10 +24,19 @@ function isButtonSubject(sel){
   if(/^button(:focus-visible)?$/.test(s))return false;
   if(/search-morph-results/.test(s))return false;
   if(/cp-reel-select/.test(s))return false;
-  if(/poster-action|\.poster\b|collection-card|browse-card|open-movie-card(?!\s+button)|cp-reel-card|home-card-link/.test(s)){if(!/open-movie-card\s+button|open-movie-card\s*>\s*button/.test(s))return false;}
   let lc=lastCompound(s);
-  const iso=lc.match(/^:(is|where)\((.*)\)(::?(before|after))?$/);
-  if(iso){const inner=iso[2];const items=[];let depth=0,cur='';for(const ch of inner){if(ch==='('||ch==='[')depth++;if(ch===')'||ch===']')depth--;if(ch===','&&depth===0){items.push(cur);cur='';}else cur+=ch;}if(cur.trim())items.push(cur);return items.length>0&&items.every(it=>isButtonSubject(it.trim()));}
+  // A known button class as the subject is a button regardless of its ancestors
+  // (e.g. `.open-movie-card .movie-favorite` is the favourite button, not the card).
+  const lead=lc.match(/^\.([a-zA-Z0-9_-]+)/);
+  if(lead&&BUTTON_CLASSES.has(lead[1]))return true;
+  // Match a leading :is()/:where() core and check every subject inside it,
+  // ignoring any trailing pseudo-classes/attributes (::before, :hover, :disabled,
+  // [aria-pressed=true], …) — those do not change whether the subject is a button.
+  // This runs before the ancestor guard so each item is judged on its own subject.
+  const isoStart=lc.match(/^:(is|where)\(/);
+  if(isoStart){let depth=0,end=-1;for(let i=isoStart[0].length-1;i<lc.length;i++){const ch=lc[i];if(ch==='(')depth++;else if(ch===')'){depth--;if(depth===0){end=i;break;}}}
+    if(end>0){const inner=lc.slice(isoStart[0].length,end);const items=[];let d=0,cur='';for(const ch of inner){if(ch==='('||ch==='[')d++;if(ch===')'||ch===']')d--;if(ch===','&&d===0){items.push(cur);cur='';}else cur+=ch;}if(cur.trim())items.push(cur);return items.length>0&&items.every(it=>isButtonSubject(it.trim()));}}
+  if(/poster-action|\.poster\b|collection-card|browse-card|open-movie-card(?!\s+button)|cp-reel-card|home-card-link/.test(s)){if(!/open-movie-card\s+button|open-movie-card\s*>\s*button/.test(s))return false;}
   if(/(^|[.\s>+~:#[])button([.\s:+~[#]|$)/.test(lc)&&/button/.test(lc)){const el=lc.replace(/[.#[:].*$/,'');if(el==='button'||el===''){if(/(^|\s|>)button([.:#[]|$)/.test(lc)||lc.startsWith('button'))return true;}}
   const m=lc.match(/^\.([a-zA-Z0-9_-]+)/);if(m&&BUTTON_CLASSES.has(m[1]))return true;
   if(/(^|\s)\.main-nav\s+a([.:#[]|$)/.test(s)||/\.main-nav\s+a$/.test(s))return true;
@@ -42,7 +51,11 @@ let violations=0,nonBtn=0,btn=0;
 for(const[sel,om]of O.map){
   const isBtn=isButtonSubject(sel),isDesc=isDescendantEffect(sel),isSky=/^\.site\s+\.sky-theme-(day|night)$/.test(sel);
   const sm=S.map.get(sel)||new Map();
-  if(!isBtn&&!isDesc&&!isSky){nonBtn++;for(const[k,c]of om){if((sm.get(k)||0)!==c){console.log('NON-BUTTON CHANGED:',sel,'::',k);violations++;}}for(const[k]of sm){if(!om.has(k)){console.log('NON-BUTTON ADDED:',sel,'::',k);violations++;}}}
+  if(!isBtn&&!isDesc&&!isSky){nonBtn++;for(const[k,c]of om){if((sm.get(k)||0)!==c){
+    // Allowed (Phase 2 typography migration): the legacy Cloud* body font stack is
+    // intentionally removed in favour of the central IBM Plex Sans Arabic system.
+    if(sel==='body'&&k.startsWith('font-family||')&&/CloudPoppins|CloudJakarta|CloudArabic/.test(k))continue;
+    console.log('NON-BUTTON CHANGED:',sel,'::',k);violations++;}}for(const[k]of sm){if(!om.has(k)){console.log('NON-BUTTON ADDED:',sel,'::',k);violations++;}}}
   else{btn++;for(const[k]of sm){if(!om.has(k)){console.log('BUTTON INVENTED:',sel,'::',k);violations++;}}}
 }
 for(const[sel]of S.map){if(!O.map.has(sel)){console.log('NEW SELECTOR:',sel);violations++;}}

@@ -1,0 +1,17 @@
+/* CLOUD PLAY IRAQ — ADMIN TYPOGRAPHY (IBM Plex Sans Arabic, shared type system) */
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
+
+:root { --cp-font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; }
+body {
+  font-family: var(--cp-font-sans);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--cp-font-sans); font-weight: 600; line-height: 1.3; }
+h1 { font-weight: 700; }
+button, input, select, textarea, optgroup { font-family: inherit; }
+html[lang='ar'] :is(h1, h2, h3, h4, p, a, button, span, strong, small, li, label) { letter-spacing: normal !important; }
