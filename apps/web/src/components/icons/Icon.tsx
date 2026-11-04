@@ -1,5 +1,5 @@
 // Shared icon set — single source for the home page and the global navigation.
-export type IconName = 'search' | 'arrow' | 'play' | 'close' | 'tv' | 'globe' | 'settings' | 'home' | 'film' | 'user' | 'sun' | 'moon' | 'text' | 'sparkle' | 'rotate' | 'star' | 'clock';
+export type IconName = 'search' | 'arrow' | 'play' | 'close' | 'tv' | 'globe' | 'settings' | 'home' | 'film' | 'user' | 'sun' | 'moon' | 'text' | 'sparkle' | 'rotate' | 'star' | 'clock' | 'trash';
 
 export default function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true as const };
@@ -19,5 +19,6 @@ export default function Icon({ name, size = 20 }: { name: IconName; size?: numbe
   if (name === 'tv') return <svg {...common}><rect x="3" y="5" width="18" height="13" rx="2"/><path d="M8 21h8M12 18v3"/></svg>;
   if (name === 'star') return <svg {...common}><path d="m12 3.6 2.5 5.1 5.6.8-4 4 .9 5.6-5-2.7-5 2.7.9-5.6-4-4 5.6-.8L12 3.6Z"/></svg>;
   if (name === 'clock') return <svg {...common}><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>;
+  if (name === 'trash') return <svg {...common}><path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6.5 7l.8 12a1 1 0 0 0 1 .9h7.4a1 1 0 0 0 1-.9l.8-12M10 11v6M14 11v6"/></svg>;
   return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9C9.5 18.5 8.5 15.5 8.5 12s1-6.5 3.5-9Z"/></svg>;
 }

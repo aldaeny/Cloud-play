@@ -8,6 +8,7 @@ import '../src/styles/typography.css';
 import '../src/styles/buttons.css';
 import '../src/styles/motion.css';
 import '../src/styles/global-nav.css';
+import '../src/styles/app-shell.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Remove only the offline worker introduced in the rolled-back design.

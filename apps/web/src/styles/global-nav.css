@@ -1,13 +1,20 @@
 /* ============================================================================
-   CLOUD PLAY IRAQ — GLOBAL PERSISTENT NAVIGATION
+   CLOUD PLAY IRAQ — GLOBAL BOTTOM NAVIGATION DOCK (Apple-glass refactor)
    ----------------------------------------------------------------------------
-   One shared bar rendered in `_app`, fixed on every route and every platform.
-   A bottom floating glass dock (control-centre style, per the reference) keeps
-   it clear of every page header and the player. Glass design tokens are shared
-   with buttons.css (.cp-global-nav) so the identity is identical everywhere.
+   One shared dock rendered in `_app`, fixed on every route and platform.
+   A SINGLE floating glass pill (no per-icon boxes, borders or inner shadows).
+   Active item = soft ambient gradient glow + brand accent + a 4px gradient dot;
+   it never scales or pops outside the dock. Inactive items rest at 50% opacity.
    ========================================================================== */
 
 .cp-global-nav {
+  /* brand accent + glow channel (dark) */
+  --cp-nav-accent: #c084fc;              /* purple-400 */
+  --cp-nav-glow: 168, 85, 247;           /* purple-500 */
+  --cp-nav-dock-bg: rgba(17, 19, 27, 0.55);
+  --cp-nav-dock-border: rgba(255, 255, 255, 0.08);
+  --cp-nav-dock-shadow: 0 10px 38px rgba(0, 0, 0, 0.38), 0 2px 8px rgba(0, 0, 0, 0.22);
+  --cp-nav-ink: #f4f6fb;
   position: fixed;
   inset-inline: 0;
   bottom: 0;
@@ -17,102 +24,98 @@
   padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
   padding-inline: max(14px, env(safe-area-inset-left, 0px)) max(14px, env(safe-area-inset-right, 0px));
   pointer-events: none;
-  transition: opacity .3s var(--cp-motion-ease), transform .3s var(--cp-motion-ease);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.cp-global-nav.theme-light {
+  --cp-nav-accent: #9333ea;              /* purple-600 */
+  --cp-nav-dock-bg: rgba(255, 255, 255, 0.66);
+  --cp-nav-dock-border: rgba(0, 0, 0, 0.08);
+  --cp-nav-dock-shadow: 0 10px 34px rgba(30, 50, 90, 0.16), 0 2px 8px rgba(30, 50, 90, 0.10);
+  --cp-nav-ink: #1e293b;
 }
 .cp-global-nav.cp-nav-hidden { opacity: 0; transform: translateY(24px); }
 .cp-global-nav.cp-nav-hidden .cp-nav-bar { pointer-events: none; }
 
-/* The holder is a soft translucent scrim; the buttons carry the full glass. */
+/* ---- The single floating glass pill ---------------------------------------- */
 .cp-nav-bar {
   pointer-events: auto;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 9px;
-  border-radius: 22px;
-  border: 1px solid var(--cp-btn-border);
-  background-color: color-mix(in srgb, var(--cp-btn-solid) 72%, transparent);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: 0 12px 34px rgba(0, 0, 0, .30);
-  max-width: 100%;
+  align-items: stretch;
+  justify-content: space-between;
+  width: min(384px, 100%);
+  height: 64px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--cp-nav-dock-border);
+  background-color: var(--cp-nav-dock-bg);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  backdrop-filter: blur(40px) saturate(160%);
+  box-shadow: var(--cp-nav-dock-shadow);
 }
-.site.theme-light ~ .cp-global-nav .cp-nav-bar,
-.cp-global-nav.theme-light .cp-nav-bar { box-shadow: 0 12px 30px rgba(30, 50, 90, .18); }
 
-/* ---- Buttons: shared Liquid Glass surface ---------------------------------- */
+/* ---- Items: icons sit freely, no boxes / borders / inner shadows ----------- */
 .cp-nav-btn {
   position: relative;
-  isolation: isolate;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  height: 44px;
-  min-width: 44px;
-  padding: 0 12px;
-  border-radius: 15px;
-  border: 1px solid var(--cp-btn-border);
-  background-color: var(--cp-btn-fill);
-  background-image: var(--cp-btn-sheen);
-  box-shadow: var(--cp-btn-shadow);
-  color: var(--cp-btn-text);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  backdrop-filter: blur(14px) saturate(150%);
-  transition: transform .34s var(--cp-motion-ease), box-shadow .34s var(--cp-motion-ease),
-              background-color .34s var(--cp-motion-ease), border-color .34s var(--cp-motion-ease),
-              padding .34s var(--cp-motion-ease);
+  gap: 2px;
+  padding: 6px 2px 5px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  border-radius: 14px;
+  color: var(--cp-nav-ink);
+  opacity: .5;
+  transition: opacity .3s ease, color .3s ease;
 }
-.cp-nav-btn svg { flex: none; display: block; }
-.cp-nav-label {
-  max-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  font-size: 12.5px;
-  font-weight: 500;
-  transition: max-width .38s var(--cp-motion-ease), opacity .26s var(--cp-motion-ease), margin .38s var(--cp-motion-ease);
-}
+@media (hover: hover) { .cp-nav-btn:hover { opacity: .8; } }
+.cp-nav-btn:focus-visible { outline: 2px solid var(--cp-nav-accent); outline-offset: 2px; opacity: 1; }
+.cp-nav-btn.cp-nav-active { opacity: 1; }
 
-/* Animated edge light — same travelling rim as the button system. */
-.cp-nav-btn::after {
-  content: "";
+.cp-nav-ico { position: relative; display: grid; place-items: center; width: 36px; height: 26px; }
+.cp-nav-ico svg { position: relative; z-index: 1; display: block; transition: color .3s ease; }
+
+/* Soft ambient gradient glow behind the active icon (never leaves the dock). */
+.cp-nav-glow {
   position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
+  inset: -5px -11px;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, rgba(var(--cp-nav-glow), .30), rgba(var(--cp-nav-glow), .12) 62%, transparent 100%);
+  opacity: 0;
+  transition: opacity .3s ease;
   pointer-events: none;
-  padding: 1px;
-  background: conic-gradient(from var(--cp-btn-edge),
-    transparent 0deg, var(--cp-btn-edge-a) 38deg, transparent 86deg,
-    transparent 180deg, var(--cp-btn-edge-b) 218deg, transparent 266deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: cp-btn-edge-spin 5.5s linear infinite;
+}
+.cp-nav-btn.cp-nav-active .cp-nav-glow { opacity: 1; }
+.cp-nav-btn.cp-nav-active .cp-nav-ico svg,
+.cp-nav-btn.cp-nav-active .cp-nav-label { color: var(--cp-nav-accent); }
+
+.cp-nav-label {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: color .3s ease;
 }
 
-/* ---- Floating active state: pops forward, expands, glows ------------------- */
-.cp-nav-btn.cp-nav-active {
-  background-color: var(--cp-btn-fill-selected);
-  border-color: var(--cp-btn-border-selected);
-  box-shadow: var(--cp-btn-shadow-hover), 0 12px 26px rgba(0, 0, 0, .30);
-  transform: translateY(-7px) scale(1.06);
-  padding: 0 15px;
+/* Tiny 4px glowing gradient dot beneath the active icon. */
+.cp-nav-dot {
+  width: 4px;
+  height: 4px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: linear-gradient(90deg, #a855f7, #ec4899);
+  box-shadow: 0 0 6px rgba(var(--cp-nav-glow), .9);
+  opacity: 0;
+  transition: opacity .3s ease;
 }
-.cp-global-nav.theme-light .cp-nav-btn.cp-nav-active { box-shadow: var(--cp-btn-shadow-hover), 0 12px 24px rgba(30, 50, 90, .22); }
-.cp-nav-btn.cp-nav-active .cp-nav-label { max-width: 130px; opacity: 1; margin-inline-start: 8px; }
-
-@media (hover: hover) {
-  .cp-nav-btn:hover:not(.cp-nav-active) {
-    border-color: var(--cp-btn-border-hover);
-    box-shadow: var(--cp-btn-shadow-hover);
-    transform: translateY(-3px);
-  }
-}
-.cp-nav-btn:active:not(.cp-nav-active) { transform: translateY(-1px) scale(.97); }
-.cp-nav-btn:focus-visible { outline: 2px solid var(--cp-btn-focus); outline-offset: 3px; }
+.cp-nav-btn.cp-nav-active .cp-nav-dot { opacity: 1; }
 
 /* ---- Dynamic page-detail popover (never blocks content: pointer-events none) */
 .cp-nav-popover {
@@ -122,87 +125,75 @@
   align-items: flex-start;
   gap: 11px;
   padding: 13px 15px;
-  border-radius: 15px;
-  border: 1px solid var(--cp-btn-border-selected);
-  background-color: var(--cp-btn-fill-selected);
-  background-image: var(--cp-btn-sheen);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: var(--cp-btn-shadow-hover), 0 16px 38px rgba(0, 0, 0, .32);
-  color: var(--cp-btn-text);
+  border-radius: 16px;
+  border: 1px solid var(--cp-nav-dock-border);
+  background-color: var(--cp-nav-dock-bg);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  backdrop-filter: blur(30px) saturate(160%);
+  box-shadow: var(--cp-nav-dock-shadow);
+  color: var(--cp-nav-ink);
   pointer-events: none;
-  animation: cp-nav-pop-in .36s var(--cp-motion-ease-unfold) both;
+  animation: cp-nav-pop-in .34s cubic-bezier(.2, .8, .2, 1) both;
 }
-.cp-global-nav.theme-light .cp-nav-popover { box-shadow: var(--cp-btn-shadow-hover), 0 16px 34px rgba(30, 50, 90, .22); }
 .cp-nav-popover-icon {
   display: grid;
   place-items: center;
   width: 38px;
   height: 38px;
   flex: none;
-  border-radius: 11px;
-  border: 1px solid var(--cp-btn-border);
-  background-color: var(--cp-btn-fill);
+  border-radius: 12px;
+  color: var(--cp-nav-accent);
+  background: rgba(var(--cp-nav-glow), .14);
+  border: 1px solid rgba(var(--cp-nav-glow), .22);
 }
 .cp-nav-popover-copy strong { display: block; font-size: 14px; font-weight: 600; }
-.cp-nav-popover-copy p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.65; opacity: .85; }
+.cp-nav-popover-copy p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.65; opacity: .8; }
 @keyframes cp-nav-pop-in {
-  0% { opacity: 0; transform: scale(.82) translateY(8px); }
+  0% { opacity: 0; transform: scale(.86) translateY(8px); }
   100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ---- Reserve space so content never hides behind the dock ------------------ */
-body.cp-has-global-nav { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+body.cp-has-global-nav { padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
 
-/* ---- Suppress the legacy per-page nav rows (replaced by this one bar) ------ */
+/* ---- Suppress any legacy per-page nav rows (replaced by this one dock) ----- */
+body.cp-has-global-nav .section-nav,
 body.cp-has-global-nav .main-nav .nav-reveal-group,
-body.cp-has-global-nav .main-nav > a[href="/live"],
-body.cp-has-global-nav .section-nav { display: none !important; }
-/* Keep the home account/search controls, tucked to the right of the brand. */
-body.cp-has-global-nav .header .main-nav { margin-inline-start: auto; gap: 14px; }
+body.cp-has-global-nav .main-nav > a[href="/live"] { display: none !important; }
 
-/* ---- Phones: full-width dock, icon-only, safe areas ------------------------ */
+/* ---- Phones: keep the pill full-width with safe areas ---------------------- */
 @media (max-width: 700px) {
   .cp-global-nav { padding: 8px 10px calc(9px + env(safe-area-inset-bottom, 0px)); }
-  .cp-nav-bar { width: 100%; justify-content: space-between; gap: 4px; padding: 6px 7px; border-radius: 19px; }
-  .cp-nav-btn { flex: 1 1 0; min-width: 0; height: 46px; padding: 0; border-radius: 13px; }
-  .cp-nav-label { display: none; }
-  .cp-nav-btn.cp-nav-active { transform: translateY(-6px) scale(1.07); padding: 0; }
-  .cp-nav-btn.cp-nav-active .cp-nav-label { display: none; }
-  body.cp-has-global-nav { padding-bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+  .cp-nav-bar { width: 100%; height: 62px; }
+  body.cp-has-global-nav { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
 }
 
-/* ---- Large screens / TV: bigger targets, centered dock --------------------- */
+/* ---- Large screens / TV: a touch more presence ----------------------------- */
 @media (min-width: 1600px) {
-  .cp-nav-btn { height: 52px; min-width: 52px; }
-  .cp-nav-btn.cp-nav-active .cp-nav-label { font-size: 14px; }
-  .cp-nav-bar { gap: 8px; padding: 9px 12px; }
+  .cp-nav-bar { width: min(420px, 100%); height: 68px; }
+  .cp-nav-label { font-size: 11px; }
 }
 
 /* ---- Reduced motion / viewing preferences ---------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  .cp-nav-btn, .cp-nav-label, .cp-global-nav { transition: none; }
-  .cp-nav-btn::after { animation: none; }
+  .cp-nav-btn, .cp-nav-ico svg, .cp-nav-label, .cp-nav-glow, .cp-nav-dot, .cp-global-nav { transition: none; }
   .cp-nav-popover { animation: none; }
-  .cp-nav-btn.cp-nav-active { transform: none; }
 }
 .cp-global-nav.motion-off .cp-nav-btn,
-.cp-global-nav.motion-off .cp-nav-label { transition: none; }
-.cp-global-nav.motion-off .cp-nav-btn::after { animation: none; }
+.cp-global-nav.motion-off .cp-nav-ico svg,
+.cp-global-nav.motion-off .cp-nav-label,
+.cp-global-nav.motion-off .cp-nav-glow,
+.cp-global-nav.motion-off .cp-nav-dot { transition: none; }
 .cp-global-nav.motion-off .cp-nav-popover { animation: none; }
-.cp-global-nav.motion-off .cp-nav-btn.cp-nav-active { transform: none; }
-.cp-global-nav.no-glow .cp-nav-btn::after { display: none; }
 .cp-global-nav.solid-panels .cp-nav-bar,
-.cp-global-nav.solid-panels .cp-nav-btn,
 .cp-global-nav.solid-panels .cp-nav-popover {
-  background-image: none;
-  background-color: var(--cp-btn-solid);
+  background-color: var(--cp-btn-solid, #14161e);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
+.cp-global-nav.theme-light.solid-panels .cp-nav-bar,
+.cp-global-nav.theme-light.solid-panels .cp-nav-popover { background-color: var(--cp-btn-solid, #e9eef6); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .cp-nav-bar, .cp-nav-btn, .cp-nav-popover { background-color: var(--cp-btn-solid); }
-}
-@supports not (background-color: color-mix(in srgb, red 50%, transparent)) {
-  .cp-nav-bar { background-color: var(--cp-btn-solid); }
+  .cp-nav-bar, .cp-nav-popover { background-color: rgba(17, 19, 27, 0.92); }
+  .cp-global-nav.theme-light .cp-nav-bar, .cp-global-nav.theme-light .cp-nav-popover { background-color: rgba(255, 255, 255, 0.95); }
 }
