@@ -5,6 +5,7 @@ import {
   getPrefsSnapshot, setPref, subscribePrefs, clearFavorites, clearAllLocalData,
   type Prefs, type Language,
 } from '../../lib/preferences';
+import { useAccount } from '../account/AccountProvider';
 
 const DEFAULTS: Prefs = {
   language: 'ar', theme: 'dark', reduceMotion: false, textSize: 'normal', glow: true,
@@ -54,8 +55,10 @@ function ToggleRow({ title, desc, checked, onChange }: { title: string; desc?: s
 export default function SettingsCards({ language }: { language: Language }) {
   const ar = language === 'ar';
   const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, getServerPrefs);
+  const account = useAccount();
   const [confirm, setConfirm] = useState<null | 'favorites' | 'all'>(null);
   const [message, setMessage] = useState('');
+  const [accountBusy, setAccountBusy] = useState(false);
 
   const t = ar ? {
     language: 'اللغة', languageDesc: 'لغة الواجهة واتجاه الكتابة.',
@@ -74,9 +77,10 @@ export default function SettingsCards({ language }: { language: Language }) {
     playbackMuted: 'البدء بصوت مكتوم', playbackMutedDesc: 'يمكنك تشغيل الصوت من المشغّل.',
     scrollToPlayer: 'الانتقال إلى المشغّل', scrollToPlayerDesc: 'التمرير للمشغّل عند فتحه.',
     resetPlayback: 'استعادة خيارات المشاهدة الافتراضية',
-    account: 'الحساب', accountDesc: 'الحساب والملف الشخصي.',
-    accountStatus: 'الحساب غير مربوط', accountBody: 'تسجيل الدخول وإدارة الملف الشخصي يتوفران بعد ربط خدمة الحسابات.', signIn: 'تسجيل الدخول',
-    storage: 'التخزين والبيانات', storageDesc: 'كل البيانات محفوظة على هذا الجهاز فقط.',
+    account: 'الحساب المجاني', accountDesc: 'حساب مجاني لحفظ المفضلة وتقدم المشاهدة عبر الأجهزة.',
+    accountStatus: 'لم تسجّل الدخول', accountBody: 'أنشئ حساباً مجانياً أو سجّل الدخول لمزامنة مفضلتك وتقدم المشاهدة. بدون دفع أو اشتراك.', signIn: 'تسجيل الدخول / إنشاء حساب',
+    signedInAs: 'مسجّل الدخول باسم', signOut: 'تسجيل الخروج', accountFree: 'مجاني بالكامل',
+    storage: 'التخزين والبيانات', storageDesc: 'تُحفظ البيانات على هذا الجهاز، وتُزامَن مع الحساب المجاني عند تسجيل الدخول.',
     clearFavorites: 'مسح المفضلة وسجل المشاهدة', clearFavoritesDesc: 'إزالة الأفلام والقنوات المحفوظة وسجل المشاهدة.',
     clearAll: 'مسح جميع البيانات المحلية', clearAllDesc: 'إعادة كل الإعدادات والبيانات إلى الوضع الافتراضي.',
     confirmFavorites: 'تأكيد مسح المفضلة وسجل المشاهدة؟', confirmAll: 'تأكيد مسح كل البيانات؟ هذا لا يمكن التراجع عنه.',
@@ -100,9 +104,10 @@ export default function SettingsCards({ language }: { language: Language }) {
     playbackMuted: 'Start muted', playbackMutedDesc: 'You can unmute in the player.',
     scrollToPlayer: 'Go to player', scrollToPlayerDesc: 'Scroll to the player when opened.',
     resetPlayback: 'Reset playback options',
-    account: 'Account', accountDesc: 'Account and profile.',
-    accountStatus: 'Account not connected', accountBody: 'Sign-in and profile management will be available after the account service is connected.', signIn: 'Sign in',
-    storage: 'Storage & data', storageDesc: 'All data is stored on this device only.',
+    account: 'Free account', accountDesc: 'A free account to keep favorites and watch progress across devices.',
+    accountStatus: 'Not signed in', accountBody: 'Create a free account or sign in to sync your favorites and watch progress. No payment, no subscription.', signIn: 'Sign in / Create account',
+    signedInAs: 'Signed in as', signOut: 'Sign out', accountFree: 'Completely free',
+    storage: 'Storage & data', storageDesc: 'Data is saved on this device and synced to your free account when you sign in.',
     clearFavorites: 'Clear favorites & watch progress', clearFavoritesDesc: 'Remove saved films, channels and watch progress.',
     clearAll: 'Clear all local data', clearAllDesc: 'Reset every preference and saved item to defaults.',
     confirmFavorites: 'Clear favorites and watch progress?', confirmAll: 'Clear all data? This cannot be undone.',
@@ -167,9 +172,27 @@ export default function SettingsCards({ language }: { language: Language }) {
         <Card icon="user" title={t.account} desc={t.accountDesc}>
           <div className="settings-account">
             <span className="settings-account-avatar" aria-hidden="true"><Icon name="user" size={26} /></span>
-            <div><strong>{t.accountStatus}</strong><p>{t.accountBody}</p></div>
+            <div>
+              <strong>{account.user ? t.signedInAs : t.accountStatus}</strong>
+              <p>{account.user ? account.user.email : t.accountBody}</p>
+            </div>
           </div>
-          <Link href="/login" className="settings-ghost-btn">{t.signIn}</Link>
+          {account.user ? (
+            <button
+              type="button"
+              className="settings-ghost-btn"
+              disabled={accountBusy}
+              onClick={() => {
+                setAccountBusy(true);
+                void account.signOut().finally(() => setAccountBusy(false));
+              }}
+            >
+              {t.signOut}
+            </button>
+          ) : (
+            <Link href="/login" className="settings-ghost-btn">{t.signIn}</Link>
+          )}
+          <p className="settings-card-note">{t.accountFree}</p>
         </Card>
 
         <Card icon="trash" title={t.storage} desc={t.storageDesc}>

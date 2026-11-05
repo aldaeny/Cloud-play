@@ -28,7 +28,7 @@ export class PlaybackService {
     );
 
     if (!entitlement.allowed) {
-      if (!entitlement.subscriptionActive) throw new ForbiddenException('SUBSCRIPTION_REQUIRED', { cause: new Error('402') });
+      if (!entitlement.subscriptionActive && !entitlement.freeAccess) throw new ForbiddenException('SUBSCRIPTION_REQUIRED', { cause: new Error('402') });
       if (!entitlement.rightsOrRating) throw new ForbiddenException('RIGHTS_OR_RATING', { cause: new Error('403') });
       if (!entitlement.streamLimit) throw new ConflictException('STREAM_LIMIT', { cause: new Error('409') });
       if (!entitlement.deviceLimit) throw new ConflictException('DEVICE_LIMIT', { cause: new Error('409') });

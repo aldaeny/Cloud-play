@@ -7,6 +7,7 @@
  * theme / language / motion classes the instant a setting changes.
  */
 export const PREFS_EVENT = 'cloudplay-prefs-changed';
+export const LIBRARY_EVENT = 'cloudplay-library-changed';
 
 export type Language = 'ar' | 'en';
 export type Theme = 'dark' | 'light';
@@ -17,6 +18,11 @@ let prefsSnapshot: Prefs | null = null;
 export function notifyPrefsChanged() {
   prefsSnapshot = null; // invalidate so the next snapshot re-reads storage
   try { window.dispatchEvent(new Event(PREFS_EVENT)); } catch { /* no-op */ }
+}
+
+/** Broadcast a favorites/progress change so free-account sync can push it. */
+export function notifyLibraryChanged() {
+  try { window.dispatchEvent(new Event(LIBRARY_EVENT)); } catch { /* no-op */ }
 }
 
 export function subscribePrefs(cb: () => void): () => void {
@@ -89,6 +95,7 @@ export function clearFavorites(): number {
     keys.forEach(k => { localStorage.removeItem(k); n++; });
   } catch { /* storage optional */ }
   notifyPrefsChanged();
+  notifyLibraryChanged();
   return n;
 }
 
@@ -104,5 +111,6 @@ export function clearAllLocalData(): number {
     keys.forEach(k => { localStorage.removeItem(k); n++; });
   } catch { /* optional */ }
   notifyPrefsChanged();
+  notifyLibraryChanged();
   return n;
 }
