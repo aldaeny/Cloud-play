@@ -6,6 +6,7 @@ import { Channel } from '@/types/channel';
 import { fetchChannels } from '@/lib/channels';
 import { Favorites, WatchHistory } from '@/lib/storage';
 import { ChannelCard, ChannelGrid, CategoryFilter, CountryFilter, QualityFilter, ChannelSearch, ChannelSort } from '@/components/channels/ChannelCard';
+import { CATEGORIES } from '@/constants/categories';
 
 export default function LivePage() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -47,7 +48,7 @@ export default function LivePage() {
     setFavorites(newFavs);
   };
 
-  // الفلترة والترتيب (باستخدام logic من player-utils)
+  // الفلترة حسب البحث والتصنيف والدولة والجودة والمفضلة والبث المباشر
   const filteredChannels = channels.filter(c => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (category !== "all" && c.category !== category) return false;
@@ -58,6 +59,7 @@ export default function LivePage() {
     return true;
   });
 
+  // ترتيب ذكي: المفضلة أولاً → القنوات العراقية → ثم حسب المختار (اسم / دولة / جودة)
   const sortedChannels = [...filteredChannels].sort((a, b) => {
     const aFav = favorites.includes(a.id) ? 0 : 1;
     const bFav = favorites.includes(b.id) ? 0 : 1;
@@ -68,14 +70,22 @@ export default function LivePage() {
     if (aIraqi !== bIraqi) return aIraqi - bIraqi;
 
     // حسب الترتيب المختار
-    if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "country") return a.country.localeCompare(b.country);
+    if (sort === "name") return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    if (sort === "country") return a.country.localeCompare(b.country, undefined, { sensitivity: 'base' });
     if (sort === "quality") {
       const qOrder = { "4K": 0, "FHD": 1, "HD": 2, "SD": 3 };
       return (qOrder[a.quality] || 4) - (qOrder[b.quality] || 4);
     }
     return 0;
   });
+
+  // تجميع القنوات حسب التصنيف مع ترتيب Primer للفئات
+  const categoryOrder = ['sports', 'news', 'movies', 'series', 'entertainment', 'kids', 'religious', 'music', 'documentary', 'comedy', 'general'];
+
+  const groupedByCategory = sortedChannels.reduce<Record<string, Channel[]>>((acc, ch) => {
+    (acc[ch.category] = acc[ch.category] || []).push(ch);
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0A0A0A] pb-20">
@@ -106,18 +116,40 @@ export default function LivePage() {
         </div>
       </div>
 
-      {/* Grid */}
+      {/* Grid — مجمعة حسب التصنيف مع عناوين فئات ومرجعية عدد القنوات */}
       {loading ? (
         <div className="p-8 text-center text-gray-500">جاري تحميل القنوات...</div>
       ) : sortedChannels.length === 0 ? (
         <div className="p-8 text-center text-gray-500">لا توجد قنوات مطابقة للبحث</div>
       ) : (
-        <ChannelGrid 
-          channels={sortedChannels} 
-          onPlay={handlePlay}
-          favorites={favorites}
-          onFavoriteToggle={toggleFav}
-        />
+        <>
+          {categoryOrder.map(catId => {
+            const catChannels = groupedByCategory[catId] || [];
+            if (catChannels.length === 0) return null;
+            const catInfo = CATEGORIES.find(c => c.id === catId);
+            return (
+              <section key={catId} className="mb-8">
+                <h3 className="mb-3 flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-[#A855F7] text-white flex items-center justify-center text-xs font-bold shadow-lg">
+                      {catChannels.length}
+                    </span>
+                    {catInfo?.ar || catId}
+                  </div>
+                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#222] px-2 py-1 rounded-full">
+                    {catChannels.length} قناة
+                  </span>
+                </h3>
+                <ChannelGrid
+                  channels={catChannels}
+                  onPlay={handlePlay}
+                  favorites={favorites}
+                  onFavoriteToggle={toggleFav}
+                />
+              </section>
+            );
+          })}
+        </>
       )}
 
       {/* Channel Detail / Player Modal */}
