@@ -10,13 +10,21 @@ Plus a one-tap **My private player** button that appears only for the owner acco
 
 ## 1. القنوات / The channels
 
-١٢ قناة، كل واحدة تحقّقت منها يدوياً بجلب قائمة التشغيل الرئيسية والتأكد أنها `#EXTM3U` حقيقية.
+٣١ قناة، كل واحدة تحقّقت منها يدوياً بجلب قائمة التشغيل الرئيسية والتأكد أنها `#EXTM3U` حقيقية.
 
-| المجموعة | القنوات |
-|---|---|
-| 🇮🇶 **العراق** | الشرقية · الشرقية الإخبارية · الرشيد |
-| 📰 **أخبار عربية** | الجزيرة · الجزيرة مباشر · العربية · الحدث · سكاي نيوز عربية · TRT عربي · DW عربية |
-| 🌍 **عالمية** | Al Jazeera English · DW English |
+31 channels, each hand-verified by fetching its master playlist and confirming a real `#EXTM3U`.
+
+| المجموعة / Group | العدد | القنوات |
+|---|---|---|
+| 🇮 **العراق** | 3 | الشرقية · الشرقية الإخبارية · الرشيد |
+| 📰 **أخبار واقتصاد** | 14 | الجزيرة · الجزيرة مباشر · العربية · الحدث · سكاي نيوز عربية · TRT عربي · DW عربية · التلفزيون العربي · العربي 2 · الميادين · CNBC عربية · العربية أسواق · الكويت الإخبارية · فلسطين مباشر |
+| 🇦🇪 **الخليج** | 4 | الكويت 1 · الكويت إثراء · عجمان · القرآن الكريم |
+| 🇯 **بلاد الشام** | 6 | التلفزيون الأردني · عمّان · رؤيا · تلفزيون فلسطين · مساواة · المستقبل |
+| ⚽ **رياضة** | 2 | الكويت الرياضية · الأردن الرياضية |
+| 🌍 **عالمية** | 2 | Al Jazeera English · DW English |
+
+> راجع أيضاً [`docs/public-library/`](../public-library/README.md) لمكتبة الأفلام العامة (36 فيلماً).
+> See also [`docs/public-library/`](../public-library/README.md) for the public film library (36 films).
 
 ### قواعد الإدراج / Inclusion rules
 
@@ -37,7 +45,10 @@ Plus a one-tap **My private player** button that appears only for the owner acco
 | العراقية (IMN) | الروابط ترجع 404 — القائمة المتداولة قديمة |
 | France 24 | القائمة الرئيسية HTTPS لكن الجودات الداخلية HTTP → mixed-content |
 | NASA TV · TRT (النطاق القديم) | لا تستجيب |
-| الجزيرة الوثائقية | `forbidden` من الـ CDN |
+| الجزيرة الوثائقية | `forbidden` من الـ CDN (كلا المضيفين) |
+| السعودية · MBC Masr · MTV Lebanon | `ACCESS DENIED` من `edgenextcdn.net` (حجب جغرافي/رموز) |
+| آفاق · Fujairah TV | لا تستجيب (500) |
+| فلسطين التعليمية | قائمة تشغيل فارغة |
 | DW Español | تم تصحيحه: `dwstream104` إسباني وليس عربي — العربي هو `103` |
 
 ---
@@ -77,6 +88,7 @@ Plus a one-tap **My private player** button that appears only for the owner acco
 
 ```bash
 npm run test:public  --workspace aether-web   # 10 checks
+npm run test:films   --workspace aether-web   # 15 checks (public film library)
 npm run test:private --workspace aether-web   # 23 checks (regression)
 ```
 

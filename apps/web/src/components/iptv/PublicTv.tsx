@@ -14,7 +14,7 @@ const T = {
   ar: {
     heading: 'بث مباشر مجاني',
     intro: 'قنوات يبثّها أصحابها مجاناً على الإنترنت — بدون تسجيل دخول وبدون اشتراك.',
-    all: 'الكل', iraq: 'العراق', news: 'أخبار عربية', world: 'عالمية',
+    all: 'الكل', iraq: 'العراق', news: 'أخبار واقتصاد', gulf: 'الخليج', levant: 'بلاد الشام', sport: 'رياضة', world: 'عالمية',
     search: 'ابحث عن قناة…', favoritesOnly: 'المفضلة فقط',
     loading: 'جاري تحميل القنوات…', empty: 'لا توجد قنوات مطابقة.',
     failed: 'تعذّر تحميل قائمة القنوات. حاول تحديث الصفحة.',
@@ -29,7 +29,7 @@ const T = {
   en: {
     heading: 'Free live TV',
     intro: 'Channels the broadcasters themselves stream free online — no sign-in, no subscription.',
-    all: 'All', iraq: 'Iraq', news: 'Arabic news', world: 'International',
+    all: 'All', iraq: 'Iraq', news: 'News & business', gulf: 'Gulf', levant: 'Levant', sport: 'Sport', world: 'International',
     search: 'Search channels…', favoritesOnly: 'Favorites only',
     loading: 'Loading channels…', empty: 'No matching channels.',
     failed: 'Could not load the channel list. Try refreshing the page.',
@@ -43,7 +43,10 @@ const T = {
   },
 };
 
-const FLAGS: Record<string, string> = { IQ: '🇮🇶', QA: '🇶🇦', SA: '🇸🇦', TR: '🇹🇷', DE: '🇩🇪' };
+const FLAGS: Record<string, string> = {
+  IQ: '🇮🇶', QA: '🇶', SA: '🇦', TR: '🇷', DE: '🇩🇪',
+  AE: '🇦', JO: '🇴', PS: '🇸', KW: '🇰🇼', LB: '🇱',
+};
 
 export default function PublicTv({ language, initialChannels }: { language: Language; initialChannels?: PublicChannel[] }) {
   const t = T[language];
@@ -122,7 +125,7 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
     });
   }, [channels, filter, query, onlyFavorites, favorites]);
 
-  const tabs: Filter[] = ['all', 'iraq', 'news', 'world'];
+  const tabs: Filter[] = ['all', 'iraq', 'news', 'gulf', 'levant', 'sport', 'world'];
 
   return (
     <div className="ptv">
