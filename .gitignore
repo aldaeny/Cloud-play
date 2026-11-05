@@ -65,3 +65,6 @@ docker-compose.override.yml
 # Operator playlists may expose stream endpoints or licensed content configuration.
 *.m3u
 *.m3u8
+
+# Temporary compile output from the private-player security tests
+apps/web/.private-test-*
