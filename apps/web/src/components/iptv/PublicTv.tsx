@@ -3,6 +3,7 @@ import type { PublicChannel, PublicGroup } from '../../server/public-tv';
 import type { LicensedChannel } from '../../server/licensed-iptv';
 import MediaViewer from '../player/MediaViewer';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
+import { countryFlag } from '../../lib/country-flag';
 
 type Language = 'ar' | 'en';
 type Filter = 'all' | PublicGroup;
@@ -41,11 +42,6 @@ const T = {
     favNote: 'Favorites are stored on this device and sync to your free account if you sign in.',
     operator: 'Operator channels',
   },
-};
-
-const FLAGS: Record<string, string> = {
-  IQ: '🇮🇶', QA: '🇶', SA: '🇦', TR: '🇷', DE: '🇩🇪',
-  AE: '🇦', JO: '🇴', PS: '🇸', KW: '🇰🇼', LB: '🇱',
 };
 
 export default function PublicTv({ language, initialChannels }: { language: Language; initialChannels?: PublicChannel[] }) {
@@ -186,7 +182,7 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
                 })}
               >
                 <span className="ptv-badge"><span className="ptv-dot" aria-hidden="true" />{t.live}</span>
-                <span className="ptv-flag" aria-hidden="true">{FLAGS[channel.country] ?? '📺'}</span>
+                <span className="ptv-flag" aria-hidden="true">{countryFlag(channel.country)}</span>
                 <strong className="ptv-name">{language === 'ar' ? channel.nameAr : channel.nameEn}</strong>
                 <small className="ptv-owner">{channel.broadcaster}</small>
                 <span className="ptv-play">▶ {t.play}</span>

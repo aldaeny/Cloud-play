@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import MediaViewer from '../player/MediaViewer';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
+import { countryFlag } from '../../lib/country-flag';
 import type { CommunityChannel, CommunityFacet } from '../../server/community-tv';
 
 type Language = 'ar' | 'en';
@@ -70,10 +71,7 @@ const COUNTRY_NAMES: Record<string, { ar: string; en: string }> = {
   ro: { ar: 'رومانيا', en: 'Romania' }, th: { ar: 'تايلاند', en: 'Thailand' },
 };
 
-function flag(code: string): string {
-  if (!/^[a-z]{2}$/i.test(code)) return '📺';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1f1e6 + c.charCodeAt(0) - 65));
-}
+const flag = countryFlag;
 
 function countryLabel(code: string, language: Language): string {
   return COUNTRY_NAMES[code]?.[language] ?? code.toUpperCase();
