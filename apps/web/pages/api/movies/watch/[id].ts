@@ -63,13 +63,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const film = getPublicFilm(id);
   if (!film) return res.status(404).json({ error: 'FILM_NOT_FOUND' });
 
-  // Films with a stable direct URL don't need a metadata round-trip.
-  if (!film.archiveId) {
-    if (!film.url) return res.status(404).json({ error: 'NO_PLAYABLE_FILE' });
-    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
-    return res.redirect(302, film.url);
-  }
-
   const cached = resolved.get(film.id);
   if (cached && cached.expires > Date.now()) {
     res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
