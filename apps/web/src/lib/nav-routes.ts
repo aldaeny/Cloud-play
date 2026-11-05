@@ -17,9 +17,7 @@ export type NavRoute = {
 
 const norm = (p: string) => p.replace(/\/$/, '') || '/';
 
-// The 5 core dock items requested: Home · Movies · Series · Favorites · Settings.
-// Live TV, Search and Continue remain fully reachable (header search, home cards
-// and the footer) — no route is disabled; the dock is just the core five.
+// The 6 core dock items requested: Home · Movies · Series · TV · Favorites · Settings.
 export const NAV_ROUTES: NavRoute[] = [
   { href: '/', icon: 'home', ar: 'الرئيسية', en: 'Home',
     descAr: 'واجهتك الأولى: أحدث الأفلام والبث المباشر والحصريات.',
@@ -33,6 +31,10 @@ export const NAV_ROUTES: NavRoute[] = [
     descAr: 'قسم المسلسلات؛ تُضاف الأعمال بعد ربط محتوى مرخّص بالمكتبة.',
     descEn: 'The series section; titles arrive once licensed content is linked.',
     match: p => norm(p) === '/series' },
+  { href: '/live', icon: 'tv', ar: 'البث المباشر', en: 'Live TV',
+    descAr: 'قنوات تلفزيونية مباشرة وتصنيفات عالمية ومحلية.',
+    descEn: 'Live TV channels, global and local categories.',
+    match: p => norm(p) === '/live' || norm(p).startsWith('/live/') },
   { href: '/favorites', icon: 'star', ar: 'المفضلة', en: 'Favorites',
     descAr: 'أفلامك المحفوظة على هذا الجهاز فقط، للوصول السريع إليها.',
     descEn: 'Your saved films, stored on this device only, for quick access.',
