@@ -68,7 +68,7 @@ async function main() {
   console.log('\nPublic free live TV\n');
 
   await check('the list is non-empty and substantial', () => {
-    assert.ok(channels.length >= 10, `expected >= 10 channels, got ${channels.length}`);
+    assert.ok(channels.length >= 30, `expected >= 30 channels, got ${channels.length}`);
   });
 
   await check('every stream is credential-free HTTPS HLS', () => {
@@ -100,7 +100,7 @@ async function main() {
       assert.ok(channel.nameAr && channel.nameEn, `names missing for ${channel.id}`);
       assert.ok(channel.broadcaster, `broadcaster missing for ${channel.id}`);
       assert.ok(channel.officialUrl.startsWith('https://'), `official page must be https for ${channel.id}`);
-      assert.ok(['iraq', 'news', 'world'].includes(channel.group), `bad group for ${channel.id}`);
+      assert.ok(['iraq', 'news', 'gulf', 'levant', 'sport', 'world'].includes(channel.group), `bad group for ${channel.id}`);
       assert.ok(['ar', 'en'].includes(channel.language), `bad language for ${channel.id}`);
     }
   });

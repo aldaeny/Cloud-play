@@ -6,7 +6,7 @@ import IntroLayer from '../src/components/intro/IntroLayer';
 import { readAppearance } from '../src/lib/appearance';
 import ReferenceReel from '../src/components/carousel/ReferenceReel';
 import CloudPlayBrand from '../src/components/brand/CloudPlayBrand';
-import { movies } from '../src/components/movies/OpenMovies';
+import { PUBLIC_FILMS as movies } from '../src/server/public-films';
 import { PlaybackPreferencesContext } from '../src/components/player/PlaybackPreferences';
 import { useEffect, useRef, useState } from 'react';
 import Icon from '../src/components/icons/Icon';
@@ -129,7 +129,7 @@ export default function Home() {
   const move = (n: number) => setActive(current => (current + n + items.length) % items.length);
   return <PlaybackPreferencesContext.Provider value={{ autoPlay: playbackAuto, startMuted: playbackMuted, scrollToPlayer }}><div className={`site theme-${theme} text-${textSize}${reduceMotion ? ' motion-off' : ''}${glowEnabled ? '' : ' no-glow'}${highContrast ? ' high-contrast' : ''}${solidPanels ? ' solid-panels' : ''}${hideCover ? ' hide-cover' : ''}${staticCover ? ' static-cover' : ''}`} id="top" dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <IntroLayer/>
-    <Head><title>Cloud Play — Your world of stories</title><meta name="description" content="Cloud Play Iraq: licensed short films and an optional live TV guide."/><link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/></Head>
+    <Head><title>Cloud Play — Your world of stories</title><meta name="description" content="Cloud Play Iraq — free public-domain films and free live TV. No sign-in, no subscription, no payment."/><link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/></Head>
     <AppHeader language={language} theme={theme} onToggleLanguage={() => chooseLanguage(language === 'ar' ? 'en' : 'ar')} onToggleTheme={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')} onSearchClick={openSearch} hasQuery={!!query.trim()} searchButtonRef={searchButtonRef}/>
     <div ref={searchRowRef} className="home-search shell">
       <SearchField
@@ -157,6 +157,12 @@ export default function Home() {
         <strong>{language === 'ar' ? `بث مباشر مجاني — ${PUBLIC_CHANNELS.length} قناة` : `Free live TV — ${PUBLIC_CHANNELS.length} channels`}</strong>
         <small>{language === 'ar' ? 'قنوات عراقية وعربية وعالمية يبثّها أصحابها مجاناً — بدون تسجيل دخول ولا اشتراك.' : 'Iraqi, Arabic and international channels streamed free by their owners — no sign-in, no subscription.'}</small>
         <span className="home-live-go">{language === 'ar' ? 'شاهد الآن' : 'Watch now'} <span aria-hidden="true">↗</span></span>
+      </Link>
+      <Link href="/movies" className="home-live-card home-films-card">
+        <span className="home-live-badge home-films-badge">{language === 'ar' ? 'مجاني بالكامل' : 'COMPLETELY FREE'}</span>
+        <strong>{language === 'ar' ? `مكتبة أفلام — ${movies.length} فيلماً` : `Film library — ${movies.length} films`}</strong>
+        <small>{language === 'ar' ? 'أفلام كاملة من الملك العام: كلاسيكيات، كوميديا، نوار، رعب ومغامرة — بدون تسجيل دخول ولا اشتراك.' : 'Full public-domain features: classics, comedy, noir, horror and adventure — no sign-in, no subscription.'}</small>
+        <span className="home-live-go">{language === 'ar' ? 'تصفّح الأفلام' : 'Browse films'} <span aria-hidden="true">↗</span></span>
       </Link>
     </div>
     <section className="home-highlights shell reveal-on-scroll" aria-labelledby="home-highlights-title">
