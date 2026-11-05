@@ -143,3 +143,48 @@
   .home-live-band { padding-top: 18px; }
   .home-live-card { padding: 18px 17px; }
 }
+
+/* Live TV source switch: curated (verified) vs the iptv-org world directory */
+.live-mode { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.live-mode-tab {
+  flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 3px;
+  padding: 14px 18px; border-radius: 15px; cursor: pointer; text-align: start; color: inherit;
+  background: var(--glass-surface); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+}
+.live-mode-tab:hover { transform: translateY(-3px); border-color: #9b80ff; box-shadow: var(--glass-hover); }
+.live-mode-tab strong { font-size: 14.5px; font-weight: 750; }
+.live-mode-tab small { font-size: 11px; color: #98a1ba; line-height: 1.5; }
+.site.theme-light .live-mode-tab small { color: #5b6580; }
+.live-mode-tab.selected { border-color: transparent; background: linear-gradient(120deg, var(--purple), var(--pink)); color: #fff; }
+.live-mode-tab.selected small { color: rgba(255, 255, 255, .82); }
+
+/* Community directory */
+.ctv-select {
+  padding: 10px 14px; border-radius: 999px; font-size: 12.5px; max-width: 230px;
+  color: inherit; background: var(--liquid-surface); border: 1px solid var(--liquid-border); outline: none;
+}
+.ctv-select:focus-visible { border-color: #9b80ff; }
+.ctv-logo {
+  position: relative; width: 74px; height: 42px; border-radius: 8px; overflow: hidden;
+  background: rgba(255, 255, 255, .07); flex: none;
+}
+.ctv-logo img { object-fit: contain; padding: 3px; }
+.site.theme-light .ctv-logo { background: rgba(0, 0, 0, .05); }
+.ctv-more {
+  align-self: center; padding: 11px 26px; border-radius: 999px; cursor: pointer;
+  font-size: 12.5px; font-weight: 750; color: inherit;
+  background: var(--liquid-surface); border: 1px solid var(--liquid-border);
+}
+.ctv-more:hover:not(:disabled) { border-color: #9b80ff; }
+.ctv-more:disabled { opacity: .6; cursor: default; }
+.ctv-retry {
+  margin-inline-start: 8px; padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  font-size: 11.5px; font-weight: 700; color: inherit; background: transparent; border: 1px solid currentColor;
+}
+.community-tv .ptv-name { font-size: 13.5px; }
+@media (max-width: 700px) {
+  .live-mode-tab { min-width: 140px; padding: 12px 14px; }
+  .live-mode-tab strong { font-size: 13px; }
+  .ctv-select { max-width: 100%; flex: 1; }
+}
