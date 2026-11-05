@@ -82,6 +82,43 @@ describe('EntitlementService', () => {
       expect(result.allowed).toBe(false);
       expect(result.streamLimit).toBe(false);
     });
+
+    it('excludes expired subscriptions (currentPeriodEnd must be in the future)', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.playbackSession.count.mockResolvedValue(0);
+      mockPrisma.device.count.mockResolvedValue(0);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(result.subscriptionActive).toBe(false);
+      expect(result.allowed).toBe(false);
+      expect(mockPrisma.subscription.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: 'ACTIVE',
+            currentPeriodEnd: { gt: expect.any(Date) },
+          }),
+        }),
+      );
+    });
+
+    it('does not count revoked devices against the device limit', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([
+        { id: 'sub-id', plan: { maxStreams: 3, maxDevices: 5, active: true } },
+      ]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.playbackSession.count.mockResolvedValue(0);
+      mockPrisma.device.count.mockResolvedValue(2);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(mockPrisma.device.count).toHaveBeenCalledWith({
+        where: { userId: 'user-id', revokedAt: null },
+      });
+    });
   });
 
   describe('grantSubscription', () => {

@@ -56,7 +56,7 @@ export default function SectionLayout({ title, children, noIndex = false }: {
       dir={ar ? 'rtl' : 'ltr'}
     >
       <Head>
-        <title>{title[language]} | Cloud Play Iraq</title>
+        <title>{`${title[language]} | Cloud Play Iraq`}</title>
         <meta name="description" content={ar ? 'اكتشف الأفلام المتاحة والبث المباشر على كلاود بلاي العراق.' : 'Explore available movies and live TV on Cloud Play Iraq.'} />
         <link rel="canonical" href={`https://cloud-play-iraq.vercel.app${router.asPath.split('?')[0]}`} />
         {noIndex && <meta name="robots" content="noindex,follow" />}

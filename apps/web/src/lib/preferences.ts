@@ -11,7 +11,11 @@ export const PREFS_EVENT = 'cloudplay-prefs-changed';
 export type Language = 'ar' | 'en';
 export type Theme = 'dark' | 'light';
 
+// Cached snapshot for useSyncExternalStore: a stable reference until prefs change.
+let prefsSnapshot: Prefs | null = null;
+
 export function notifyPrefsChanged() {
+  prefsSnapshot = null; // invalidate so the next snapshot re-reads storage
   try { window.dispatchEvent(new Event(PREFS_EVENT)); } catch { /* no-op */ }
 }
 
@@ -62,6 +66,14 @@ export function readPrefs(): Prefs {
     playbackMuted: read('cloudplay-playback-muted') === 'true',
     scrollToPlayer: read('cloudplay-scroll-to-player') !== 'false',
   };
+}
+
+/** Stable cached snapshot for useSyncExternalStore. Returns the same object
+ *  reference until a preference changes, so React does not loop on re-renders.
+ *  Only used on the client; SSR uses a constant server snapshot instead. */
+export function getPrefsSnapshot(): Prefs {
+  if (prefsSnapshot === null) prefsSnapshot = readPrefs();
+  return prefsSnapshot;
 }
 
 /** Remove saved favorites (films + channels) AND locally stored watch progress.

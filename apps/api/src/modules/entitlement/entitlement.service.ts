@@ -21,11 +21,16 @@ export class EntitlementService {
     titleId: string,
     episodeId?: string,
   ): Promise<EntitlementCheckResult> {
-    // Check active subscriptions
+    const now = new Date();
+
+    // Check active subscriptions. A subscription only grants access while its
+    // paid period is still running: an ACTIVE row whose currentPeriodEnd has
+    // passed must not allow playback (mirrors BillingService.getCurrentSubscription).
     const subscriptions = await this.prisma.subscription.findMany({
       where: {
         userId,
         status: 'ACTIVE',
+        currentPeriodEnd: { gt: now },
         plan: { active: true },
       },
       include: { plan: true },
@@ -34,7 +39,6 @@ export class EntitlementService {
     const plan = subscriptions[0]?.plan;
 
     // Check rights windows
-    const now = new Date();
     const rightsWindows = await this.prisma.rightsWindow.findMany({
       where: {
         titleId,
@@ -55,9 +59,9 @@ export class EntitlementService {
     const maxStreams = plan?.maxStreams || 3;
     const streamLimit = activeSessions < maxStreams;
 
-    // Check device limits
+    // Check device limits. Revoked devices no longer count against the quota.
     const devices = await this.prisma.device.count({
-      where: { userId },
+      where: { userId, revokedAt: null },
     });
     const deviceLimit = devices < (plan?.maxDevices || 5);
 

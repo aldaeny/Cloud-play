@@ -134,7 +134,6 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       const el = siteEl();
       if (el) clearTransition(el);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
   return <>{children}</>;

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, useSyncExternalStore, type ReactNode } from 'react';
 import Icon, { type IconName } from '../icons/Icon';
 import {
-  readPrefs, setPref, subscribePrefs, clearFavorites, clearAllLocalData,
+  getPrefsSnapshot, setPref, subscribePrefs, clearFavorites, clearAllLocalData,
   type Prefs, type Language,
 } from '../../lib/preferences';
 
@@ -11,6 +11,10 @@ const DEFAULTS: Prefs = {
   autoCarousel: true, highContrast: false, solidPanels: false, hideCover: false,
   staticCover: false, playbackAuto: true, playbackMuted: false, scrollToPlayer: true,
 };
+
+// Constant server snapshot keeps SSR/hydration deterministic (localStorage is
+// only read on the client via getPrefsSnapshot).
+const getServerPrefs = () => DEFAULTS;
 
 function Card({ icon, title, desc, children }: { icon: IconName; title: string; desc?: string; children: ReactNode }) {
   return (
@@ -49,14 +53,9 @@ function ToggleRow({ title, desc, checked, onChange }: { title: string; desc?: s
 
 export default function SettingsCards({ language }: { language: Language }) {
   const ar = language === 'ar';
-  const [prefs, setPrefs] = useState<Prefs>(DEFAULTS);
+  const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, getServerPrefs);
   const [confirm, setConfirm] = useState<null | 'favorites' | 'all'>(null);
   const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    setPrefs(readPrefs());
-    return subscribePrefs(() => setPrefs(readPrefs()));
-  }, []);
 
   const t = ar ? {
     language: 'اللغة', languageDesc: 'لغة الواجهة واتجاه الكتابة.',
@@ -123,7 +122,8 @@ export default function SettingsCards({ language }: { language: Language }) {
     void n;
     setConfirm(null);
     setMessage(kind === 'favorites' ? t.doneFavorites : t.doneAll);
-    setPrefs(readPrefs());
+    // clearFavorites/clearAllLocalData already broadcast notifyPrefsChanged(),
+    // so useSyncExternalStore re-reads the snapshot automatically.
   };
 
   return (

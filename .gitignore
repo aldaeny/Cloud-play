@@ -60,6 +60,7 @@ docker-compose.override.yml
 .cache/
 .eslintcache
 .turbo/
+*.tsbuildinfo
 
 # Operator playlists may expose stream endpoints or licensed content configuration.
 *.m3u
