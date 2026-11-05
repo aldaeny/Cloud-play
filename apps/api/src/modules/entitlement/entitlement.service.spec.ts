@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { EntitlementService } from './entitlement.service';
 import { PrismaService } from '../../prisma.service';
 
@@ -23,9 +24,18 @@ describe('EntitlementService', () => {
     },
   };
 
+  // Free access is the product default; tests flip this to exercise the gate.
+  const mockConfig = { get: jest.fn((key: string, fallback?: string) => (key === 'FREE_ACCESS' ? process.env.TEST_FREE_ACCESS ?? fallback : fallback)) };
+
   beforeEach(async () => {
+    delete process.env.TEST_FREE_ACCESS;
+    mockConfig.get.mockClear();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [EntitlementService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        EntitlementService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: ConfigService, useValue: mockConfig },
+      ],
     }).compile();
 
     service = module.get<EntitlementService>(EntitlementService);
@@ -36,7 +46,8 @@ describe('EntitlementService', () => {
   });
 
   describe('check', () => {
-    it('should return allowed: false when no subscriptions', async () => {
+    it('should return allowed: false when no subscriptions and free access is disabled', async () => {
+      process.env.TEST_FREE_ACCESS = 'false';
       mockPrisma.subscription.findMany.mockResolvedValue([]);
       mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
       mockPrisma.playbackSession.count.mockResolvedValue(0);
@@ -47,7 +58,65 @@ describe('EntitlementService', () => {
 
       expect(result.allowed).toBe(false);
       expect(result.subscriptionActive).toBe(false);
+      expect(result.freeAccess).toBe(false);
       expect(result.rightsOrRating).toBe(true);
+    });
+
+    it('allows playback without a subscription in free-access mode (default)', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.playbackSession.count.mockResolvedValue(0);
+      mockPrisma.device.count.mockResolvedValue(0);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(result.allowed).toBe(true);
+      expect(result.subscriptionActive).toBe(false);
+      expect(result.freeAccess).toBe(true);
+      expect(result.rightsOrRating).toBe(true);
+    });
+
+    it('still enforces rights windows in free-access mode', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([]);
+      mockPrisma.playbackSession.count.mockResolvedValue(0);
+      mockPrisma.device.count.mockResolvedValue(0);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(result.freeAccess).toBe(true);
+      expect(result.rightsOrRating).toBe(false);
+      expect(result.allowed).toBe(false);
+    });
+
+    it('still enforces stream limits in free-access mode', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.playbackSession.count.mockResolvedValue(3);
+      mockPrisma.device.count.mockResolvedValue(0);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(result.freeAccess).toBe(true);
+      expect(result.streamLimit).toBe(false);
+      expect(result.allowed).toBe(false);
+    });
+
+    it('still enforces device limits in free-access mode', async () => {
+      mockPrisma.subscription.findMany.mockResolvedValue([]);
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.playbackSession.count.mockResolvedValue(0);
+      mockPrisma.device.count.mockResolvedValue(5);
+      mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
+
+      const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+
+      expect(result.freeAccess).toBe(true);
+      expect(result.deviceLimit).toBe(false);
+      expect(result.allowed).toBe(false);
     });
 
     it('should return allowed: true when all checks pass', async () => {
@@ -84,6 +153,7 @@ describe('EntitlementService', () => {
     });
 
     it('excludes expired subscriptions (currentPeriodEnd must be in the future)', async () => {
+      process.env.TEST_FREE_ACCESS = 'false';
       mockPrisma.subscription.findMany.mockResolvedValue([]);
       mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
       mockPrisma.playbackSession.count.mockResolvedValue(0);

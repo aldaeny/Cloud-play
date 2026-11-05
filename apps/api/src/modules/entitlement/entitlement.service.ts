@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
 
 export interface EntitlementCheckResult {
   allowed: boolean;
   subscriptionActive: boolean;
+  /** True when the product is running in free-access mode (no paywall). */
+  freeAccess?: boolean;
   rightsOrRating: boolean;
   streamLimit: boolean;
   deviceLimit: boolean;
@@ -12,7 +15,20 @@ export interface EntitlementCheckResult {
 
 @Injectable()
 export class EntitlementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  /**
+   * Cloud Play Iraq is a free product. Free access is the default; an operator
+   * can re-enable the subscription gate by setting FREE_ACCESS=false. Free
+   * access waives ONLY the payment requirement — rights windows and the
+   * stream/device abuse limits below still apply.
+   */
+  private isFreeAccess(): boolean {
+    return this.config.get<string>('FREE_ACCESS', 'true') !== 'false';
+  }
 
   async check(
     userId: string,
@@ -37,6 +53,7 @@ export class EntitlementService {
     });
     const subscriptionActive = subscriptions.length > 0;
     const plan = subscriptions[0]?.plan;
+    const freeAccess = this.isFreeAccess();
 
     // Check rights windows
     const rightsWindows = await this.prisma.rightsWindow.findMany({
@@ -79,8 +96,9 @@ export class EntitlementService {
     const resumeAtSec = lastSession?.positionSec || 0;
 
     return {
-      allowed: subscriptionActive && rightsOrRating && streamLimit && deviceLimit,
+      allowed: (freeAccess || subscriptionActive) && rightsOrRating && streamLimit && deviceLimit,
       subscriptionActive,
+      freeAccess,
       rightsOrRating,
       streamLimit,
       deviceLimit,

@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import CastControls from './CastControls';
+import { notifyLibraryChanged } from '../../lib/preferences';
 type Language='ar'|'en';
 type State='loading'|'ready'|'playing'|'blocked'|'failed';
 type Track={label:string;id:number};
@@ -9,7 +10,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  const preferences=useContext(PlaybackPreferencesContext);const preferencesRef=useRef(preferences);const [initialScroll]=useState(preferences.scrollToPlayer);
  useEffect(()=>{preferencesRef.current=preferences},[preferences]);
  const lastSaved=useRef(0);
- function saveProgress(video:HTMLVideoElement, ended=false){if(!progressKey)return;try{const k=`cloudplay-progress-v1-${progressKey}`;if(ended||(Number.isFinite(video.duration)&&video.duration>0&&video.currentTime>=video.duration-10)){localStorage.removeItem(k);return;}if(Number.isFinite(video.duration)&&video.duration>20&&Number.isFinite(video.currentTime)&&video.currentTime>=5){localStorage.setItem(k,JSON.stringify({position:Math.floor(video.currentTime),duration:Math.floor(video.duration)}));lastSaved.current=Date.now();}}catch{/* Playback remains usable without storage. */}}
+ function saveProgress(video:HTMLVideoElement, ended=false){if(!progressKey)return;try{const k=`cloudplay-progress-v1-${progressKey}`;if(ended||(Number.isFinite(video.duration)&&video.duration>0&&video.currentTime>=video.duration-10)){localStorage.removeItem(k);notifyLibraryChanged();return;}if(Number.isFinite(video.duration)&&video.duration>20&&Number.isFinite(video.currentTime)&&video.currentTime>=5){localStorage.setItem(k,JSON.stringify({position:Math.floor(video.currentTime),duration:Math.floor(video.duration)}));lastSaved.current=Date.now();notifyLibraryChanged();}}catch{/* Playback remains usable without storage. */}}
  function restoreProgress(video:HTMLVideoElement){if(!progressKey)return;try{const p=JSON.parse(localStorage.getItem(`cloudplay-progress-v1-${progressKey}`)||'null');if(p&&Number.isFinite(p.position)&&p.position>=5&&Number.isFinite(video.duration)&&p.position<video.duration-10)video.currentTime=p.position;}catch{/* Ignore unavailable or invalid storage. */}}
  const hlsRef=useRef<import('hls.js').default|null>(null);const [levels,setLevels]=useState<Track[]>([]);const [audio,setAudio]=useState<Track[]>([]);const [subtitles,setSubtitles]=useState<Track[]>([]);const [qualityChoice,setQualityChoice]=useState(-1);const [audioChoice,setAudioChoice]=useState(-1);const [subtitleChoice,setSubtitleChoice]=useState(-1);
  const ar=language==='ar';const videoRef=useRef<HTMLVideoElement>(null);const viewerRef=useRef<HTMLDivElement>(null);const [state,setState]=useState<State>('loading');const [slow,setSlow]=useState(false);const [attempt,setAttempt]=useState(0);

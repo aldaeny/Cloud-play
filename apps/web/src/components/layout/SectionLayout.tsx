@@ -63,7 +63,7 @@ export default function SectionLayout({ title, children, noIndex = false }: {
       </Head>
       <AppHeader language={language} theme={theme} onToggleLanguage={toggleLang} onToggleTheme={toggleTheme} />
       <main className="section-main shell"><h1>{title[language]}</h1>{children(language)}</main>
-      <footer className="section-footer shell"><Link href="/">Cloud Play Iraq</Link> · {ar ? 'المفضلة والتقدم على هذا الجهاز فقط.' : 'Favorites and progress are stored on this device only.'}</footer>
+      <footer className="section-footer shell"><Link href="/">Cloud Play Iraq</Link> · {ar ? 'مجاني بالكامل — المفضلة والتقدم تُزامَن مع حسابك المجاني.' : 'Completely free — favorites and progress sync to your free account.'}</footer>
     </div>
   );
 }
