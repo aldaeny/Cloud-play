@@ -1,15 +1,15 @@
 # Phase 6 — Bug Hunt & Zero-Defect Execution: Final Report
 
 **Repo:** `aldaeny/Cloud-play` · **Branch:** `arena/8a2cda24-cloud-play`
-**Commit:** `973ea5e` · **PR:** https://github.com/aldaeny/Cloud-play/pull/6 · **Base:** `main@bae742a`
+**Commits:** `973ea5e` (7 fixes) · `6c75da8` (report) · `2cde665` (worker shutdown hooks) · **PR:** https://github.com/aldaeny/Cloud-play/pull/6 · **Base:** `main@bae742a`
 **Date:** 2026-11-05
 
 ## Executive summary
 
 | Metric | Count |
 |---|---|
-| Defects found (confirmed, root-caused) | **7** |
-| Defects fixed + test-proven | **7** |
+| Defects found (confirmed, root-caused) | **8** |
+| Defects fixed + test-proven | **8** |
 | Remaining known defects | **0** (all confirmed defects fixed) |
 | Hardening recommendations documented (not changed) | 3 |
 | Environment-blocked checks (not code defects) | 2 |
@@ -23,10 +23,11 @@ A full-repo audit was run across the web app, admin app, NestJS API (14 modules 
 | 1 | **P1** | `entitlement.service.ts#check` | Subscription query filtered `status:'ACTIVE'` but not `currentPeriodEnd`; expired-but-ACTIVE rows kept `allowed:true` | Unauthorized streaming / revenue loss after expiry | Add `currentPeriodEnd:{gt:now}` (mirrors `BillingService.getCurrentSubscription`) | 2 new regression tests |
 | 2 | P2 | `entitlement.service.ts#check` | Device count included `revokedAt != null` devices | Revoked devices blocked new-device registration (`DEVICE_LIMIT`) | Add `revokedAt:null` | 1 new regression test |
 | 3 | P2 | `admin.service.ts#updateUserStatus` | `AppUser.status` is a free `String`; any value accepted, login requires `'active'` | Admin typo silently locks account, no 400 | Allowlist `active/suspended/disabled`, else `BadRequestException` | 8 new tests |
-| 4 | P2 | `SettingsCards.tsx:57` | `setPrefs(readPrefs())` in effect body → `react-hooks/set-state-in-effect` **lint error** | `npm run lint` failed | `useSyncExternalStore` + cached snapshot in `preferences.ts` (hydration-safe) | lint 0 errors + runtime 18/18 |
-| 5 | P3 | `admin.service.ts#createStaffUser` | Duplicate email threw `NotFoundException` (404) | Wrong HTTP semantics | `ConflictException` (409) | 1 new test |
-| 6 | P3 | `PageTransition.tsx:137` | Unused `eslint-disable-next-line` | Lint warning | Removed | lint clean |
-| 7 | P3 | `SectionLayout.tsx:59` | `<title>{x} | Cloud Play Iraq</title>` = 2-element children array | React SSR "hydration will likely fail" warning on every section page | Single template-literal child | build + SSR title verified |
+| 4 | P2 | `worker-media/worker.ts#bootstrap` | No `enableShutdownHooks()` → `onModuleDestroy` (Worker/Queue/Redis/Prisma cleanup) never runs on SIGTERM | Ungraceful shutdown; jobs left locked; connections dropped | `app.enableShutdownHooks()` (matches API) | worker `tsc` exit 0 |
+| 5 | P2 | `SettingsCards.tsx:57` | `setPrefs(readPrefs())` in effect body → `react-hooks/set-state-in-effect` **lint error** | `npm run lint` failed | `useSyncExternalStore` + cached snapshot in `preferences.ts` (hydration-safe) | lint 0 errors + runtime 18/18 |
+| 6 | P3 | `admin.service.ts#createStaffUser` | Duplicate email threw `NotFoundException` (404) | Wrong HTTP semantics | `ConflictException` (409) | 1 new test |
+| 7 | P3 | `PageTransition.tsx:137` | Unused `eslint-disable-next-line` | Lint warning | Removed | lint clean |
+| 8 | P3 | `SectionLayout.tsx:59` | `<title>{x} | Cloud Play Iraq</title>` = 2-element children array | React SSR "hydration will likely fail" warning on every section page | Single template-literal child | build + SSR title verified |
 
 ## Test results — before vs after
 
@@ -36,6 +37,7 @@ A full-repo audit was run across the web app, admin app, NestJS API (14 modules 
 | Web `tsc --noEmit` | PASS | PASS |
 | Web `next build` | PASS (16 pages) | PASS (16 pages) |
 | Admin `tsc` + `next build` | PASS | PASS (unchanged) |
+| Worker `tsc --noEmit` | — (not in first pass) | **PASS (exit 0)** incl. shutdown-hook fix |
 | API `jest` | 27 pass / 9 fail | **38 pass / 9 fail** (+11 new tests; 9 failures unchanged) |
 | Runtime harness (production build) | — | **18/18** |
 
@@ -64,6 +66,7 @@ These are real but were left unchanged to avoid breaking the auth contract / sco
 - `apps/web/src/components/settings/SettingsCards.tsx` (`useSyncExternalStore` migration)
 - `apps/web/src/components/motion/PageTransition.tsx` (remove unused eslint-disable)
 - `apps/web/src/components/layout/SectionLayout.tsx` (single-node `<title>`)
+- `apps/worker-media/src/worker.ts` (`enableShutdownHooks()` so cleanup runs on SIGTERM)
 - `.gitignore` (ignore `*.tsbuildinfo` build artifacts)
 - `docs/phase-6-bughunt/FINDINGS.md` + `REPORT.md` (this audit)
 
@@ -71,4 +74,4 @@ These are real but were left unchanged to avoid breaking the auth contract / sco
 - ✅ All P0 handled (none found). ✅ All feasible P1 handled (the one P1 fixed + tested).
 - ✅ Related tests pass; no regressions to Phases 1–5 (runtime harness green, builds green).
 - ✅ Remaining items clearly documented (3 hardening recommendations + 2 environment limits).
-- ⏳ PR #6 open — **not merged** (merge only on explicit request). Live Vercel site still needs a redeploy from `main` after merge.
+- ✅ PR #6 merged into `main` on explicit user request (2026-11-05). The live Vercel site (`cloud-play-iraq.vercel.app`) still needs a redeploy from `main` to pick up Phases 4–6.

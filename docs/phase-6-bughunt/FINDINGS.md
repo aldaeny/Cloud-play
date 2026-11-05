@@ -37,6 +37,12 @@ Date: 2026-11-05 · Method: full-repo static audit + TypeScript/lint/build + run
 - **Impact:** admin can accidentally/intentionally set an invalid status → broken login, no validation error.
 - **Fix:** validate against the allowlist used in code/tests (`active`, `suspended`, `disabled`); throw `BadRequestException` otherwise.
 
+### P2 — Media worker never runs its shutdown cleanup (dead `onModuleDestroy`)
+- **File / fn:** `apps/worker-media/src/worker.ts` → `bootstrap()`.
+- **Cause:** the worker never calls `app.enableShutdownHooks()`, so NestJS does not invoke `onModuleDestroy` on SIGTERM/SIGINT. The careful cleanup (close BullMQ `Worker`/`Queue`, `IORedis.quit()`, clear dispatch timer) and `PrismaService.$disconnect()` are dead code. The API bootstrap *does* enable shutdown hooks, confirming the inconsistency.
+- **Impact:** ungraceful container shutdown — active transcode jobs interrupted/left locked until the stalled-job timeout; Redis/Prisma connections dropped instead of closed.
+- **Fix:** call `app.enableShutdownHooks()` before `app.listen()`. Verified with worker `tsc --noEmit` (exit 0).
+
 ### P2 — Web lint error: setState synchronously in effect
 - **File / fn:** `apps/web/src/components/settings/SettingsCards.tsx:57` → `useEffect`.
 - **Cause:** `setPrefs(readPrefs())` in the effect body trips `react-hooks/set-state-in-effect` (fails `npm run lint`).
