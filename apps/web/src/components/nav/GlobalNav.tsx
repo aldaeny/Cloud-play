@@ -1,3 +1,4 @@
+import { Tv } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
@@ -161,7 +162,7 @@ export default function GlobalNav() {
       if (route && current?.href === route.href) setTimeout(() => showPopover(route), 80);
     };
     router.events.on('routeChangeComplete', onComplete);
-    return () => router.events.off('routeChangeComplete', onComplete);
+    return () => { router.events.off('routeChangeComplete', onComplete); };
   }, [router, showPopover]);
 
   // Dismiss on outside interaction or Escape.
@@ -223,7 +224,9 @@ export default function GlobalNav() {
               aria-label={ar ? route.ar : route.en}
               onClick={onNavClick(route)}
             >
-              <span className="cp-nav-ico"><Icon name={route.icon} size={21} /></span>
+              <span className="cp-nav-ico">
+                {route.icon === 'tv' ? <Tv size={21} /> : <Icon name={route.icon} size={21} />}
+              </span>
               <span className="cp-nav-label">{ar ? route.ar : route.en}</span>
             </Link>
           );
@@ -231,7 +234,9 @@ export default function GlobalNav() {
       </nav>
       {popover && anchor && (
         <div className={`cp-nav-popover cp-pop-${anchor.placement}`} role="status" style={popStyle}>
-          <span className="cp-nav-popover-icon"><Icon name={popover.icon} size={20} /></span>
+          <span className="cp-nav-popover-icon">
+            {popover.icon === 'tv' ? <Tv size={20} /> : <Icon name={popover.icon} size={20} />}
+          </span>
           <div className="cp-nav-popover-copy">
             <strong>{ar ? popover.ar : popover.en}</strong>
             <p>{ar ? popover.descAr : popover.descEn}</p>
