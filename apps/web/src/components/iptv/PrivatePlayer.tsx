@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSupabase } from '../../lib/supabase';
 import { useAccount } from '../account/AccountProvider';
+import PlaylistImport from './PlaylistImport';
 
 type Language = 'ar' | 'en';
 type Kind = 'live' | 'movie' | 'series';
@@ -368,6 +369,8 @@ export default function PrivatePlayer({ language }: { language: Language }) {
       )}
 
       <p className="pp-note pp-footnote">{t.privateNote}</p>
+
+      <PlaylistImport language={language} />
 
       {playing && (
         <div className="pp-modal" role="dialog" aria-modal="true" aria-label={playing.name}>
