@@ -110,22 +110,39 @@ async function main() {
     }
   });
 
-  await check('posters are https and watch urls are same-origin or https', () => {
+  await check('every film resolves through the same-origin resolver, query-free', () => {
     for (const film of films) {
-      assert.ok(mod.filmPoster(film).startsWith('https://'), `poster for ${film.id}`);
+      assert.ok(film.archiveId, `archiveId missing for ${film.id}`);
       const watch = mod.filmWatchUrl(film);
-      assert.ok(watch.startsWith('/api/movies/watch/') || watch.startsWith('https://'), `watch url for ${film.id}`);
+      assert.equal(watch, `/api/movies/watch/${film.id}`, `watch url for ${film.id}`);
       // Casting requires a query-free URL.
       assert.ok(!watch.includes('?'), `watch url must not carry a query: ${film.id}`);
     }
   });
 
-  await check('absoluteWatchUrl absolutises the resolver and passes direct files through', () => {
-    const archiveFilm = archiveFilms[0];
-    const absolute = mod.absoluteWatchUrl(archiveFilm, 'https://cloud-play-iraq.vercel.app');
-    assert.equal(absolute, `https://cloud-play-iraq.vercel.app/api/movies/watch/${archiveFilm.id}`);
-    const direct = films.find(f => f.url);
-    assert.equal(mod.absoluteWatchUrl(direct, 'https://example.com'), direct.url);
+  await check('posters are shipped stills or Archive thumbnails', () => {
+    for (const film of films) {
+      const poster = mod.filmPoster(film);
+      assert.ok(poster.startsWith('/art/') || poster.startsWith('https://archive.org/services/img/'),
+        `unexpected poster host for ${film.id}: ${poster}`);
+    }
+  });
+
+  await check('no film points at a non-public bucket (regression)', () => {
+    // commondatastorage.googleapis.com/gtv-videos-bucket denies anonymous reads,
+    // so it must never be used for playback or poster art.
+    const text = JSON.stringify(films) + films.map(f => mod.filmPoster(f) + mod.filmWatchUrl(f)).join('');
+    for (const dead of ['commondatastorage.googleapis.com', 'gtv-videos-bucket', 'storage.googleapis.com']) {
+      assert.ok(!text.includes(dead), `must not reference ${dead}`);
+    }
+  });
+
+  await check('absoluteWatchUrl absolutises the resolver for casting', () => {
+    const film = archiveFilms[0];
+    assert.equal(mod.absoluteWatchUrl(film, 'https://cloud-play-iraq.vercel.app'),
+      `https://cloud-play-iraq.vercel.app/api/movies/watch/${film.id}`);
+    // Without an origin (SSR) it stays relative.
+    assert.equal(mod.absoluteWatchUrl(film), `/api/movies/watch/${film.id}`);
   });
 
   await check('lookup rejects unknown ids', () => {
@@ -136,9 +153,10 @@ async function main() {
   await check('route is public: no auth and no env configured', async () => {
     delete process.env.XTREAM_OWNER_EMAILS;
     delete process.env.XTREAM_CATALOG_ENABLED;
-    const res = await invoke(handler, { id: 'bunny' });
+    const res = await withFetch(ok({ files: [{ name: 'BigBuckBunny_512kb.mp4', format: '512Kb MPEG4', size: '43315070' }] }),
+      () => invoke(handler, { id: 'bunny' }));
     assert.equal(res.status, 302);
-    assert.ok(res.headers.location.startsWith('https://'));
+    assert.equal(res.headers.location, 'https://archive.org/download/BigBuckBunny_328/BigBuckBunny_512kb.mp4');
     assert.ok(/s-maxage=\d+/.test(res.headers['cache-control'] ?? ''), 'must be CDN-cacheable');
   });
 

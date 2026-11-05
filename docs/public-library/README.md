@@ -143,6 +143,19 @@ Source availability was verified separately.
 - بعض أفلام الثلاثينيات والأربعينيات بجودة المصدر الأصلية فقط (نسخة `512kb`).
 - الملصقات تأتي من `archive.org/services/img/<id>`؛ إن فشل تحميلها يظهر بديل حرفي أنيق.
 - البث المباشر يعتمد على شبكة المستخدم والمنطقة الجغرافية.
+- **كل** الأفلام — بما فيها فيلما Blender — تُحلّ عبر `/api/movies/watch/<id>`. لا يوجد أي رابط ملف مُثبّت في الكود.
+
+### لا تستخدم `gtv-videos-bucket`
+
+الدلو `commondatastorage.googleapis.com/gtv-videos-bucket/...` الذي تتداوله أمثلة المشغّلات
+**يرفض القراءة المجهولة** (`AccessDenied`). استخدامه يعطي مشغّلاً معطوباً.
+نسخ Blender على Internet Archive (`BigBuckBunny_328` و`Sintel`) عامة وتعمل، وملصقاتها محلية في
+`public/art/films/`. يوجد اختبار انحدار يمنع عودة هذا الرابط.
+
+The widely-copied `commondatastorage.googleapis.com/gtv-videos-bucket/...` URLs **deny anonymous
+reads** (`AccessDenied`) and produce a broken player. The Blender titles are served from their
+public Internet Archive items (`BigBuckBunny_328`, `Sintel`) with local poster stills in
+`public/art/films/`. A regression test blocks that bucket from coming back.
 
 - Playback connects straight to the source; outages or cross-site blocking surface the retry
   button plus a link to the official page.

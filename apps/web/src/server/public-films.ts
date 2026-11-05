@@ -23,10 +23,10 @@ export type PublicFilm = {
   genre: FilmGenre;
   ar: string;
   en: string;
-  /** Internet Archive item identifier. Omitted for films hosted elsewhere. */
-  archiveId?: string;
-  /** Direct MP4, when the file is stable and known. */
-  url?: string;
+  /** Internet Archive item identifier — the single source of the playable file. */
+  archiveId: string;
+  /** Local poster art, when we ship a still instead of using the Archive thumbnail. */
+  still?: string;
   source: string;
   license: 'public-domain' | 'cc-by';
   licenseLabel: string;
@@ -186,35 +186,36 @@ const ARCHIVE_FILMS: PublicFilm[] = [
 
 const BLENDER_FILMS: PublicFilm[] = [
   {
-    id: 'bunny', title: 'Big Buck Bunny', titleAr: 'الأرنب الكبير', year: '2008', genre: 'animation',
+    id: 'bunny', archiveId: 'BigBuckBunny_328', still: '/art/films/big-buck-bunny-still.jpg',
+    title: 'Big Buck Bunny', titleAr: 'الأرنب الكبير', year: '2008', genre: 'animation',
     ar: 'أرنب ضخم طيّب يواجه ثلاثة قوارض متنمّرة في يوم مشمس.',
     en: 'A gentle giant rabbit takes on three bullying rodents on a sunny day.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    source: 'https://peach.blender.org/', license: 'cc-by', licenseLabel: 'CC BY 3.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by/3.0/', credit: 'Blender Foundation — peach.blender.org',
+    source: 'https://archive.org/details/BigBuckBunny_328', license: 'cc-by', licenseLabel: 'CC BY 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/3.0/', credit: '© Blender Foundation — peach.blender.org',
   },
   {
-    id: 'sintel', title: 'Sintel', titleAr: 'سنتل', year: '2010', genre: 'animation',
+    id: 'sintel', archiveId: 'Sintel', still: '/art/films/sintel-still.jpg',
+    title: 'Sintel', titleAr: 'سنتل', year: '2010', genre: 'animation',
     ar: 'فتاة تقطع أرضاً قاسية بحثاً عن تنّين صغير ربّته ثم فقدته.',
     en: 'A lonely girl crosses a harsh world searching for the baby dragon she once rescued.',
-    url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-    source: 'https://durian.blender.org/', license: 'cc-by', licenseLabel: 'CC BY 3.0',
-    licenseUrl: 'https://creativecommons.org/licenses/by/3.0/', credit: 'Blender Foundation — durian.blender.org',
+    source: 'https://archive.org/details/Sintel', license: 'cc-by', licenseLabel: 'CC BY 3.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/3.0/', credit: '© Blender Foundation — durian.blender.org',
   },
 ];
 
 export const PUBLIC_FILMS: PublicFilm[] = [...BLENDER_FILMS, ...ARCHIVE_FILMS];
 
-/** Poster art served by the Internet Archive for each item. */
+/** Poster art: a shipped still when we have one, else the Archive item thumbnail. */
 export function filmPoster(film: PublicFilm): string {
-  return film.archiveId
-    ? `https://archive.org/services/img/${encodeURIComponent(film.archiveId)}`
-    : `https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/${film.id === 'bunny' ? 'BigBuckBunny' : 'Sintel'}.jpg`;
+  return film.still ?? `https://archive.org/services/img/${encodeURIComponent(film.archiveId)}`;
 }
 
-/** Same-origin player URL. Archive titles are resolved and redirected server-side. */
+/**
+ * Same-origin player URL. Every title is resolved server-side from its Archive
+ * item, so no filename is ever hardcoded here.
+ */
 export function filmWatchUrl(film: PublicFilm): string {
-  return film.url ?? `/api/movies/watch/${encodeURIComponent(film.id)}`;
+  return `/api/movies/watch/${encodeURIComponent(film.id)}`;
 }
 
 /**
@@ -223,7 +224,7 @@ export function filmWatchUrl(film: PublicFilm): string {
  */
 export function absoluteWatchUrl(film: PublicFilm, origin?: string): string {
   const url = filmWatchUrl(film);
-  if (!url.startsWith('/') || !origin) return url;
+  if (!origin) return url;
   try { return new URL(url, origin).href; } catch { return url; }
 }
 
