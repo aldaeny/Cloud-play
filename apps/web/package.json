@@ -10,7 +10,8 @@
     "test:private": "node tests/private-player.test.mjs",
     "test:public": "node tests/public-tv.test.mjs",
     "test:films": "node tests/public-films.test.mjs",
-    "test:community": "node tests/community-tv.test.mjs"
+    "test:community": "node tests/community-tv.test.mjs",
+    "test:playlists": "node tests/playlist-import.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
