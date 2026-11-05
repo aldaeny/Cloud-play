@@ -9,7 +9,7 @@
  */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -33,6 +33,7 @@ function compile() {
   execFileSync(process.execPath, [
     tsc,
     'src/server/public-tv.ts',
+    'src/lib/country-flag.ts',
     'pages/api/iptv/public.ts',
     '--outDir', out,
     '--module', 'commonjs',
@@ -62,6 +63,7 @@ async function main() {
   const out = compile();
   const mod = await import(pathToFileURL(path.join(out, 'src/server/public-tv.js')).href);
   const routeMod = await import(pathToFileURL(path.join(out, 'pages/api/iptv/public.js')).href);
+  const flagMod = await import(pathToFileURL(path.join(out, 'src/lib/country-flag.js')).href);
   const handler = routeMod.default?.default ?? routeMod.default;
   const channels = mod.getPublicChannels();
 
@@ -109,6 +111,45 @@ async function main() {
     const iraqi = channels.filter(c => c.group === 'iraq');
     assert.ok(iraqi.length >= 2, `expected Iraqi channels, got ${iraqi.length}`);
     assert.ok(iraqi.every(c => c.country === 'IQ'));
+  });
+
+  await check('every curated country renders a real flag, not a boxed letter', () => {
+    // A flag is a PAIR of regional indicators. A lone one renders as a letter.
+    for (const channel of channels) {
+      const glyph = flagMod.countryFlag(channel.country);
+      const points = [...glyph].map(c => c.codePointAt(0));
+      assert.equal(points.length, 2, `${channel.country} produced ${points.length} code points`);
+      for (const point of points) {
+        assert.ok(point >= 0x1f1e6 && point <= 0x1f1ff, `${channel.country} is not a regional indicator`);
+      }
+    }
+    assert.equal(flagMod.countryFlag('iq'), '\u{1F1EE}\u{1F1F6}');
+    assert.equal(flagMod.countryFlag('QA'), '\u{1F1F6}\u{1F1E6}');
+    assert.equal(flagMod.countryFlag('lb'), '\u{1F1F1}\u{1F1E7}');
+  });
+
+  await check('countryFlag falls back for unknown or malformed codes', () => {
+    for (const bad of ['', 'q', 'qat', '1q', null, undefined, 42]) {
+      assert.equal(flagMod.countryFlag(bad), '\u{1F4FA}', `should fall back for ${String(bad)}`);
+    }
+  });
+
+  await check('no malformed flag literals anywhere in the source (regression)', () => {
+    // Hand-written flag literals silently lose half of the pair; this scans the
+    // whole UI so the mistake cannot come back in another component.
+    const roots = ['src', 'pages'];
+    const offenders = [];
+    const walk = dir => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) { if (!/node_modules|\.next/.test(full)) walk(full); continue; }
+        if (!/\.(tsx?|css)$/.test(entry.name)) continue;
+        const runs = readFileSync(full, 'utf8').match(/[\u{1F1E6}-\u{1F1FF}]+/gu) || [];
+        for (const run of runs) if ([...run].length !== 2) offenders.push(`${full}: ${run}`);
+      }
+    };
+    for (const root of roots) walk(path.join(webRoot, root));
+    assert.deepEqual(offenders, [], `malformed flag glyphs:\n${offenders.join('\n')}`);
   });
 
   await check('unsafe entries are rejected by the guard', () => {
