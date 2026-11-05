@@ -330,6 +330,9 @@ class WorkerMediaModule implements OnModuleInit, OnModuleDestroy {
 
 async function bootstrap() {
   const app = await NestFactory.create(WorkerMediaModule, { bufferLogs: false });
+  // Run onModuleDestroy on SIGTERM/SIGINT so the BullMQ worker, queue, Redis
+  // connection and Prisma client close gracefully (matches the API bootstrap).
+  app.enableShutdownHooks();
   await app.listen(3004, '0.0.0.0');
 }
 

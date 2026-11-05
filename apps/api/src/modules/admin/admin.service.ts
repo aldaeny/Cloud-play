@@ -1,5 +1,5 @@
 import { publicProfileSelect, publicStaffSelect } from '../../common/public-select';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import * as argon2 from 'argon2';
 
@@ -42,6 +42,12 @@ export class AdminService {
   }
 
   async updateUserStatus(tenantId: string, id: string, status: string) {
+    // AppUser.status is a free-form string and login requires exactly 'active'.
+    // Reject anything outside the known set so an admin typo cannot silently
+    // lock an account into an undefined state with no validation error.
+    if (!['active', 'suspended', 'disabled'].includes(status)) {
+      throw new BadRequestException('status must be one of: active, suspended, disabled');
+    }
     const user = await this.prisma.appUser.findFirst({ where: { id, tenantId } });
     if (!user) throw new NotFoundException('User not found');
 
@@ -81,7 +87,7 @@ export class AdminService {
 
   async createStaffUser(tenantId: string, email: string, password: string, roleId: string) {
     const existing = await this.prisma.staffUser.findUnique({ where: { email } });
-    if (existing) throw new NotFoundException('Email already exists');
+    if (existing) throw new ConflictException('Email already exists');
 
     const role = await this.prisma.role.findFirst({ where: { id: roleId, tenantId }, select: { id: true } });
     if (!role) throw new NotFoundException('Role not found');
