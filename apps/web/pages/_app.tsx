@@ -12,6 +12,7 @@ import '../src/styles/global-nav.css';
 import '../src/styles/app-shell.css';
 import '../src/styles/account.css';
 import '../src/styles/private-player.css';
+import '../src/styles/public-tv.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Remove only the offline worker introduced in the rolled-back design.
