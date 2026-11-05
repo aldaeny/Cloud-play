@@ -4,6 +4,7 @@ import { readAppearance } from '../../lib/appearance';
 import { useRouter } from 'next/router';
 import { useEffect, useState, type ReactNode } from 'react';
 import AppHeader from './AppHeader';
+import OwnerPlayerLink from '../account/OwnerPlayerLink';
 import { subscribePrefs, setPref, type Language, type Theme } from '../../lib/preferences';
 
 export type { Language } from '../../lib/preferences';
@@ -62,7 +63,7 @@ export default function SectionLayout({ title, children, noIndex = false }: {
         {noIndex && <meta name="robots" content="noindex,follow" />}
       </Head>
       <AppHeader language={language} theme={theme} onToggleLanguage={toggleLang} onToggleTheme={toggleTheme} />
-      <main className="section-main shell"><h1>{title[language]}</h1>{children(language)}</main>
+      <main className="section-main shell"><h1>{title[language]}</h1><OwnerPlayerLink language={language}/>{children(language)}</main>
       <footer className="section-footer shell"><Link href="/">Cloud Play Iraq</Link> · {ar ? 'مجاني بالكامل — المفضلة والتقدم تُزامَن مع حسابك المجاني.' : 'Completely free — favorites and progress sync to your free account.'}</footer>
     </div>
   );

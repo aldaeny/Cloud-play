@@ -68,3 +68,4 @@ docker-compose.override.yml
 
 # Temporary compile output from the private-player security tests
 apps/web/.private-test-*
+apps/web/.public-test-*

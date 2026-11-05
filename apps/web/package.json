@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "eslint .",
-    "test:private": "node tests/private-player.test.mjs"
+    "test:private": "node tests/private-player.test.mjs",
+    "test:public": "node tests/public-tv.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
