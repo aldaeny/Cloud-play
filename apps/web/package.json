@@ -14,11 +14,14 @@
     "test:playlists": "node tests/playlist-import.test.mjs",
     "test:live": "node tests/live-router.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs",
-    "test:layout": "node tests/live-layout.mjs"
+    "test:layout": "node tests/live-layout.mjs",
+    "test:channels": "node tests/channel-sort.test.mjs",
+    "test:channels:browser": "node tests/channel-ui.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
     "@supabase/supabase-js": "^2.119.0",
+    "@tanstack/react-virtual": "^3.14.26",
     "clsx": "^2.1.1",
     "dashjs": "5.3.0",
     "hls.js": "^1.7.4",

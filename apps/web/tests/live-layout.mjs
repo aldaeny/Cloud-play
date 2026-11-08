@@ -208,21 +208,17 @@ for (const viewport of viewports) {
         const select = node.querySelector('select');
         return { x: box.x, y: box.y, w: box.width, h: box.height, control: select.getBoundingClientRect().height, right: box.right };
       }));
-      assert.equal(fields.length, 3);
+      // Sort moved to the results toolbar (SortDropdown); the row keeps Country + Quality.
+      assert.equal(fields.length, 2);
+      assert.equal(await page.locator('.live-toolbar [aria-haspopup="listbox"]').count(), 1, 'sort dropdown missing from the toolbar');
+      assert.equal(await page.locator('.live-toolbar [role="group"] button').count(), 2, 'view-mode toggle missing');
       const shell = await page.evaluate(() => document.querySelector('main.live-page').getBoundingClientRect());
       for (const field of fields) {
         assert.ok(field.control >= 44, `select shorter than 44px: ${field.control}`);
         assert.ok(field.x >= shell.x - 1 && field.right <= shell.right + 1, 'filter escapes the content column');
       }
-      if (viewport.width <= 650) {
-        assert.equal(fields[0].y, fields[1].y, 'country/quality not on one row');
-        assert.ok(Math.abs(fields[0].w - fields[1].w) <= 1, 'country/quality widths differ');
-        assert.ok(fields[2].y > fields[1].y, 'sort should take the full second row');
-        assert.ok(Math.abs(fields[2].w - (fields[0].w * 2 + 10)) <= 1, 'sort is not full width');
-      } else {
-        assert.equal(fields[0].y, fields[2].y, 'filters not on one row');
-        assert.ok(Math.abs(fields[0].w - fields[2].w) <= 1, 'filter widths differ');
-      }
+      assert.equal(fields[0].y, fields[1].y, 'country/quality not on one row');
+      assert.ok(Math.abs(fields[0].w - fields[1].w) <= 1, 'country/quality widths differ');
     });
 
     await check(`${label}: empty-state card fits the column and keeps its message`, async () => {

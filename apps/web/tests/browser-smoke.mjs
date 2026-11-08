@@ -127,8 +127,12 @@ if (mediaDir) {
     await page.getByRole('button', { name: 'المفضلة فقط' }).click();
     assert.equal(await page.locator('.live-card').count(), 1);
     await page.getByRole('button', { name: 'المفضلة فقط' }).click();
-    await page.getByRole('button', { name: 'تشغيل: Local HLS Fixture 1080p' }).click();
-    await page.waitForURL('**/live/fixture-hls');
+    // Playback now opens the pop-up player instead of navigating away.
+    await page.getByRole('button', { name: 'تشغيل: Local HLS Fixture 1080p' }).first().click();
+    await page.waitForSelector('[data-testid="player-modal"] video');
+    await page.getByRole('button', { name: 'إغلاق المشغل' }).click();
+    await page.waitForSelector('[data-testid="player-modal"]', { state: 'detached' });
+    await goto('/live/fixture-hls');
   });
   await check('HLS fixture actually decodes; quality/audio/subtitle tracks are real', async () => {
     await page.waitForFunction(() => { const v = document.querySelector('.cp-player video'); return v && v.readyState >= 3; }, null, { timeout: 30000 });

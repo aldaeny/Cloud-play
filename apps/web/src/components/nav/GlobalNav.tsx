@@ -133,7 +133,8 @@ export default function GlobalNav() {
 
   // Hide the bar while a media player is open so it never covers player controls.
   useEffect(() => {
-    const check = () => setPlayerOpen(!!document.querySelector('.media-viewer, .cp-player'));
+    // A minimized floating player keeps playing while browsing: it must not hide the dock.
+    const check = () => setPlayerOpen([...document.querySelectorAll('.media-viewer, .cp-player')].some(node => !node.closest('[data-mini-player="true"]')));
     check();
     const obs = new MutationObserver(check);
     obs.observe(document.body, { childList: true, subtree: true });

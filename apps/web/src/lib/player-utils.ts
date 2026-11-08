@@ -17,10 +17,11 @@ export function getStreamType(raw: string): StreamType | null {
   } catch { return null; }
 }
 const qualityOrder: Record<ChannelQuality | '', number> = { '4K': 0, FHD: 1, HD: 2, SD: 3, '': 4 };
-export function sortChannels(channels: Channel[], favorites: string[], searchQuery = '', categoryFilter = 'all', countryFilter = '', qualityFilter = '', sort = 'name'): Channel[] {
+/** Filter only, preserving the source order. Sorting is a separate, explicit step. */
+export function filterChannels(channels: Channel[], favorites: string[], searchQuery = '', categoryFilter = 'all', countryFilter = '', qualityFilter = ''): Channel[] {
   const needle = searchQuery.trim().toLocaleLowerCase();
   const saved = new Set(favorites);
-  const result = channels.filter(channel => {
+  return channels.filter(channel => {
     const category = CATEGORIES.find(item => item.id === channel.category);
     if (needle && !`${channel.name} ${channel.country} ${channel.countryCode} ${channel.language} ${channel.sourceGroup} ${category?.ar ?? ''} ${category?.en ?? ''}`.toLocaleLowerCase().includes(needle)) return false;
     if (categoryFilter === 'favorites') return saved.has(channel.id);
@@ -29,7 +30,13 @@ export function sortChannels(channels: Channel[], favorites: string[], searchQue
     if (qualityFilter && (channel.quality || 'unknown') !== qualityFilter) return false;
     return true;
   });
-  return result.sort((a, b) => {
+}
+
+/** Legacy helper kept for existing callers: filters, then pins favorites/Iraq. */
+export function sortChannels(channels: Channel[], favorites: string[], searchQuery = '', categoryFilter = 'all', countryFilter = '', qualityFilter = '', sort = 'name'): Channel[] {
+  const saved = new Set(favorites);
+  const result = filterChannels(channels, favorites, searchQuery, categoryFilter, countryFilter, qualityFilter);
+  return [...result].sort((a, b) => {
     const favoriteOrder = Number(saved.has(b.id)) - Number(saved.has(a.id));
     if (favoriteOrder) return favoriteOrder;
     const iraqOrder = Number(b.countryCode === 'IQ') - Number(a.countryCode === 'IQ');
