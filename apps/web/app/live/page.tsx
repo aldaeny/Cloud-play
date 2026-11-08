@@ -1,223 +1,69 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Channel } from '@/types/channel';
-import { fetchChannels } from '@/lib/channels';
-import { Favorites, WatchHistory } from '@/lib/storage';
-import { ChannelCard, ChannelGrid, CategoryFilter, CountryFilter, QualityFilter, ChannelSearch, ChannelSort } from '@/components/channels/ChannelCard';
-import { CATEGORIES } from '@/constants/categories';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Star, RotateCcw } from 'lucide-react';
+import type { Channel } from '../../src/types/channel';
+import { fetchChannels } from '../../src/lib/channels';
+import { WatchHistory } from '../../src/lib/storage';
+import { useChannelFavorites } from '../../src/lib/use-channel-library';
+import { ChannelGrid, CategoryFilter, CountryFilter, QualityFilter, ChannelSearch, ChannelSort } from '../../src/components/channels/ChannelCard';
+import { CATEGORIES } from '../../src/constants/categories';
+import { sortChannels } from '../../src/lib/player-utils';
+import OwnerPlayerLink from '../../src/components/account/OwnerPlayerLink';
+import { useNavigation } from '../../src/components/navigation/NavigationProvider';
+import { getPrefsSnapshot, SERVER_PREFS, subscribePrefs } from '../../src/lib/preferences';
+import { useSyncExternalStore } from 'react';
+
+const PAGE_SIZE = 40;
 
 export default function LivePage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("all");
-  const [country, setCountry] = useState("");
-  const [quality, setQuality] = useState("");
-  const [sort, setSort] = useState("name");
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showLiveOnly, setShowLiveOnly] = useState(true);
-  
-  const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
-
-  const router = useRouter();
-
-  // تحميل القنوات
+  const [failed, setFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [category, setCategory] = useState('all');
+  const [country, setCountry] = useState('');
+  const [quality, setQuality] = useState('');
+  const [sort, setSort] = useState('name');
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const { favorites, toggle } = useChannelFavorites();
+  const navigation = useNavigation();
+  const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
+  const ar = prefs.language === 'ar';
   useEffect(() => {
-    const load = async () => {
-      const data = await fetchChannels();
-      setChannels(data);
-      setLoading(false);
-      setFavorites(Favorites.get());
-    };
-    load();
-  }, []);
-
-  // تحديث المفضلة عند التغيير
-  const handlePlay = (channel: Channel) => {
-    WatchHistory.add(channel);
-    setSelectedChannel(channel);
-    router.push(`/live/${channel.id}`);
-  };
-
-  const toggleFav = (channelId: string) => {
-    const newFavs = Favorites.toggle(channelId);
-    setFavorites(newFavs);
-  };
-
-  // الفلترة حسب البحث والتصنيف والدولة والجودة والمفضلة والبث المباشر
-  const filteredChannels = channels.filter(c => {
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (category !== "all" && c.category !== category) return false;
-    if (country && c.countryCode !== country) return false;
-    if (quality && c.quality !== quality) return false;
-    if (showFavoritesOnly && !favorites.includes(c.id)) return false;
-    if (showLiveOnly && !c.isLive) return false;
-    return true;
-  });
-
-  // ترتيب ذكي: المفضلة أولاً → القنوات العراقية → ثم حسب المختار (اسم / دولة / جودة)
-  const sortedChannels = [...filteredChannels].sort((a, b) => {
-    const aFav = favorites.includes(a.id) ? 0 : 1;
-    const bFav = favorites.includes(b.id) ? 0 : 1;
-    if (aFav !== bFav) return aFav - bFav;
-
-    const aIraqi = a.countryCode === "IQ" ? 0 : 1;
-    const bIraqi = b.countryCode === "IQ" ? 0 : 1;
-    if (aIraqi !== bIraqi) return aIraqi - bIraqi;
-
-    // حسب الترتيب المختار
-    if (sort === "name") return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
-    if (sort === "country") return a.country.localeCompare(b.country, undefined, { sensitivity: 'base' });
-    if (sort === "quality") {
-      const qOrder = { "4K": 0, "FHD": 1, "HD": 2, "SD": 3 };
-      return (qOrder[a.quality] || 4) - (qOrder[b.quality] || 4);
-    }
-    return 0;
-  });
-
-  // تجميع القنوات حسب التصنيف مع ترتيب Primer للفئات
-  const categoryOrder = ['sports', 'news', 'movies', 'series', 'entertainment', 'kids', 'religious', 'music', 'documentary', 'comedy', 'general'];
-
-  const groupedByCategory = sortedChannels.reduce<Record<string, Channel[]>>((acc, ch) => {
-    (acc[ch.category] = acc[ch.category] || []).push(ch);
-    return acc;
-  }, {});
-
-  return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0A0A0A] pb-20">
-      {/* Header */}
-      <div className="p-4 bg-white dark:bg-[#111] border-b border-gray-100 dark:border-white/10 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">البث المباشر (TV)</h1>
-        <div className="flex gap-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={showFavoritesOnly} 
-              onChange={(e) => setShowFavoritesOnly(e.target.checked)}
-              className="w-4 h-4 accent-[#A855F7]"
-            />
-            <span className="text-sm text-gray-600 dark:text-gray-300">المفضلة فقط</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="space-y-4 p-4">
-        <ChannelSearch value={search} onChange={setSearch} />
-        <div className="flex flex-wrap gap-4">
-          <CategoryFilter active={category} onChange={setCategory} />
-          <CountryFilter active={country} onChange={setCountry} />
-          <QualityFilter active={quality} onChange={setQuality} />
-          <ChannelSort value={sort} onChange={setSort} />
-        </div>
-      </div>
-
-      {/* Grid — مجمعة حسب التصنيف مع عناوين فئات ومرجعية عدد القنوات */}
-      {loading ? (
-        <div className="p-8 text-center text-gray-500">جاري تحميل القنوات...</div>
-      ) : sortedChannels.length === 0 ? (
-        <div className="p-8 text-center text-gray-500">لا توجد قنوات مطابقة للبحث</div>
-      ) : (
-        <>
-          {categoryOrder.map(catId => {
-            const catChannels = groupedByCategory[catId] || [];
-            if (catChannels.length === 0) return null;
-            const catInfo = CATEGORIES.find(c => c.id === catId);
-            return (
-              <section key={catId} className="mb-8">
-                <h3 className="mb-3 flex items-center justify-between text-xl font-bold text-gray-900 dark:text-white">
-                  <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-full bg-[#A855F7] text-white flex items-center justify-center text-xs font-bold shadow-lg">
-                      {catChannels.length}
-                    </span>
-                    {catInfo?.ar || catId}
-                  </div>
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-[#222] px-2 py-1 rounded-full">
-                    {catChannels.length} قناة
-                  </span>
-                </h3>
-                <ChannelGrid
-                  channels={catChannels}
-                  onPlay={handlePlay}
-                  favorites={favorites}
-                  onFavoriteToggle={toggleFav}
-                />
-              </section>
-            );
-          })}
-        </>
-      )}
-
-      {/* Channel Detail / Player Modal */}
-      {selectedChannel && (
-        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-5xl bg-[#111] rounded-2xl overflow-hidden shadow-2xl">
-            <div className="relative">
-              {/* Close Button */}
-              <button 
-                onClick={() => setSelectedChannel(null)}
-                className="absolute top-4 right-4 z-20 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition-colors"
-              >
-                ✕
-              </button>
-              
-              <VideoPlayer 
-                src={selectedChannel.streamUrl}
-                type={selectedChannel.streamType}
-                poster={selectedChannel.logo}
-                title={selectedChannel.name}
-                isLive={selectedChannel.isLive}
-                headers={selectedChannel.headers}
-                onReady={() => console.log("Player ready")}
-              />
-            </div>
-            <div className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-white mb-1">{selectedChannel.name}</h2>
-                  <p className="text-gray-400">{selectedChannel.country} · {selectedChannel.category}</p>
-                </div>
-                <button 
-                  onClick={() => toggleFav(selectedChannel.id)}
-                  className={`p-3 rounded-full transition-colors ${favorites.includes(selectedChannel.id) ? 'bg-yellow-400 text-white' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={favorites.includes(selectedChannel.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 6a9.002 9.002 0 0 0-17.8 0 9.002 9.002 0 0 0 17.8 0z"></path></svg>
-                </button>
-              </div>
-              
-              {/* EPG / Info Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-white font-semibold mb-3">دليل البرامج (EPG)</h3>
-                  <div className="space-y-3">
-                    <div className="p-3 bg-[#1a1a1a] rounded-lg border border-white/5">
-                      <p className="text-sm text-gray-300">14:00 - 15:00 | البرنامج الحالي</p>
-                      <p className="text-white font-medium">أخبار الساعة</p>
-                    </div>
-                    <div className="p-3 bg-[#1a1a1a] rounded-lg border border-white/5 opacity-60">
-                      <p className="text-sm text-gray-300">15:00 - 16:00 | القادم</p>
-                      <p className="text-white font-medium">نشرة الطقس</p>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold mb-3">معلومات القناة</h3>
-                  <ul className="text-sm text-gray-400 space-y-2">
-                    <li><strong>الجودة:</strong> {selectedChannel.qualityLabel}</li>
-                    <li><strong>اللغة:</strong> {selectedChannel.language}</li>
-                    <li><strong>التصنيف:</strong> {selectedChannel.category}</li>
-                    <li><strong>الدولة:</strong> {selectedChannel.country}</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+    const controller = new AbortController();
+    void fetchChannels(controller.signal).then(data => {
+      if (controller.signal.aborted) return;
+      setChannels(data); setFailed(false); setLoading(false);
+    }).catch(() => { if (!controller.signal.aborted) { setFailed(true); setLoading(false); } });
+    return () => controller.abort();
+  }, [attempt]);
+  useEffect(() => { document.title = ar ? 'تلفزيون | Cloud Play Iraq' : 'TV | Cloud Play Iraq'; }, [ar]);
+  const filtered = useMemo(() => sortChannels(channels, favorites, deferredSearch, onlyFavorites ? 'favorites' : category, country, quality, sort), [channels, favorites, deferredSearch, category, onlyFavorites, country, quality, sort]);
+  const grouped = useMemo(() => {
+    const groups = new Map<string, Channel[]>();
+    for (const channel of filtered.slice(0, limit)) { const group = groups.get(channel.category) ?? []; group.push(channel); groups.set(channel.category, group); }
+    return groups;
+  }, [filtered, limit]);
+  const resetFilters = () => { setSearch(''); setCategory('all'); setCountry(''); setQuality(''); setOnlyFavorites(false); setLimit(PAGE_SIZE); };
+  const changeFilter = (setter: (value: string) => void) => (value: string) => { setter(value); setLimit(PAGE_SIZE); };
+  const play = (channel: Channel) => { WatchHistory.add(channel); void navigation.push(`/live/${encodeURIComponent(channel.id)}`); };
+  return <main className="live-page shell">
+    <div className="live-heading"><div><h1>{ar ? 'البث المباشر (TV)' : 'Live TV'}</h1><p>{ar ? 'قنواتك في مكان واحد — ابحث، صفّ واحفظ ما تحب.' : 'Your channels in one place — search, filter and save your favorites.'}</p></div><button type="button" className="live-chip live-favorite-toggle" aria-pressed={onlyFavorites} onClick={() => { setOnlyFavorites(value => !value); setLimit(PAGE_SIZE); }}><Star size={17} fill={onlyFavorites ? 'currentColor' : 'none'}/>{ar ? 'المفضلة فقط' : 'Favorites only'}</button></div>
+    <OwnerPlayerLink language={prefs.language}/>
+    <div className="live-filters"><ChannelSearch value={search} onChange={changeFilter(setSearch)} language={prefs.language}/><CategoryFilter active={category} onChange={changeFilter(setCategory)} language={prefs.language}/><div className="live-filter-row"><CountryFilter active={country} onChange={changeFilter(setCountry)} channels={channels} language={prefs.language}/><QualityFilter active={quality} onChange={changeFilter(setQuality)} language={prefs.language}/><ChannelSort value={sort} onChange={changeFilter(setSort)} language={prefs.language}/></div></div>
+    <div aria-live="polite" aria-busy={loading}>
+      {loading ? <div className="live-skeleton" role="status" aria-label={ar ? 'جاري تحميل القنوات' : 'Loading channels'}><span/><span/><span/><span/></div> : failed ? <div className="live-empty" role="alert"><h2>{ar ? 'تعذر تحميل القنوات' : 'Could not load channels'}</h2><p>{ar ? 'تحقق من الاتصال بالشبكة. مصدر القنوات قد يكون غير متاح مؤقتاً.' : 'Check your network. The channel source may be temporarily unavailable.'}</p><button type="button" className="live-button primary" onClick={() => { setLoading(true); setFailed(false); setAttempt(value => value + 1); }}><RotateCcw size={17}/>{ar ? 'إعادة المحاولة' : 'Try again'}</button></div> : channels.length === 0 ? <div className="live-empty" role="status"><h2>{ar ? 'لم تُربط قائمة قنوات مرخّصة بعد' : 'No licensed channel list is connected yet'}</h2><p>{ar ? 'تظهر هنا القنوات التي يضيفها مسؤول المنصة بعد التحقق من حقوق بثها. لا نعرض قنوات تجريبية أو روابط غير حقيقية.' : 'Channels appear after the operator connects a rights-reviewed playlist. We do not show invented channels or placeholder streams.'}</p><Link className="live-button" href="/settings">{ar ? 'إعدادات الحساب' : 'Account settings'}</Link></div> : filtered.length === 0 ? <div className="live-empty" role="status"><h2>{onlyFavorites && favorites.length === 0 ? (ar ? 'لا توجد قنوات مفضلة بعد' : 'No favorite channels yet') : (ar ? 'لا توجد قنوات مطابقة' : 'No matching channels')}</h2><p>{ar ? 'جرّب تغيير البحث أو التصنيف، أو أزل الفلاتر لعرض القنوات المتاحة.' : 'Change your search or category, or clear filters to see available channels.'}</p><button type="button" className="live-button" onClick={resetFilters}>{ar ? 'مسح الفلاتر' : 'Clear filters'}</button></div> : <>
+        <p className="live-count">{filtered.length} {ar ? 'قناة مطابقة' : 'matching channels'} · {channels.length} {ar ? 'قناة في المصدر' : 'channels in source'}</p>
+        {CATEGORIES.filter(item => grouped.has(item.id)).map(item => <section className="live-section" key={item.id} aria-labelledby={`category-${item.id}`}><div className="live-section-head"><h2 id={`category-${item.id}`}>{item[ prefs.language ]}</h2><span className="live-count">{grouped.get(item.id)?.length} {ar ? 'قناة معروضة' : 'shown'}</span></div><ChannelGrid channels={grouped.get(item.id) ?? []} onPlay={play} favorites={favorites} onFavoriteToggle={toggle}/></section>)}
+        {filtered.length > limit && <div className="live-more"><button type="button" className="live-button" onClick={() => setLimit(value => value + PAGE_SIZE)}>{ar ? 'عرض المزيد من القنوات' : 'Load more channels'} ({filtered.length - limit})</button></div>}
+      </>}
     </div>
-  );
+    <p className="live-note">{ar ? 'التشغيل يعتمد على توفر المصدر ودعمه للبث من المتصفح. الجودة المعروضة هي المعلنة من المصدر وليست ضماناً. المفضلة تُزامَن مع حسابك المجاني.' : 'Playback depends on source availability and browser support. Declared quality is not a guarantee. Favorites sync with your free account.'}</p>
+    <Link className="live-button" href="/tv-sources">{ar ? 'مصادر التلفزيون الإضافية' : 'Additional TV sources'}</Link>
+  </main>;
 }

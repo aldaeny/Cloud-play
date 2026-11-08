@@ -1,6 +1,8 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useNavigation } from '../navigation/NavigationProvider';
 import { getSupabase } from '../../lib/supabase';
 import { useAccount } from '../account/AccountProvider';
 
@@ -18,7 +20,7 @@ const decisions = new Map<string, boolean>();
 
 export default function OwnerPlayerLink({ language }: { language: Language }) {
   const { user, loading } = useAccount();
-  const router = useRouter();
+  const navigation = useNavigation();
   const userId = user?.id ?? null;
   const [owner, setOwner] = useState(() => (userId ? decisions.get(userId) === true : false));
 
@@ -51,7 +53,7 @@ export default function OwnerPlayerLink({ language }: { language: Language }) {
     return () => { cancelled = true; };
   }, [userId, loading]);
 
-  if (!owner || router.pathname === '/my-tv') return null;
+  if (!owner || navigation.pathname === '/my-tv') return null;
 
   const ar = language === 'ar';
   return (

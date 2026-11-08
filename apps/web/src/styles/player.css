@@ -1,0 +1,27 @@
+/* Functional player controls; colors and glass surfaces match the existing dock. */
+.cp-player { position:relative; width:100%; aspect-ratio:16/9; background:#000; color:#fff; border-radius:16px; overflow:hidden; isolation:isolate; touch-action:manipulation; }
+.cp-player:fullscreen { border-radius:0; aspect-ratio:auto; height:100%; }
+.cp-player video { width:100%; height:100%; object-fit:contain; display:block; }
+.cp-player-top,.cp-player-bottom { position:absolute; inset-inline:0; z-index:3; display:flex; gap:10px; align-items:center; padding:14px 16px; transition:opacity .2s; }
+.cp-player-top { top:0; background:linear-gradient(#000b,transparent); }
+.cp-player-top strong { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:15px; }
+.cp-player-bottom { bottom:0; flex-wrap:wrap; background:linear-gradient(transparent,#000d); }
+.cp-player[data-controls-hidden=true] .cp-player-top,.cp-player[data-controls-hidden=true] .cp-player-bottom { opacity:0; pointer-events:none; }
+.cp-player button { min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:10px; background:transparent; color:inherit; cursor:pointer; }
+.cp-player button:hover,.cp-player button:focus-visible { background:#ffffff24; }
+.cp-player button:focus-visible,.cp-player input:focus-visible,.cp-player select:focus-visible { outline:3px solid #c084fc; outline-offset:2px; }
+.cp-player-volume { width:85px; accent-color:#a855f7; }
+.cp-player-seek { flex:1 0 100%; width:100%; accent-color:#c084fc; min-height:24px; cursor:pointer; }
+.cp-player-time { font-size:12px; font-variant-numeric:tabular-nums; direction:ltr; }
+.cp-player-spacer { flex:1; }
+.cp-player-status { position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px; background:#000b; }
+.cp-player-status p { max-width:55ch; line-height:1.8; margin:0; font-size:14px; }
+.cp-player-status button { background:linear-gradient(120deg,#a855f7,#ec4899); padding:8px 20px; }
+.cp-player-spinner { width:34px; height:34px; border:3px solid #ffffff30; border-top-color:#c084fc; border-radius:50%; animation:cp-spin 1s linear infinite; }
+@keyframes cp-spin { to{transform:rotate(360deg)} }
+.cp-player-settings { position:absolute; z-index:5; inset-inline-end:14px; bottom:82px; width:min(300px,calc(100% - 28px)); max-height:calc(100% - 110px); overflow:auto; padding:16px; border:1px solid #ffffff30; border-radius:14px; background:#14161ef5; box-shadow:0 12px 35px #0009; }
+.cp-player-settings label { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; font-size:13px; }
+.cp-player-settings select { min-height:44px; padding:8px; border-radius:8px; border:1px solid #ffffff30; background:#20232d; color:white; }
+.cp-player-notice { position:absolute; z-index:4; bottom:85px; inset-inline:16px; text-align:center; font-size:12px; pointer-events:none; text-shadow:0 1px 4px #000; }
+@media(max-width:600px){.cp-player-top,.cp-player-bottom{padding:8px;gap:3px}.cp-player-volume{width:58px}.cp-player-top strong{font-size:12px}.cp-player-time{font-size:10px}.cp-player-settings{bottom:76px}.cp-player-status{padding:14px;gap:6px}.cp-player-status p{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.cp-player-spinner{animation-duration:2s}.cp-player-top,.cp-player-bottom{transition:none}}

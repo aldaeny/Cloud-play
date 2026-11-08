@@ -1,4 +1,6 @@
-import { useRouter } from 'next/router';
+'use client';
+
+import { useNavigation } from '../navigation/NavigationProvider';
 import { useEffect, type ReactNode } from 'react';
 
 /**
@@ -39,12 +41,12 @@ function clearBackdrop() {
 }
 
 export default function PageTransition({ children }: { children: ReactNode }) {
-  const router = useRouter();
+  const navigation = useNavigation();
 
   useEffect(() => {
     let locked = false;
     let pendingDir = 0; // +1 forward, -1 back
-    let prevPath = router.asPath.split('?')[0];
+    let prevPath = navigation.pathname;
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     const clearTransition = (el: HTMLElement) => {
@@ -77,7 +79,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
     const playEnter = () => {
       const el = siteEl();
       if (!el) return;
-      const path = router.asPath.split('?')[0];
+      const path = navigation.pathname;
       const from = mainIndex(prevPath);
       const to = mainIndex(path);
       const dir = pendingDir !== 0 ? pendingDir : (from >= 0 && to >= 0 ? (to < from ? -1 : 1) : 1);
@@ -102,7 +104,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       try { url = new URL(anchor.href, window.location.origin); } catch { return; }
       if (url.origin !== window.location.origin) return;
       const target = url.pathname.replace(/\/$/, '') || '/';
-      const current = router.asPath.split('?')[0].replace(/\/$/, '') || '/';
+      const current = navigation.pathname.replace(/\/$/, '') || '/';
       if (mainIndex(target) < 0 || target === current) return;
 
       event.preventDefault();
@@ -110,31 +112,33 @@ export default function PageTransition({ children }: { children: ReactNode }) {
       const dir = mainIndex(target) < mainIndex(current) ? -1 : 1;
       pendingDir = dir;
 
-      if (reducedMotion()) { void router.push(url.pathname + url.search); return; }
+      if (reducedMotion()) { void navigation.push(url.pathname + url.search); return; }
       const el = siteEl();
-      if (!el) { void router.push(url.pathname + url.search); return; }
+      if (!el) { void navigation.push(url.pathname + url.search); return; }
       locked = true;
       paintBackdrop();
       el.dataset.cpTransition = 'leaving';
       if (dir < 0) el.dataset.cpDir = 'back'; else delete el.dataset.cpDir;
-      animate(el, readMs('--cp-motion-page-out', 300), () => { clearTransition(el); void router.push(url.pathname + url.search); });
+      animate(el, readMs('--cp-motion-page-out', 300), () => { clearTransition(el); void navigation.push(url.pathname + url.search); });
     };
 
     const onComplete = () => { playEnter(); };
 
     document.addEventListener('click', onClick, true);
-    router.events.on('routeChangeComplete', onComplete);
+    // Hybrid main-navigation crossings are document loads; unfold the new page too.
+    playEnter();
+    const unsubscribe = navigation.subscribe(onComplete);
     document.documentElement.setAttribute('data-motion-ready', '');
     return () => {
       document.documentElement.removeAttribute('data-motion-ready');
       document.removeEventListener('click', onClick, true);
-      router.events.off('routeChangeComplete', onComplete);
+      unsubscribe();
       timers.forEach(clearTimeout);
       clearBackdrop();
       const el = siteEl();
       if (el) clearTransition(el);
     };
-  }, [router]);
+  }, [navigation]);
 
   return <>{children}</>;
 }

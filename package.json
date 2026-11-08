@@ -1,16 +1,16 @@
 {
   "name": "aether",
   "private": true,
-  "packageManager": "pnpm@9.x",
+  "packageManager": "npm@10.9.8",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm --filter api dev",
-    "build": "pnpm --filter api build",
-    "test": "pnpm --filter api test",
-    "lint": "pnpm --filter api lint"
+    "dev": "npm run dev --workspace aether-api",
+    "build": "npm run build --workspace aether-api",
+    "test": "npm run test --workspace aether-api",
+    "lint": "npm run lint --workspace aether-api"
   },
   "overrides": {
     "@nestjs/config": {

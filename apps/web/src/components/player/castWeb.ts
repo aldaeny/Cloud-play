@@ -35,14 +35,14 @@ export function loadCastSdk(): Promise<boolean> {
 export function isShareableMedia(value:string):boolean {
  try{const u=new URL(value);const host=u.hostname.toLowerCase();return u.protocol==='https:'&&!u.username&&!u.password&&!u.search&&!u.hash&&host.includes('.')&&!/^[\d.]+$/.test(host)&&!host.includes(':')&&!host.endsWith('.local')&&!host.endsWith('.localhost')}catch{return false}
 }
-export async function sendWebCast(url:string,kind:'hls'|'mp4',title:string,position:number):Promise<void> {
+export async function sendWebCast(url:string,kind:'hls'|'mp4'|'dash',title:string,position:number):Promise<void> {
  const context=castContext();const api=castWindow().chrome?.cast;
  if(!context||!api||!isShareableMedia(url))throw new Error('unavailable');
  let session=context.getCurrentSession();
  // requestSession must run directly from the user gesture; no await before it.
  if(!session){await context.requestSession();session=context.getCurrentSession()}
  if(!session)throw new Error('cancelled');
- const media=new api.media.MediaInfo(url,kind==='mp4'?'video/mp4':'application/x-mpegURL');
+ const media=new api.media.MediaInfo(url,kind==='mp4'?'video/mp4':kind==='dash'?'application/dash+xml':'application/x-mpegURL');
  media.streamType=kind==='hls'?api.media.StreamType.LIVE:api.media.StreamType.BUFFERED;
  const metadata=new api.media.GenericMediaMetadata();metadata.title=title;media.metadata=metadata;
  const request=new api.media.LoadRequest(media);request.autoplay=true;if(kind==='mp4'&&Number.isFinite(position)&&position>0)request.currentTime=position;

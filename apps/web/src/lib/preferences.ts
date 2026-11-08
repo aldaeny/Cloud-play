@@ -56,6 +56,13 @@ export type Prefs = {
   scrollToPlayer: boolean;
 };
 
+/** Stable SSR/hydration snapshot. Never read device storage while rendering. */
+export const SERVER_PREFS: Prefs = {
+  language: 'ar', theme: 'dark', reduceMotion: false, textSize: 'normal', glow: true,
+  autoCarousel: true, highContrast: false, solidPanels: false, hideCover: false,
+  staticCover: false, playbackAuto: true, playbackMuted: false, scrollToPlayer: true,
+};
+
 export function readPrefs(): Prefs {
   return {
     language: read('cloudplay-language') === 'en' ? 'en' : 'ar',

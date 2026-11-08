@@ -1,40 +1,35 @@
-// Types for TV Channels & Player
 export interface EPGProgram {
   id: string;
   title: string;
-  start: string; // ISO Date
-  end: string;   // ISO Date
+  start: string;
+  end: string;
   description?: string;
 }
+export type ChannelCategory = 'sports' | 'news' | 'movies' | 'series' | 'entertainment' | 'kids' | 'religious' | 'music' | 'documentary' | 'education' | 'comedy' | 'general';
+export type ChannelQuality = 'SD' | 'HD' | 'FHD' | '4K';
+export type StreamType = 'hls' | 'dash' | 'mp4';
 
-export type ChannelCategory =
-  | "sports" | "news" | "movies" | "series"
-  | "entertainment" | "kids" | "religious" | "music"
-  | "documentary" | "education" | "comedy" | "general";
-
+/** Public, rights-reviewed channel metadata. Never add credentials or DRM keys here. */
 export interface Channel {
   id: string;
   name: string;
   logo: string;
-  streamUrl: string;        // M3U8 / MPD / MP4
-  streamType: "hls" | "dash" | "mp4" | "youtube";
+  streamUrl: string;
+  streamType: StreamType;
   category: ChannelCategory;
+  /** Original provider group, preserved instead of inventing a category. */
+  sourceGroup: string;
   country: string;
-  countryCode: string;      // ISO: "IQ", "US", "TR"...
+  countryCode: string;
   language: string;
-  quality: "SD" | "HD" | "FHD" | "4K";
-  qualityLabel: string;     // "1080p", "720p"...
+  /** Empty means the source does not declare a quality. */
+  quality: ChannelQuality | '';
+  qualityLabel: string;
   isLive: boolean;
-  isFavorite?: boolean;
-  drm?: {
-    type: "widevine" | "fairplay" | "clearkey";
-    licenseUrl?: string;
-    keys?: Record<string, string>;
-  };
-  headers?: Record<string, string>; // User-Agent, Referer...
-  epg?: EPGProgram[];       // Electronic Program Guide
+  playable: boolean;
+  epgId: string;
+  epg?: EPGProgram[];
 }
-
 export interface PlayerState {
   isPlaying: boolean;
   currentTime: number;
