@@ -170,7 +170,7 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
         {visible.map(channel => {
           const isFavorite = favorites.includes(channel.id);
           return (
-            <div className={selected?.id === channel.id ? 'ptv-card selected' : 'ptv-card'} key={channel.id}>
+            <div className={selected?.id === channel.id ? 'ptv-card selected' : 'ptv-card'} key={channel.id} id={channel.id}>
               <button
                 className="ptv-open"
                 onClick={() => setSelected({

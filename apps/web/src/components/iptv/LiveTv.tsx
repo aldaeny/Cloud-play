@@ -2,6 +2,7 @@ import { useState } from 'react';
 import PublicTv from './PublicTv';
 import CommunityTv from './CommunityTv';
 import FtaReference from './FtaReference';
+import RightsGuide from './RightsGuide';
 import type { PublicChannel } from '../../server/public-tv';
 
 type Language = 'ar' | 'en';
@@ -55,7 +56,7 @@ export default function LiveTv({ language, initialChannels }: { language: Langua
         </button>
       </div>
       {mode === 'curated'
-        ? <><PublicTv language={language} initialChannels={initialChannels} /><FtaReference language={language} /></>
+        ? <><PublicTv language={language} initialChannels={initialChannels} /><RightsGuide language={language} /><FtaReference language={language} /></>
         : <CommunityTv language={language} />}
     </>
   );

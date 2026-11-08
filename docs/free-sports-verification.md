@@ -81,3 +81,64 @@ each other on FEC and encryption status.
 `/live`'s licensed-source gate and honesty strings, `legacySourcesAllowed()`
 (still hardcoded `false`, `/api/iptv/iraq` still returns 503), and the
 `/my-tv` owner gate are all unchanged.
+
+---
+
+# Where-to-watch: Premier League & La Liga with Arabic commentary
+
+Checked 2026-11-08 against the rights holders' own announcements.
+
+## Premier League — no free option exists
+
+beIN SPORTS holds exclusive MENA rights across 24 countries through the end of
+**2027–28**, covering **all 380 matches** live with Arabic and English
+commentary. Digital rights are on **TOD**. Both are paid. No free-to-air
+channel has announced rights, so the guide says so outright instead of
+implying a workaround.
+
+## La Liga — the Iraq-specific finding
+
+beIN renewed La Liga through **2027–28** across 34 markets. Its own press
+release states, verbatim:
+
+> كما تتشارك beIN حقوق البث في العراق مع منصة 1001
+
+So inside **Iraq**, rights are officially shared with **1001** (`1001.tv`), the
+Al Sharqiya Group platform. Its licensing deal with La Liga runs 2024/25 →
+2027/28 for all 380 matches at 1080p, and Al Sharqiya built a dedicated analysis
+studio for it. Past seasons had matches offered free under bank sponsorship —
+that is a sponsorship, not a permanent entitlement, so the guide marks 1001 as
+**partly free** and tells the reader to confirm inside the app.
+
+The same agreement puts La Liga **highlights, goals and Arabic analysis** on
+Al Sharqiya and Al Sharqiya News — and Al Sharqiya is *already playable* in our
+curated list, so that entry links straight to it. It is explicitly labelled as
+highlights, **not full live matches**.
+
+## Genuinely free, with Arabic commentary
+
+| Competition | Holder | Cost |
+| --- | --- | --- |
+| دوري نجوم العراق | Al Iraqia Sport (IMN) | Free — **already playable in-app**, stream verified |
+| دوري روشن السعودي + King Cup + Super Cup | Thmanyah / Jako | Free through 2031 per its own release |
+| La Liga highlights & analysis | Al Sharqiya / Al Sharqiya News | Free — **already playable in-app** |
+
+## Implementation
+
+`src/server/competition-rights.ts` + `src/components/iptv/RightsGuide.tsx`,
+rendered on `/tv-sources` → curated, above the satellite reference. The guide
+holds **no stream URL and renders no player**; it links to official sites, to
+the cited announcement, and — for the two free entries that exist in our
+catalogue — to the in-app channel anchor. `PublicTv` cards gained `id={channel.id}`
+so those anchors resolve.
+
+`npm run test:rights` — 20 checks. The load-bearing ones: no `.m3u8` anywhere in
+the data; the Premier League is never marked free; beIN and TOD are `paid`
+everywhere; 1001 is never overclaimed as unconditionally free; Al Sharqiya is
+never described as full live matches; every in-app link resolves to a real
+curated channel and only ever points at a `free` platform.
+
+## Still untouched
+
+`/live` licensing gate, `legacySourcesAllowed() === false`
+(`/api/iptv/iraq` → 503), and the `/my-tv` owner gate.
