@@ -188,3 +188,49 @@
   .live-mode-tab strong { font-size: 13px; }
   .ctv-select { max-width: 100%; flex: 1; }
 }
+
+/* ——— Free-to-air satellite reference (no player, tuning data only) ——— */
+.fta { margin: 30px 0 8px; }
+.fta-head h2 { margin: 0 0 7px; font-size: 1.16rem; }
+.fta-head p { margin: 0 0 16px; color: #b9b3d0; font-size: .89rem; line-height: 1.75; max-width: 78ch; }
+.fta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 15px; }
+.fta-card {
+  border-radius: 15px; padding: 17px 16px;
+  background: var(--glass-surface); border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.fta-card-head { display: flex; align-items: flex-start; gap: 10px; }
+.fta-flag { font-size: 1.5rem; line-height: 1; }
+.fta-names { flex: 1; min-width: 0; }
+.fta-names h3 { margin: 0; font-size: 1.02rem; }
+.fta-names small { color: #a49dc0; font-size: .77rem; }
+.fta-badge {
+  flex-shrink: 0; padding: 4px 9px; border-radius: 999px; font-size: .69rem; font-weight: 600;
+  background: rgba(255,196,0,.13); border: 1px solid rgba(255,196,0,.32); color: #ffd76a;
+  white-space: nowrap;
+}
+.fta-line { margin: 0; font-size: .85rem; line-height: 1.7; }
+.fta-note {
+  margin: 0; padding: 9px 11px; border-radius: 10px; font-size: .81rem; line-height: 1.75;
+  background: rgba(155,128,255,.08); border: 1px solid rgba(155,128,255,.2); color: #c9c2e4;
+}
+.fta-sub { margin: 4px 0 0; font-size: .84rem; color: #cfc8ea; }
+.fta-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line); }
+.fta-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.fta-table th, .fta-table td { padding: 7px 9px; text-align: start; white-space: nowrap; }
+.fta-table thead th { background: rgba(255,255,255,.04); color: #a49dc0; font-weight: 600; font-size: .72rem; }
+.fta-table tbody tr + tr td { border-top: 1px solid var(--line); }
+.fta-num { font-variant-numeric: tabular-nums; font-weight: 600; color: #e8e3ff; }
+.fta-link {
+  align-self: flex-start; margin-top: 2px; padding: 7px 13px; border-radius: 10px;
+  font-size: .82rem; font-weight: 600; text-decoration: none; color: #fff;
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+}
+.fta-link:hover { filter: brightness(1.1); }
+.fta-foot { margin: 13px 0 0; font-size: .76rem; color: #8f88ab; line-height: 1.7; }
+.fta-foot span { display: inline-block; margin-inline-start: 6px; color: #736c92; }
+@media (max-width: 560px) {
+  .fta-grid { grid-template-columns: 1fr; }
+  .fta-card-head { flex-wrap: wrap; }
+}

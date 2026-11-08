@@ -70,6 +70,12 @@ export const PUBLIC_CHANNELS: PublicChannel[] = [
   { id: 'future-tv', nameAr: 'تلفزيون المستقبل', nameEn: 'Future TV', group: 'levant', country: 'LB', language: 'ar', broadcaster: 'Future Television', officialUrl: 'https://www.ftv.com.lb/', streamUrl: 'https://live.kwikmotion.com/futurelive/ftv.smil/playlist.m3u8' },
 
   // ——— Sport ———
+  // Verified 2026-11-08: Iraqia Sport returned a live rolling playlist
+  // (#EXT-X-MEDIA-SEQUENCE advancing, real .ts segments); Oman Sports returned a
+  // master playlist with 1080p/720p/480p/240p variants. Both are state
+  // broadcasters streaming on their own CDN, credential-free.
+  { id: 'iraqia-sport', nameAr: 'العراقية الرياضية', nameEn: 'Al Iraqia Sport', group: 'sport', country: 'IQ', language: 'ar', broadcaster: 'Iraqi Media Network', officialUrl: 'https://imn.iq/', streamUrl: 'https://imn-live.esite-lab.com/hls/iraqia-sports-1.m3u8' },
+  { id: 'oman-sport', nameAr: 'عُمان الرياضية', nameEn: 'Oman Sports TV', group: 'sport', country: 'OM', language: 'ar', broadcaster: 'Oman Public Authority for Radio and TV', officialUrl: 'https://part.gov.om/', streamUrl: 'https://partneta.cdn.mgmlcdn.com/omsport/smil:omsport.stream.smil/chunklist.m3u8' },
   { id: 'ktv-sport', nameAr: 'الكويت الرياضية', nameEn: 'KTV Sport', group: 'sport', country: 'KW', language: 'ar', broadcaster: 'Kuwait Television', officialUrl: 'https://www.media.gov.kw/', streamUrl: 'https://kwtspta.cdn.mangomolo.com/sp/smil:sp.stream.smil/chunklist.m3u8' },
   { id: 'jordan-sport', nameAr: 'الأردن الرياضية', nameEn: 'Jordan Sport', group: 'sport', country: 'JO', language: 'ar', broadcaster: 'Jordan Radio and Television', officialUrl: 'https://www.jrtv.gov.jo/', streamUrl: 'https://jrtv-live.ercdn.net/jordansporthd/jordansporthd.m3u8' },
 
