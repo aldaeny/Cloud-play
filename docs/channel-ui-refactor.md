@@ -131,7 +131,7 @@
 | `images/channel-sort-mobile.png` | قائمة الترتيب مفتوحة |
 | `images/channel-player-mobile.png` | المشغل المنبثق أثناء بث فعلي (نمط اختبار) |
 | `images/channel-miniplayer-mobile.png` | الوضع المصغّر مع بقاء شريط التنقل |
-| `images/channel-list-desktop.png` | القائمة المصغرة LTR على ١٤٤ بكسل |
+| `images/channel-list-desktop.png` | القائمة المصغرة LTR على ١٤٤٠ بكسل |
 | `images/channel-player-desktop.png` | المشغل على سطح المكتب |
 
 ## ١٢. التشغيل المحلي
