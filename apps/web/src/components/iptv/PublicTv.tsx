@@ -1,13 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { PublicChannel, PublicGroup } from '../../server/public-tv';
 import type { LicensedChannel } from '../../server/licensed-iptv';
-import MediaViewer from '../player/MediaViewer';
+import { VideoPlayerModal } from '../player/VideoPlayerModal';
+import type { Channel } from '../../types/channel';
+import { categoryOf, qualityOf } from '../../lib/channels';
+import { getStreamType } from '../../lib/player-utils';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
 import { countryFlag } from '../../lib/country-flag';
 
 type Language = 'ar' | 'en';
 type Filter = 'all' | PublicGroup;
-type Selected = { id: string; name: string; url: string; officialUrl?: string; broadcaster?: string };
+type Selected = { id: string; name: string; url: string; officialUrl?: string; broadcaster?: string; group?: string; country?: string };
+
+/**
+ * Bridge a curated/operator row into the shared player's Channel shape so the
+ * pop-up reuses the real VideoPlayer (hls.js/dash.js, quality, retry) instead of
+ * a second playback stack. Quality is only labelled when the source declares it.
+ */
+function toPlayerChannel(row: Selected): Channel {
+  const group = row.group ?? '';
+  return {
+    id: row.id, name: row.name, logo: '', streamUrl: row.url,
+    streamType: getStreamType(row.url) ?? 'hls',
+    category: categoryOf(group, row.name), sourceGroup: group,
+    country: '', countryCode: row.country ?? '', language: '',
+    ...qualityOf(row.name), isLive: true, playable: true, epgId: '',
+  };
+}
 
 const FAVORITES = 'cloudplay-tv-favorites-v1';
 
@@ -179,6 +198,8 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
                   url: channel.streamUrl,
                   officialUrl: channel.officialUrl,
                   broadcaster: channel.broadcaster,
+                  group: channel.group,
+                  country: channel.country,
                 })}
               >
                 <span className="ptv-badge"><span className="ptv-dot" aria-hidden="true" />{t.live}</span>
@@ -201,23 +222,14 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
       </div>
 
       {selected && (
-        <div className="ptv-player">
-          <MediaViewer
-            key={selected.id}
-            language={language}
-            title={`${t.nowPlaying}: ${selected.name}`}
-            url={selected.url}
-            kind="hls"
-            onClose={() => setSelected(null)}
-            footer={selected.officialUrl ? (
-              <p className="ptv-note ptv-source">
-                {t.source}:{' '}
-                <a href={selected.officialUrl} target="_blank" rel="noopener noreferrer">{selected.broadcaster} ↗</a>
-              </p>
-            ) : undefined}
-          />
-          <p className="ptv-note">{t.playbackHelp}</p>
-        </div>
+        <VideoPlayerModal
+          key={selected.id}
+          channel={toPlayerChannel(selected)}
+          language={language}
+          favorite={favorites.includes(selected.id)}
+          onFavoriteToggle={toggleFavorite}
+          onClose={() => setSelected(null)}
+        />
       )}
 
       {extra.length > 0 && (

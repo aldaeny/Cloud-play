@@ -10,7 +10,6 @@
     "test:private": "node tests/private-player.test.mjs",
     "test:public": "node tests/public-tv.test.mjs",
     "test:fta": "node tests/free-to-air.test.mjs",
-    "test:rights": "node tests/competition-rights.test.mjs",
     "test:films": "node tests/public-films.test.mjs",
     "test:community": "node tests/community-tv.test.mjs",
     "test:playlists": "node tests/playlist-import.test.mjs",
@@ -18,7 +17,8 @@
     "test:browser": "node tests/browser-smoke.mjs",
     "test:layout": "node tests/live-layout.mjs",
     "test:channels": "node tests/channel-sort.test.mjs",
-    "test:channels:browser": "node tests/channel-ui.test.mjs"
+    "test:channels:browser": "node tests/channel-ui.test.mjs",
+    "test:popup": "node tests/public-popup-player.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",
