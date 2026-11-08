@@ -1,0 +1,32 @@
+/* Scoped Tailwind layer for the IPTV channel UI.
+   `preflight` is disabled in tailwind.config.js, so the base layer emits ONLY
+   Tailwind's `--tw-*` custom-property defaults (required by blur / gradient /
+   shadow / transform utilities) and no element reset. Every utility is prefixed
+   `tw-` and scoped to `.cp-tw`, so the rest of Cloud Play keeps its own CSS. */
+@tailwind base;
+@tailwind utilities;
+
+/* Neutralize the app's legacy global <button> chrome inside the new channel UI
+   only. Utilities are emitted as `.cp-tw .tw-*` (higher specificity), so every
+   Tailwind class below still wins over this reset. Nothing outside `.cp-tw`
+   is affected. */
+.cp-tw button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  min-height: 0;
+  letter-spacing: normal;
+}
+.cp-tw ul, .cp-tw li { list-style: none; margin: 0; padding: 0; }
+.cp-tw p, .cp-tw strong, .cp-tw span { margin: 0; }
+
+/* Inside the small floating preview the full-size control bar does not fit:
+   the card shows the picture only, and its header carries restore/close. */
+.cp-tw[data-mini-player="true"] .cp-player-top,
+.cp-tw[data-mini-player="true"] .cp-player-controls,
+.cp-tw[data-mini-player="true"] .cp-player-center { display: none; }
+.cp-tw[data-mini-player="true"] .cp-player { aspect-ratio: 16 / 9; }
