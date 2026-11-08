@@ -18,7 +18,8 @@
     "test:layout": "node tests/live-layout.mjs",
     "test:channels": "node tests/channel-sort.test.mjs",
     "test:channels:browser": "node tests/channel-ui.test.mjs",
-    "test:popup": "node tests/public-popup-player.mjs"
+    "test:popup": "node tests/public-popup-player.mjs",
+    "test:xtream-url": "node tests/xtream-url.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",

@@ -178,3 +178,27 @@
   .pli-grid { grid-template-columns: 1fr; }
   .pli-field, .pli-field-short { flex: 1 1 100%; }
 }
+
+/* ——— M3U import: where-to-get-it help + Xtream URL builder ——— */
+.pli-help {
+  padding: 11px 13px; border-radius: 12px; font-size: 13px;
+  background: rgba(155,128,255,.08); border: 1px solid rgba(155,128,255,.22);
+}
+.pli-help strong { display: block; margin-bottom: 4px; font-size: 13px; color: #cfc8ea; }
+.pli-help p { margin: 0; font-size: 12.5px; line-height: 1.75; color: #a8b0c8; }
+.pli-builder { display: flex; flex-direction: column; gap: 10px; }
+.pli-builder-toggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border-radius: 10px; cursor: pointer;
+  font-size: 13px; font-weight: 700; color: #cfc8ea; text-align: start;
+  background: rgba(255,255,255,.03); border: 1px solid var(--glass-border);
+}
+.pli-builder-toggle:hover { border-color: #9b80ff; }
+.pli-builder-toggle span { font-size: 15px; line-height: 1; color: #9b80ff; }
+.pli-builder-body {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 11px;
+  padding: 13px; border-radius: 12px;
+  background: rgba(255,255,255,.02); border: 1px solid var(--glass-border);
+}
+.pli-builder-body > .pp-note,
+.pli-builder-body > .pp-error { flex: 1 1 100%; margin: 0; }

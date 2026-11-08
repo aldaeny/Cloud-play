@@ -1,6 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ownerRequest } from '../../lib/owner-api';
-import MediaViewer from '../player/MediaViewer';
+import { VideoPlayerModal } from '../player/VideoPlayerModal';
+import type { Channel as PlayerChannel } from '../../types/channel';
+import { categoryOf, qualityOf } from '../../lib/channels';
+import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
+import { buildXtreamPlaylistUrl } from '../../lib/xtream-playlist-url';
+
+/** Same storage key as the rest of the TV library, so the player star syncs. */
+const FAVORITES = 'cloudplay-tv-favorites-v1';
 
 type Language = 'ar' | 'en';
 
@@ -60,6 +67,18 @@ const T = {
     risky: 'صيغة قد لا يدعمها المتصفح',
     privateNote: 'هذه الطبقة خاصة لا تطبّق مرشّحات المحتوى العامة، لأن القائمة من اختيارك. الخادم يخفي الروابط الأصلية وبيانات الدخول برموز مشفّرة مؤقتة.',
     playerError: 'تعذّر تشغيل هذه القناة. قد يكون المصدر متوقفاً أو محجوباً.',
+    helpTitle: 'من وين أجيب الرابط؟',
+    helpBody: 'الرابط يجيك من مزوّد اشتراكك، وعادة ينتهي بـ ‎.m3u‎ أو ‎.m3u8‎. إذا المزوّد أعطاك «اسم مستخدم وكلمة مرور ورابط سيرفر» بدل رابط جاهز، استخدم المولّد بالأسفل.',
+    xtreamToggle: 'عندك بيانات Xtream بدل رابط جاهز؟',
+    xtreamHint: 'اكتب بيانات اشتراكك ونركّب لك رابط القائمة. البيانات تبقى في متصفحك ولا تُرسل لأي مكان قبل ما تضغط «استورد القائمة».',
+    server: 'رابط السيرفر مع المنفذ',
+    serverPlaceholder: 'http://example.com:8080',
+    username: 'اسم المستخدم',
+    password: 'كلمة المرور',
+    buildUrl: 'ركّب الرابط',
+    builtUrl: 'تم تركيب الرابط في الحقل بالأعلى — اضغط «استورد القائمة».',
+    buildFailed: 'تأكد من رابط السيرفر واسم المستخدم وكلمة المرور.',
+    ownUse: 'استخدم اشتراكك أنت فقط. مشاركة الرابط أو إعادة بثه للزوار تخالف شروط المزوّد وحقوق القنوات.',
   },
   en: {
     title: 'My private playlists',
@@ -89,6 +108,18 @@ const T = {
     risky: 'Format a browser may not decode',
     privateNote: 'This private tier does not apply the public content filters, because the list is your own choice. The server hides origin URLs and credentials behind temporary encrypted tokens.',
     playerError: 'This channel could not play. The source may be down or blocked.',
+    helpTitle: 'Where do I get the URL?',
+    helpBody: 'Your subscription provider gives you this link; it usually ends in .m3u or .m3u8. If they gave you a username, password and server address instead of a ready link, use the builder below.',
+    xtreamToggle: 'Have Xtream credentials instead of a ready link?',
+    xtreamHint: 'Enter your subscription details and we will assemble the playlist URL. They stay in your browser and are not sent anywhere until you press “Import playlist”.',
+    server: 'Server URL with port',
+    serverPlaceholder: 'http://example.com:8080',
+    username: 'Username',
+    password: 'Password',
+    buildUrl: 'Build the URL',
+    builtUrl: 'The URL is now in the field above — press “Import playlist”.',
+    buildFailed: 'Check the server URL, username and password.',
+    ownUse: 'Use your own subscription only. Sharing the link or restreaming it to visitors breaks your provider’s terms and the channels’ rights.',
   },
 } as const;
 
@@ -169,8 +200,57 @@ export default function PlaylistImport({ language }: { language: Language }) {
   const [group, setGroup] = useState('');
   const [shown, setShown] = useState(PAGE);
   const [playing, setPlaying] = useState<Channel | null>(null);
-  const [playerError, setPlayerError] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [showXtream, setShowXtream] = useState(false);
+  const [server, setServer] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [built, setBuilt] = useState<'ok' | 'bad' | null>(null);
   const requestId = useRef(0);
+
+  // Favorites share the TV library key so the pop-up star and account sync work.
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const value = JSON.parse(localStorage.getItem(FAVORITES) || '[]');
+        if (Array.isArray(value)) setFavorites(value.filter((x): x is string => typeof x === 'string').slice(0, 1200));
+      } catch { /* Storage unavailable. */ }
+    };
+    Promise.resolve().then(refresh);
+    window.addEventListener(LIBRARY_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(LIBRARY_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+
+  const toggleFavorite = useCallback((id: string) => {
+    setFavorites(current => {
+      const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id];
+      try { localStorage.setItem(FAVORITES, JSON.stringify(next)); } catch { /* Session only. */ }
+      notifyLibraryChanged();
+      return next;
+    });
+  }, []);
+
+  const buildXtreamUrl = useCallback(() => {
+    const next = buildXtreamPlaylistUrl({ server, username, password });
+    if (!next) { setBuilt('bad'); return; }
+    setUrl(next);
+    setBuilt('ok');
+  }, [server, username, password]);
+
+  /** Bridge an imported row into the shared pop-up player's Channel shape. */
+  const toPlayerChannel = (row: Channel): PlayerChannel => ({
+    id: row.id, name: row.name, logo: row.logo ?? '', streamUrl: row.url,
+    // The proxy URL has no file extension, so trust the parsed container kind
+    // instead of sniffing the path (which would mislabel MP4 as HLS).
+    streamType: row.kind === 'hls' ? 'hls' : 'mp4',
+    category: categoryOf(row.group, row.name), sourceGroup: row.group,
+    country: '', countryCode: '', language: '',
+    ...qualityOf(row.name), isLive: true, playable: true, epgId: '',
+  });
 
   const message = useCallback(
     (code: string) => ERRORS[language][code] || ERRORS[language].UPSTREAM_ERROR,
@@ -237,6 +317,11 @@ export default function PlaylistImport({ language }: { language: Language }) {
         <p>{t.subtitle}</p>
       </div>
 
+      <div className="pli-help">
+        <strong>{t.helpTitle}</strong>
+        <p>{t.helpBody}</p>
+      </div>
+
       <form
         className="pli-form"
         onSubmit={event => { event.preventDefault(); void load(url, remember, label); }}
@@ -272,6 +357,63 @@ export default function PlaylistImport({ language }: { language: Language }) {
           {busy ? t.loading : t.import}
         </button>
       </form>
+
+      <div className="pli-builder">
+        <button
+          type="button"
+          className="pli-builder-toggle"
+          aria-expanded={showXtream}
+          onClick={() => setShowXtream(open => !open)}
+        >
+          <span aria-hidden="true">{showXtream ? '−' : '+'}</span> {t.xtreamToggle}
+        </button>
+        {showXtream && (
+          <div className="pli-builder-body">
+            <p className="pp-note">{t.xtreamHint}</p>
+            <label className="pli-field">
+              <span>{t.server}</span>
+              <input
+                type="text"
+                value={server}
+                onChange={event => { setServer(event.target.value); setBuilt(null); }}
+                placeholder={t.serverPlaceholder}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label className="pli-field pli-field-short">
+              <span>{t.username}</span>
+              <input
+                type="text"
+                value={username}
+                onChange={event => { setUsername(event.target.value); setBuilt(null); }}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <label className="pli-field pli-field-short">
+              <span>{t.password}</span>
+              <input
+                type="password"
+                value={password}
+                onChange={event => { setPassword(event.target.value); setBuilt(null); }}
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            <button
+              className="pp-ghost"
+              type="button"
+              onClick={buildXtreamUrl}
+              disabled={!server.trim() || !username.trim() || !password.trim()}
+            >
+              {t.buildUrl}
+            </button>
+            {built === 'ok' && <p className="pp-note" role="status">{t.builtUrl}</p>}
+            {built === 'bad' && <p className="pp-error" role="alert">{t.buildFailed}</p>}
+          </div>
+        )}
+      </div>
 
       {saved.length > 0 && (
         <div className="pli-saved">
@@ -336,7 +478,7 @@ export default function PlaylistImport({ language }: { language: Language }) {
                     <button
                       type="button"
                       className="pli-card"
-                      onClick={() => { setPlaying(channel); setPlayerError(false); }}
+                      onClick={() => setPlaying(channel)}
                     >
                       {channel.logo
                         ? <img className="pp-art" src={channel.logo} alt="" loading="lazy" />
@@ -361,15 +503,16 @@ export default function PlaylistImport({ language }: { language: Language }) {
       )}
 
       <p className="pp-note pp-footnote">{t.privateNote}</p>
+      <p className="pp-note pp-footnote">{t.ownUse}</p>
 
       {playing && (
-        <MediaViewer
+        <VideoPlayerModal
+          key={playing.id}
+          channel={toPlayerChannel(playing)}
           language={language}
-          title={playing.name}
-          url={playing.url}
-          kind={playing.kind}
-          onClose={() => { setPlaying(null); setPlayerError(false); }}
-          footer={playerError ? <p className="pp-error">{t.playerError}</p> : undefined}
+          favorite={favorites.includes(playing.id)}
+          onFavoriteToggle={toggleFavorite}
+          onClose={() => setPlaying(null)}
         />
       )}
     </section>
