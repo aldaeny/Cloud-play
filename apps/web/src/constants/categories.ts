@@ -10,6 +10,7 @@ export const QUALITIES: Quality[] = [
   { value: "FHD", label: "1080p", color: "purple", badgeClass: "bg-purple-500 text-white" },
   { value: "HD", label: "720p", color: "blue", badgeClass: "bg-blue-500 text-white" },
   { value: "SD", label: "480p", color: "gray", badgeClass: "bg-gray-500 text-white" },
+
 ];
 
 export interface CategoryInfo {
@@ -32,7 +33,9 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: "religious", ar: "دينية", en: "Religious", icon: "church", gradient: "from-teal-500 to-green-600" },
   { id: "music", ar: "موسيقى", en: "Music", icon: "music", gradient: "from-indigo-500 to-purple-500" },
   { id: "documentary", ar: "وثائقي", en: "Documentary", icon: "bookOpen", gradient: "from-amber-500 to-yellow-600" },
-  { id: "comedy", ar: "كوميدي", en: "Comedy", icon: "smile", gradient: "from-fuchsia-500 to-pink-600" },
+  { id: "comedy", ar: "كوميدي", en: "Comedy", icon: "laugh", gradient: "from-fuchsia-500 to-pink-600" },
+  { id: "education", ar: "تعليم وثقافة", en: "Education", icon: "bookOpen", gradient: "from-amber-500 to-yellow-600" },
+  { id: "general", ar: "قنوات عامة / أخرى", en: "General / other", icon: "tv", gradient: "from-gray-500 to-gray-600" },
 ];
 
 export const COUNTRIES = [

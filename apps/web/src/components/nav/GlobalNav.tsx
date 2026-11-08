@@ -1,6 +1,8 @@
+'use client';
+
 import { Tv } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useNavigation } from '../navigation/NavigationProvider';
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import Icon from '../icons/Icon';
 import { NAV_ROUTES, activeRoute, type NavRoute } from '../../lib/nav-routes';
@@ -13,7 +15,7 @@ import { NAV_ROUTES, activeRoute, type NavRoute } from '../../lib/nav-routes';
  * active button and the per-page detail popover are driven from here.
  */
 export default function GlobalNav() {
-  const router = useRouter();
+  const navigation = useNavigation();
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
   const [flags, setFlags] = useState({ motionOff: false, noGlow: false, solid: false });
@@ -29,7 +31,7 @@ export default function GlobalNav() {
   const pendingPopover = useRef<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const pathname = router.asPath.split('?')[0];
+  const pathname = navigation.pathname;
   const active = activeRoute(pathname);
   const ar = lang === 'ar';
 
@@ -119,9 +121,9 @@ export default function GlobalNav() {
       sync();
     };
     attach();
-    router.events.on('routeChangeComplete', attach);
-    return () => { htmlObs.disconnect(); siteObs?.disconnect(); router.events.off('routeChangeComplete', attach); };
-  }, [router]);
+    const unsubscribeAttach = navigation.subscribe(attach);
+    return () => { htmlObs.disconnect(); siteObs?.disconnect(); unsubscribeAttach(); };
+  }, [navigation]);
 
   // Reserve space + hide the legacy per-page nav rows while this bar is mounted.
   useEffect(() => {
@@ -131,13 +133,13 @@ export default function GlobalNav() {
 
   // Hide the bar while a media player is open so it never covers player controls.
   useEffect(() => {
-    const check = () => setPlayerOpen(!!document.querySelector('.media-viewer'));
+    const check = () => setPlayerOpen(!!document.querySelector('.media-viewer, .cp-player'));
     check();
     const obs = new MutationObserver(check);
     obs.observe(document.body, { childList: true, subtree: true });
-    router.events.on('routeChangeComplete', check);
-    return () => { obs.disconnect(); router.events.off('routeChangeComplete', check); };
-  }, [router]);
+    const unsubscribeCheck = navigation.subscribe(check);
+    return () => { obs.disconnect(); unsubscribeCheck(); };
+  }, [navigation]);
 
   const showPopover = useCallback((route: NavRoute) => {
     const el = btnRefs.current.get(route.href);
@@ -161,9 +163,9 @@ export default function GlobalNav() {
       const current = activeRoute(window.location.pathname);
       if (route && current?.href === route.href) setTimeout(() => showPopover(route), 80);
     };
-    router.events.on('routeChangeComplete', onComplete);
-    return () => { router.events.off('routeChangeComplete', onComplete); };
-  }, [router, showPopover]);
+    const unsubscribe = navigation.subscribe(onComplete);
+    return () => { unsubscribe(); };
+  }, [navigation, showPopover]);
 
   // Dismiss on outside interaction or Escape.
   useEffect(() => {
@@ -202,6 +204,7 @@ export default function GlobalNav() {
   return (
     <div
       className={`cp-global-nav theme-${theme}${flags.motionOff ? ' motion-off' : ''}${flags.noGlow ? ' no-glow' : ''}${flags.solid ? ' solid-panels' : ''}${playerOpen ? ' cp-nav-hidden' : ''}`}
+      aria-hidden={playerOpen || undefined}
       dir={ar ? 'rtl' : 'ltr'}
     >
       <nav className="cp-nav-bar" ref={barRef} aria-label={ar ? 'التنقل الرئيسي' : 'Main navigation'}>
@@ -220,6 +223,7 @@ export default function GlobalNav() {
               href={route.href}
               ref={el => { if (el) btnRefs.current.set(route.href, el); else btnRefs.current.delete(route.href); }}
               className={`cp-nav-btn${isActive ? ' cp-nav-active' : ''}`}
+              tabIndex={playerOpen ? -1 : 0}
               aria-current={isActive ? 'page' : undefined}
               aria-label={ar ? route.ar : route.en}
               onClick={onNavClick(route)}

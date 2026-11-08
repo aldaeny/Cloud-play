@@ -1,5 +1,7 @@
+'use client';
+
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useNavigation } from '../navigation/NavigationProvider';
 import { type Ref } from 'react';
 import CloudPlayBrand from '../brand/CloudPlayBrand';
 import Icon from '../icons/Icon';
@@ -25,9 +27,9 @@ export default function AppHeader({
   searchButtonRef?: Ref<HTMLButtonElement>;
   accountHref?: string;
 }) {
-  const router = useRouter();
+  const navigation = useNavigation();
   const ar = language === 'ar';
-  const handleSearch = () => { if (onSearchClick) onSearchClick(); else void router.push('/search'); };
+  const handleSearch = () => { if (onSearchClick) onSearchClick(); else void navigation.push('/search'); };
 
   return (
     <header className="app-header">

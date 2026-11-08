@@ -1,7 +1,7 @@
 import {useEffect,useState,type RefObject} from 'react';
 import {castContext,isShareableMedia,loadCastSdk,sendWebCast} from './castWeb';
 type Language='ar'|'en';
-type Props={language:Language;title:string;url:string;kind:'hls'|'mp4';videoRef:RefObject<HTMLVideoElement>};
+type Props={language:Language;title:string;url:string;kind:'hls'|'mp4'|'dash';videoRef:RefObject<HTMLVideoElement>};
 type AirPlayVideo=HTMLVideoElement & {webkitShowPlaybackTargetPicker?:()=>void};
 type NativeBridge={postMessage:(data:string)=>void};
 type NativeWindow=Window & {ReactNativeWebView?:NativeBridge;__CLOUDPLAY_CAST_NATIVE__?:boolean};
