@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import { openToken, sealPath, TokenError, TOKEN_TTL_MS } from '../../../src/server/xtream-token';
 import { PrivateError, providerOrigin, proxySecret } from '../../../src/server/xtream-private';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
  * GET /api/xtream/stream?t=<capability token>
@@ -100,6 +101,7 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'GET' && req.method !== 'HEAD') {

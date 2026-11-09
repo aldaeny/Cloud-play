@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPublicChannels } from '../../../src/server/public-tv';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
  * GET /api/iptv/public
@@ -8,6 +9,7 @@ import { getPublicChannels } from '../../../src/server/public-tv';
  * The list is static, so it is CDN-cacheable.
  */
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { bucket: 'public' })) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });

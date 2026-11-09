@@ -7,6 +7,7 @@ import {
   queryCommunity,
   type CommunityIndex,
 } from '../../../src/server/community-tv';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
  * GET /api/iptv/community
@@ -60,6 +61,7 @@ function first(value: string | string[] | undefined): string {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { bucket: 'public' })) return;
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
