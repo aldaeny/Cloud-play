@@ -61,8 +61,8 @@ those phases and is **still an open decision** (see `IMPLEMENTATION_PLAN.md`, De
 |---|---|---|
 | Real, legally-free films | ✅ Complete + tested | **36 films** in `src/server/public-films.ts` (Blender open movies + public-domain archive.org), 36 prerendered `/movies/[id]` pages, 17 checks in `test:films` |
 | Film playback | ✅ Complete + tested | Real `<video>` mounts with a real source — asserted in `test:search:browser` |
-| Series / seasons / episodes | 🎨 **UI-only** | `pages/[section].tsx` renders an **empty-state string** for `series`. `Season`/`Episode` Prisma models exist but are unused by the web app |
-| Xtream VOD (movies/series from user's own server) | ❌ Missing | No VOD catalog fetch; only live channels are surfaced |
+| Public series (`/series`) | 🎨 **Empty state (intentional)** | `pages/[section].tsx:27` renders an honest empty state — there is no legally-free series catalog to show yet. `Season`/`Episode` Prisma models exist but are unused by the web app. This is **not** the same as Xtream VOD below |
+| Xtream VOD (movies/series from user's own server) | 🟡 **Implemented, live playback NOT VERIFIED** | Corrected 2026-11-08 — the earlier "❌ Missing" was wrong. `src/server/xtream-private.ts` implements `get_vod_categories`/`get_vod_streams` (:48), `get_series_categories`/`get_series` (:49) and `get_series_info` → episodes (:233); `PrivatePlayer.tsx` exposes live/movie/series tabs (:305) with episode drill-down (:242). Covered by `test:private` → *"movies and series catalogs work and stay clean"* (`private-player.test.mjs:242`), which also asserts no credential leaks. **Blocked from end-to-end verification only by the provider origin being unavailable (521/500)** — not by missing code |
 | No fake titles / placeholders | ✅ Verified | Catalog is real and attributed; no mock entries |
 
 ### Phase 3 — Player
@@ -242,10 +242,20 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
 ## 4. Honest summary against the required report categories
 
 - **Implemented + tested successfully:** Arabic-aware search across all four surfaces; CSP/HSTS/Permissions-Policy
-  with zero browser violations; plus every pre-existing web feature listed ✅ above (400 checks total).
-- **Implemented but not tested here:** the entire NestJS API (13 modules, 32 models) — blocked by `prisma generate`;
-  native mobile and webOS builds.
-- **Blocked by external configuration:** EPG, payments, API hosting, Xtream HTTPS.
-- **Not implemented:** series/episodes data, Xtream VOD, server priority/default, connection test, sync job,
-  unified-vs-individual server mode, the 12 admin modules, episode search, universal rate limiting.
-- **Awaiting your decision:** architecture D1 (A/B/C) and deployment approval.
+  with zero browser violations; plus every pre-existing web feature listed ✅ above.
+  **Updated 2026-11-08:** the NestJS API now also builds and tests green — `tsc` 0 errors (was 18),
+  **19/19 jest suites / 95/95 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
+  The 18 errors were missing generated Prisma types, not logic defects; see
+  `apps/api/scripts/generate-client.cjs`.
+- **Implemented but not tested here:** NestJS **runtime boot and live PostgreSQL queries** — the offline
+  Prisma fallback emits types only and ships **no query engine**, so a green build does not prove the API
+  runs against a database. Also native mobile and webOS builds.
+- **Blocked by external configuration:** EPG, payments, API hosting, Xtream HTTPS, and the Xtream provider
+  origin itself (`redchicks.xyz` → 521 on 2053/443, 500 on 2052; **origin unavailable, authorization
+  unverified**). Xtream VOD and multi-server code is therefore *implemented but not end-to-end verified*.
+- **Not implemented:** a legally-free **public** series catalog (`/series` is a deliberate empty state),
+  server priority/default selection, health monitoring, sync job, unified-vs-individual server mode,
+  episode search, and universal rate limiting on the web API routes.
+  *(Xtream VOD was previously listed here in error — it is implemented; see Phase 2 above.)*
+- **Awaiting your decision:** deployment approval. **D1 is resolved: Option C — Hybrid** (Supabase Auth +
+  Supabase PostgreSQL as sources of truth, NestJS as the business/API layer, Next.js calling NestJS).
