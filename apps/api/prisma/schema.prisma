@@ -473,6 +473,11 @@ model XtreamServer {
   username           String
   passwordEncrypted String   @db.Text
   enabled            Boolean  @default(true)
+  /// Selection preference: 1 is best (like an MX preference). See xtream-selection.ts.
+  priority           Int      @default(100)
+  /// Explicitly preferred server for the tenant. At most one per tenant, enforced
+  /// by a partial unique index in the migration (Prisma cannot express partials).
+  isDefault          Boolean  @default(false)
   connectionStatus   String   @default("unknown")
   lastCheckedAt      DateTime? @db.Timestamptz
   createdAt          DateTime @default(now()) @db.Timestamptz
@@ -480,4 +485,5 @@ model XtreamServer {
 
   @@unique([tenantId, name])
   @@index([tenantId, enabled])
+  @@index([tenantId, enabled, priority])
 }

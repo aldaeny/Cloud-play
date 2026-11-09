@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminJwtGuard, CurrentAdmin, AdminPrincipal, RequirePermissions } from '../../common';
 import { XtreamServersService } from './xtream-servers.service';
 
@@ -13,9 +13,23 @@ export class XtreamServersController {
     return this.servers.list(admin.tenantId);
   }
 
+  /** Ordered, enabled failover candidates. Never returns credentials. */
+  @Get('candidates')
+  candidates(@CurrentAdmin() admin: AdminPrincipal, @Query('maxAttempts') maxAttempts?: string) {
+    const parsed = Number(maxAttempts);
+    return this.servers.candidates(admin.tenantId, Number.isFinite(parsed) && parsed > 0 ? parsed : 3);
+  }
+
+  /** The effective preferred server after priority/default/health ordering. */
+  @Get('preferred')
+  preferred(@CurrentAdmin() admin: AdminPrincipal) {
+    return this.servers.preferred(admin.tenantId);
+  }
+
   @Post()
   create(@CurrentAdmin() admin: AdminPrincipal, @Body() body: {
     name: string; baseUrl: string; username: string; password: string;
+    priority?: number; isDefault?: boolean;
   }) {
     return this.servers.create(admin.tenantId, body);
   }
@@ -23,8 +37,19 @@ export class XtreamServersController {
   @Patch(':id')
   update(@CurrentAdmin() admin: AdminPrincipal, @Param('id') id: string, @Body() body: {
     name?: string; baseUrl?: string; username?: string; password?: string;
+    priority?: number; isDefault?: boolean;
   }) {
     return this.servers.update(admin.tenantId, id, body);
+  }
+
+  @Patch(':id/default')
+  setDefault(@CurrentAdmin() admin: AdminPrincipal, @Param('id') id: string) {
+    return this.servers.setDefault(admin.tenantId, id);
+  }
+
+  @Patch(':id/priority')
+  setPriority(@CurrentAdmin() admin: AdminPrincipal, @Param('id') id: string, @Body('priority') priority: number) {
+    return this.servers.setPriority(admin.tenantId, id, priority);
   }
 
   @Patch(':id/toggle')
