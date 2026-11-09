@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import MediaViewer from '../player/MediaViewer';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
+import { matchesSearch } from '../../lib/search-normalize';
 import { PUBLIC_FILMS, absoluteWatchUrl, filmPoster, type FilmGenre, type PublicFilm } from '../../server/public-films';
 
 type Language = 'ar' | 'en';
@@ -99,13 +100,13 @@ export default function OpenMovies({
     notifyLibraryChanged();
   }
 
-  const needle = `${query} ${search}`.trim().toLocaleLowerCase();
+  const needle = `${query} ${search}`.trim();
   const filtered = useMemo(() => PUBLIC_FILMS.filter(film => {
     if (onlyId && film.id !== onlyId) return false;
     if (genre !== 'all' && film.genre !== genre) return false;
     if (filter === 'favorites' && !favorites.includes(film.id)) return false;
     if (filter === 'continue' && !progress[film.id]) return false;
-    if (needle && !`${film.title} ${film.titleAr} ${film.ar} ${film.en} ${film.year}`.toLocaleLowerCase().includes(needle)) return false;
+    if (!matchesSearch(`${film.title} ${film.titleAr} ${film.ar} ${film.en} ${film.year}`, needle)) return false;
     return true;
   }), [onlyId, genre, filter, favorites, progress, needle]);
 

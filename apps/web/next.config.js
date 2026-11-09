@@ -1,3 +1,5 @@
+const { securityHeaders } = require('./security-headers');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -11,12 +13,7 @@ const nextConfig = {
     return [
       {
         source: '/(.*)',
-        headers: [
-          // Local Arena previews run inside an iframe; production keeps SAMEORIGIN.
-          ...(process.env.NODE_ENV === 'production' ? [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }] : []),
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        headers: securityHeaders(process.env.NODE_ENV === 'production'),
       },
     ];
   },

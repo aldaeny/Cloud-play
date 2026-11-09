@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getSupabase } from '../../lib/supabase';
 import { useAccount } from '../account/AccountProvider';
 import PlaylistImport from './PlaylistImport';
+import { matchesSearch } from '../../lib/search-normalize';
 
 type Language = 'ar' | 'en';
 type Kind = 'live' | 'movie' | 'series';
@@ -262,11 +263,10 @@ export default function PrivatePlayer({ language }: { language: Language }) {
 
   const onPlayerError = useCallback(() => setPlayerError('PLAYER'), []);
 
-  const visible = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
-    if (!needle) return items;
-    return items.filter(item => item.name.toLowerCase().includes(needle));
-  }, [items, filter]);
+  const visible = useMemo(
+    () => items.filter(item => matchesSearch(item.name, filter)),
+    [items, filter],
+  );
 
   if (gate === 'loading') {
     return <div className="pp-gate" role="status"><p>{t.loading}</p></div>;
