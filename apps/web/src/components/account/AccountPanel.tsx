@@ -4,7 +4,7 @@ import { useAccount } from './AccountProvider';
 import type { Language } from '../../lib/preferences';
 import Icon from '../icons/Icon';
 
-type Mode = 'signin' | 'signup' | 'reset';
+type Mode = 'signin' | 'signup' | 'reset' | 'newPassword';
 
 function friendlyError(message: string, ar: boolean): string {
   const m = message.toLowerCase();
@@ -18,13 +18,18 @@ function friendlyError(message: string, ar: boolean): string {
 
 export default function AccountPanel({ language }: { language: Language }) {
   const ar = language === 'ar';
-  const { configured, loading, user, syncState, signIn, signUp, signOut, resetPassword } = useAccount();
+  const { configured, loading, user, syncState, signIn, signUp, signOut, resetPassword, recoveryActive, updatePassword } = useAccount();
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+
+  // A recovery link grants a temporary session. Ask for the new password BEFORE
+  // rendering the signed-in view, otherwise the user is stuck signed in with no
+  // way to change the password they just reset.
+  const showNewPassword = recoveryActive || mode === 'newPassword';
 
   const t = ar ? {
     title: 'حساب مجاني',
@@ -38,6 +43,10 @@ export default function AccountPanel({ language }: { language: Language }) {
     notConfigured: 'خدمة الحسابات غير مفعّلة على هذا النشر بعد.',
     loading: 'جارٍ التحقق من الحساب…',
     resetSent: 'إذا كان البريد مسجلاً، ستصلك رسالة استعادة كلمة المرور.',
+    newPassword: 'تعيين كلمة مرور جديدة',
+    newPasswordHint: 'اختر كلمة مرور جديدة لإكمال استعادة حسابك.',
+    submitNewPassword: 'حفظ كلمة المرور',
+    newPasswordDone: 'تم تحديث كلمة المرور بنجاح.',
     continue: 'متابعة التصفح',
     free: 'مجاني بالكامل',
   } : {
@@ -52,6 +61,10 @@ export default function AccountPanel({ language }: { language: Language }) {
     notConfigured: 'Accounts are not enabled on this deployment yet.',
     loading: 'Checking your account…',
     resetSent: 'If that email is registered, a password reset message is on its way.',
+    newPassword: 'Set a new password',
+    newPasswordHint: 'Choose a new password to finish recovering your account.',
+    submitNewPassword: 'Save password',
+    newPasswordDone: 'Your password has been updated.',
     continue: 'Continue browsing',
     free: 'Completely free',
   };
@@ -59,6 +72,27 @@ export default function AccountPanel({ language }: { language: Language }) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(''); setMessage('');
+    // Recovery is identified by the session Supabase created from the link, so
+    // it needs only the new password — no email, and no re-authentication.
+    if (showNewPassword) {
+      if (password.length < 6) {
+        setError(ar ? 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.' : 'Password must be at least 6 characters.');
+        return;
+      }
+      setBusy(true);
+      try {
+        await updatePassword(password);
+        setPassword('');
+        setMode('signin');
+        setMessage(t.newPasswordDone);
+      } catch (err) {
+        setError(friendlyError(err instanceof Error ? err.message : String(err), ar));
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
     const cleanEmail = email.trim();
     if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       setError(ar ? 'أدخل بريداً إلكترونياً صحيحاً.' : 'Enter a valid email address.');
@@ -107,7 +141,7 @@ export default function AccountPanel({ language }: { language: Language }) {
     return <div className="account-panel"><p className="firebase-note" role="status">{t.loading}</p></div>;
   }
 
-  if (user) {
+  if (user && !showNewPassword) {
     const syncLabel = syncState === 'syncing' ? t.syncSyncing : syncState === 'synced' ? t.syncSynced : syncState === 'error' ? t.syncError : t.syncIdle;
     return (
       <div className="account-panel">
@@ -141,50 +175,52 @@ export default function AccountPanel({ language }: { language: Language }) {
         <div className="settings-card-head">
           <span className="settings-card-icon" aria-hidden="true"><Icon name="user" size={19} /></span>
           <div>
-            <h2>{mode === 'signup' ? t.signup : mode === 'reset' ? t.reset : t.signin}</h2>
-            <p>{t.subtitle}</p>
+            <h2>{showNewPassword ? t.newPassword : mode === 'signup' ? t.signup : mode === 'reset' ? t.reset : t.signin}</h2>
+            <p>{showNewPassword ? t.newPasswordHint : t.subtitle}</p>
           </div>
         </div>
         <div className="settings-card-body">
-          <span className="account-free-badge">{t.free}</span>
+          {!showNewPassword && <span className="account-free-badge">{t.free}</span>}
           {error && <p className="account-error" role="alert">{error}</p>}
           {message && <p className="settings-message" role="status">{message}</p>}
           {/* noValidate: use the app's bilingual, screen-reader-friendly error
               messages instead of the browser's native validation bubbles. */}
           <form className="account-form" onSubmit={handleSubmit} noValidate>
-            <label className="account-field">
-              <span>{t.email}</span>
-              <input
-                type="email" autoComplete="email" inputMode="email" required
-                value={email} onChange={e => setEmail(e.target.value)}
-                placeholder="name@example.com" dir="ltr"
-              />
-            </label>
-            {mode !== 'reset' && (
+            {!showNewPassword && (
+              <label className="account-field">
+                <span>{t.email}</span>
+                <input
+                  type="email" autoComplete="email" inputMode="email" required
+                  value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="name@example.com" dir="ltr"
+                />
+              </label>
+            )}
+            {(mode !== 'reset' || showNewPassword) && (
               <label className="account-field">
                 <span>{t.password}</span>
                 <input
-                  type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  type="password" autoComplete={mode === 'signup' || showNewPassword ? 'new-password' : 'current-password'}
                   required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
                   dir="ltr"
                 />
               </label>
             )}
             <button type="submit" className="account-submit" disabled={busy}>
-              {busy ? '…' : mode === 'signup' ? t.submitSignup : mode === 'reset' ? t.submitReset : t.submitSignin}
+              {busy ? '…' : showNewPassword ? t.submitNewPassword : mode === 'signup' ? t.submitSignup : mode === 'reset' ? t.submitReset : t.submitSignin}
             </button>
           </form>
           <div className="account-links">
-            {mode === 'signin' && (
+            {!showNewPassword && mode === 'signin' && (
               <>
                 <button type="button" onClick={() => { setMode('signup'); setError(''); setMessage(''); }}>{t.signup}</button>
                 <button type="button" onClick={() => { setMode('reset'); setError(''); setMessage(''); }}>{t.forgot}</button>
               </>
             )}
-            {mode === 'signup' && (
+            {!showNewPassword && mode === 'signup' && (
               <button type="button" onClick={() => { setMode('signin'); setError(''); setMessage(''); }}>{t.signin}</button>
             )}
-            {mode === 'reset' && (
+            {!showNewPassword && mode === 'reset' && (
               <button type="button" onClick={() => { setMode('signin'); setError(''); setMessage(''); }}>{t.back}</button>
             )}
           </div>

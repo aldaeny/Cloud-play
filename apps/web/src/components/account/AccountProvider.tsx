@@ -17,6 +17,14 @@ type AccountContextValue = {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  /**
+   * True while the visitor arrived from a password-recovery link and must choose
+   * a new password before continuing. Supabase grants a temporary session for
+   * this; without a completion step the user is signed in but cannot change the
+   * password they just reset.
+   */
+  recoveryActive: boolean;
+  updatePassword: (password: string) => Promise<void>;
   clearAccountLibrary: () => Promise<void>;
 };
 
@@ -38,6 +46,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(accountsConfigured);
   const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [recoveryActive, setRecoveryActive] = useState(false);
   const pushTimer = useRef<number | null>(null);
   const userId = session?.user?.id ?? null;
 
@@ -71,8 +80,15 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     const { data: subscription } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setSession(nextSession ?? null);
       setLoading(false);
+      // Supabase emits this when the visitor opens a password-recovery link.
+      // The temporary session it grants exists so the user can choose a new
+      // password; surface that state so the UI can ask for one.
+      if (event === 'PASSWORD_RECOVERY') setRecoveryActive(true);
       if (event === 'SIGNED_IN' && nextSession?.user) void runSync(nextSession.user.id, true);
-      if (event === 'SIGNED_OUT') setSyncState('idle');
+      if (event === 'SIGNED_OUT') {
+        setSyncState('idle');
+        setRecoveryActive(false);
+      }
     });
     return () => {
       cancelled = true;
@@ -128,6 +144,23 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
+  /**
+   * Complete password recovery (or change a password while signed in).
+   *
+   * Supabase Auth remains the only credential authority: this calls
+   * `auth.updateUser` on the recovery session and never stores a password
+   * ourselves. The recovery flag is cleared only after Supabase confirms the
+   * change, so a failed attempt cannot silently drop the user back into the app
+   * with the old password still in place.
+   */
+  const updatePassword = useCallback(async (password: string) => {
+    const supabase = getSupabase();
+    if (!supabase) throw new Error('Accounts are not configured.');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    setRecoveryActive(false);
+  }, []);
+
   const clearAccountLibrary = useCallback(async () => {
     if (!userId) return;
     await clearCloudLibrary(userId);
@@ -143,8 +176,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     resetPassword,
+    recoveryActive,
+    updatePassword,
     clearAccountLibrary,
-  }), [loading, session, syncState, signIn, signUp, signOut, resetPassword, clearAccountLibrary]);
+  }), [loading, session, syncState, signIn, signUp, signOut, resetPassword, recoveryActive, updatePassword, clearAccountLibrary]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -161,6 +196,8 @@ export function useAccount(): AccountContextValue {
       signUp: async () => { throw new Error('Account provider missing.'); },
       signOut: async () => {},
       resetPassword: async () => { throw new Error('Account provider missing.'); },
+      recoveryActive: false,
+      updatePassword: async () => { throw new Error('Account provider missing.'); },
       clearAccountLibrary: async () => {},
     };
   }
