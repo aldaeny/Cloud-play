@@ -5,6 +5,7 @@ import type { Channel as PlayerChannel } from '../../types/channel';
 import { categoryOf, qualityOf } from '../../lib/channels';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
 import { buildXtreamPlaylistUrl } from '../../lib/xtream-playlist-url';
+import { matchesSearch } from '../../lib/search-normalize';
 
 /** Same storage key as the rest of the TV library, so the player star syncs. */
 const FAVORITES = 'cloudplay-tv-favorites-v1';
@@ -296,10 +297,9 @@ export default function PlaylistImport({ language }: { language: Language }) {
 
   const visible = useMemo(() => {
     if (!result) return [];
-    const needle = filter.trim().toLowerCase();
     return result.channels.filter(channel =>
       (!group || channel.group === group)
-      && (!needle || channel.name.toLowerCase().includes(needle)));
+      && matchesSearch(`${channel.name} ${channel.group}`, filter));
   }, [result, filter, group]);
 
   const removeSaved = (id: string) => {

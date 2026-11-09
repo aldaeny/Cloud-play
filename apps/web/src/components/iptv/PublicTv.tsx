@@ -7,6 +7,7 @@ import { categoryOf, qualityOf } from '../../lib/channels';
 import { getStreamType } from '../../lib/player-utils';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
 import { countryFlag } from '../../lib/country-flag';
+import { matchesSearch } from '../../lib/search-normalize';
 
 type Language = 'ar' | 'en';
 type Filter = 'all' | PublicGroup;
@@ -131,12 +132,10 @@ export default function PublicTv({ language, initialChannels }: { language: Lang
   }, []);
 
   const visible = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
     return (channels ?? []).filter(channel => {
       if (filter !== 'all' && channel.group !== filter) return false;
       if (onlyFavorites && !favorites.includes(channel.id)) return false;
-      if (!needle) return true;
-      return `${channel.nameAr} ${channel.nameEn} ${channel.broadcaster}`.toLocaleLowerCase().includes(needle);
+      return matchesSearch(`${channel.nameAr} ${channel.nameEn} ${channel.broadcaster}`, query);
     });
   }, [channels, filter, query, onlyFavorites, favorites]);
 
