@@ -244,9 +244,15 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
 - **Implemented + tested successfully:** Arabic-aware search across all four surfaces; CSP/HSTS/Permissions-Policy
   with zero browser violations; plus every pre-existing web feature listed ✅ above.
   **Updated 2026-11-08:** the NestJS API now also builds and tests green — `tsc` 0 errors (was 18),
-  **19/19 jest suites / 95/95 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
+  **25/25 jest suites / 238/238 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
   The 18 errors were missing generated Prisma types, not logic defects; see
   `apps/api/scripts/generate-client.cjs`.
+  Also newly implemented and unit-verified: Supabase-backed auth guard (50 cases), server-side
+  Next.js→NestJS bridge (17 cases), rate limiting on **all 17** web API routes (12 cases, plus a live
+  260-request burst proving 240 allowed then 429), multi-server priority/default/bounded failover
+  (44 cases), and honest bounded health monitoring (49 cases). The additive priority migration was
+  validated on real PostgreSQL 17 with 6 constraint probes and an idempotent, row-preserving rollback,
+  all inside rolled-back transactions that left production untouched.
 - **Implemented but not tested here:** NestJS **runtime boot and live PostgreSQL queries** — the offline
   Prisma fallback emits types only and ships **no query engine**, so a green build does not prove the API
   runs against a database. Also native mobile and webOS builds.
@@ -254,8 +260,10 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
   origin itself (`redchicks.xyz` → 521 on 2053/443, 500 on 2052; **origin unavailable, authorization
   unverified**). Xtream VOD and multi-server code is therefore *implemented but not end-to-end verified*.
 - **Not implemented:** a legally-free **public** series catalog (`/series` is a deliberate empty state),
-  server priority/default selection, health monitoring, sync job, unified-vs-individual server mode,
-  episode search, and universal rate limiting on the web API routes.
-  *(Xtream VOD was previously listed here in error — it is implemented; see Phase 2 above.)*
+  the catalog sync job, unified-vs-individual server mode, and episode search.
+  *(Corrections 2026-11-08: Xtream VOD **is** implemented — see Phase 2. Server priority/default
+  selection, health monitoring, and rate limiting on every web API route are now implemented and
+  unit-verified; they are listed above, not here. They still need a deployed API and a reachable
+  provider for end-to-end verification.)*
 - **Awaiting your decision:** deployment approval. **D1 is resolved: Option C — Hybrid** (Supabase Auth +
   Supabase PostgreSQL as sources of truth, NestJS as the business/API layer, Next.js calling NestJS).

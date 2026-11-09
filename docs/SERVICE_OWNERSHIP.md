@@ -82,6 +82,31 @@ end users and becomes a *resource server* that validates Supabase tokens and
 maps the verified Supabase user id to its own business rows. Because NestJS has
 zero users, nothing needs migrating and no password is re-hashed or discarded.
 
+**Implemented 2026-11-08** (`apps/api/src/common/supabase-auth.{service,guard,module}.ts`):
+
+- `SupabaseAuthService` verifies tokens against Supabase Auth `/auth/v1/user`.
+  It never verifies a JWT locally and holds no signing secret, so a revoked or
+  signed-out session is rejected immediately and no key can leak from the API.
+  There is deliberately no result cache, because caching delays revocation.
+- `SupabaseAuthGuard` maps the verified identity onto the existing `UserRequest`
+  shape, so all 13 modules and `@CurrentUser()` are reused unchanged.
+- **Identity mapping needs no migration:** `AppUser.id` is a UUID and so is a
+  Supabase user id, so the business row uses the *same* id as `auth.users.id`.
+  Linking by email would be unsafe while `mailer_autoconfirm = true`, because
+  Supabase marks signups confirmed without proving ownership of the address.
+- Fail-closed: 401 for an absent/invalid session, 503 when Supabase is
+  unconfigured or unreachable (never a false "signed out"), 403 for a verified
+  identity with no active business account. The guard resolves accounts, never
+  creates them.
+- **Additive:** `JwtAuthGuard` is untouched and the module only registers
+  providers, so no route changes behaviour until a controller opts in. This is
+  what allows the required incremental, module-by-module integration.
+
+The Next.js side is `apps/web/src/server/api-bridge.ts`: same-origin only,
+HTTPS-required (loopback excepted for development), `redirect: 'error'`, 10s
+timeout, and it never returns upstream bodies to the browser. With
+`API_INTERNAL_URL` unset it makes no network call, so it ships inert.
+
 `POST /auth/admin/login` (staff/admin, argon2 + `StaffUser`) is a **separate
 concern** from end-user auth and is retained for now: the admin app already
 depends on it and it guards a different principal class. It is recorded here as
