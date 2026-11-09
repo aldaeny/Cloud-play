@@ -42,6 +42,18 @@ export class XtreamServersController {
     return this.servers.update(admin.tenantId, id, body);
   }
 
+  /** Probe one server now and record the honest result. */
+  @Post(':id/check')
+  checkHealth(@CurrentAdmin() admin: AdminPrincipal, @Param('id') id: string) {
+    return this.servers.checkHealth(admin.tenantId, id, true);
+  }
+
+  /** Bounded sweep of enabled servers; never hammers a recently checked origin. */
+  @Post('check-all')
+  checkAllHealth(@CurrentAdmin() admin: AdminPrincipal) {
+    return this.servers.checkAllHealth(admin.tenantId);
+  }
+
   @Patch(':id/default')
   setDefault(@CurrentAdmin() admin: AdminPrincipal, @Param('id') id: string) {
     return this.servers.setDefault(admin.tenantId, id);

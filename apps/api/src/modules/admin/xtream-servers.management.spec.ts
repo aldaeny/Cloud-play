@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { XtreamServersService } from './xtream-servers.service';
+import { XtreamHealthService } from './xtream-health.service';
 
 /**
  * Multi-server management: priority, default selection, and bounded failover.
@@ -49,7 +50,7 @@ describe('XtreamServersService — multi-server management', () => {
       // Execute the callback synchronously against the transaction client.
       $transaction: jest.fn().mockImplementation(async (fn: (client: unknown) => unknown) => fn(tx)),
     };
-    service = new XtreamServersService(prisma as never);
+    service = new XtreamServersService(prisma as never, new XtreamHealthService());
   });
 
   afterAll(() => { delete process.env.XTREAM_ENCRYPTION_KEY; });
