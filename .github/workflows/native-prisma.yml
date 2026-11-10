@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
 jobs:
+  isolated-auth-smtp:
+    uses: ./.github/workflows/auth-recovery.yml
   native-postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

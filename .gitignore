@@ -73,3 +73,6 @@ apps/web/.playlist-test-*
 
 # Disposable compiled Admin HTTP regression fixtures
 apps/admin/.http-test-*/
+
+# Disposable Auth lifecycle result (CI artifact, not application data)
+auth-recovery-evidence.txt

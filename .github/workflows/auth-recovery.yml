@@ -1,0 +1,63 @@
+name: Isolated Auth SMTP lifecycle
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Start disposable Auth PostgreSQL and SMTP capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create auth-fixture
+          docker run -d --name auth-db --network auth-fixture -p 127.0.0.1:5439:5432 -e POSTGRES_PASSWORD=isolated-fixture-only postgres:17
+          docker run -d --name mailpit --network auth-fixture -p 127.0.0.1:8025:8025 axllent/mailpit:v1.33.1
+          for n in {1..30}; do
+            if docker exec auth-db pg_isready -U postgres; then break; fi
+            sleep 1
+          done
+          docker exec auth-db psql -U postgres -c 'CREATE SCHEMA IF NOT EXISTS auth;'
+          docker run -d --name auth --network auth-fixture -p 127.0.0.1:9999:9999 \
+            -e GOTRUE_API_HOST=0.0.0.0 -e GOTRUE_API_PORT=9999 \
+            -e API_EXTERNAL_URL=http://127.0.0.1:9999 -e GOTRUE_SITE_URL=http://127.0.0.1:3000 \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e 'GOTRUE_DB_DATABASE_URL=postgres://postgres:isolated-fixture-only@auth-db:5432/postgres?search_path=auth' \
+            -e GOTRUE_JWT_SECRET=isolated-fixture-signing-key-not-for-any-production-use \
+            -e GOTRUE_JWT_AUD=authenticated -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated \
+            -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true -e GOTRUE_MAILER_AUTOCONFIRM=false \
+            -e GOTRUE_MAILER_OTP_EXP=10 -e GOTRUE_SMTP_HOST=mailpit -e GOTRUE_SMTP_PORT=1025 \
+            -e GOTRUE_SMTP_ADMIN_EMAIL=auth@example.invalid -e GOTRUE_SMTP_SENDER_NAME=CloudPlayFixture \
+            -e GOTRUE_SMTP_MAX_FREQUENCY=0s -e GOTRUE_RATE_LIMIT_EMAIL_SENT=100 \
+            -e GOTRUE_MAILER_URLPATHS_CONFIRMATION=/verify -e GOTRUE_MAILER_URLPATHS_RECOVERY=/verify \
+            supabase/gotrue:v2.197.0
+      - name: Execute actual Auth and SMTP lifecycle
+        env:
+          AUTH_TEST_DATABASE_URL: postgresql://postgres:isolated-fixture-only@127.0.0.1:5439/postgres
+        run: node apps/api/scripts/test-auth-recovery.mjs
+      - name: Publish sanitized fixture assertions
+        if: always()
+        run: |
+          if [ -f auth-recovery-evidence.txt ]; then
+            while IFS= read -r line; do printf '::notice title=Isolated Auth assertion::%s\n' "$line"; done < auth-recovery-evidence.txt
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-auth-recovery
+          path: auth-recovery-evidence.txt
+          retention-days: 14
+      - name: Remove disposable fixtures
+        if: always()
+        run: |
+          docker rm -f auth mailpit auth-db || true
+          docker network rm auth-fixture || true
