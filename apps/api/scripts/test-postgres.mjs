@@ -96,6 +96,28 @@ try {
     client = new PrismaClient({ datasources: { db: { url: `postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres` } } });
   }
   await client.$connect();
+  if (native) await check('actual production PrismaService native initialization and teardown', async () => {
+    require('reflect-metadata');
+    const { Test } = require('@nestjs/testing');
+    const { AppModule } = require(path.join(api, 'dist/app.module.js'));
+    const { PrismaService } = require(path.join(api, 'dist/prisma.service.js'));
+    const previous = process.env.DATABASE_URL;
+    process.env.DATABASE_URL = `postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres`;
+    let app;
+    try {
+      // Do not override PrismaService: this instantiates the actual production
+      // class and executes its real $connect/$disconnect lifecycle hooks.
+      const mod = await Test.createTestingModule({ imports: [AppModule] }).compile();
+      app = mod.createNestApplication({ logger: false });
+      await app.init();
+      const service = app.get(PrismaService);
+      assert.equal(await service.tenant.count(), 0);
+      assert.equal((await service.$queryRaw`SELECT 1 AS value`)[0].value, 1);
+    } finally {
+      await app?.close();
+      if (previous === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previous;
+    }
+  });
   await check('PostgreSQL 17 and real Prisma query', async () => {
     const [row] = await client.$queryRaw`SELECT current_setting('server_version') AS version`;
     assert.match(row.version, /^17\./);
