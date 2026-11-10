@@ -1,3 +1,4 @@
+import { testExternalFailover } from './test-external-failover.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -87,6 +88,7 @@ export async function testExternalCandidates(client, tenant, check) {
       assert.deepEqual(empty.checks, []); assert.equal(empty.deliveryStatus, 'on_demand_only');
       await a.onModuleDestroy(); await b.onModuleDestroy();
     });
+    await testExternalFailover(client,tenant,check,vault);
     await check('external rights: review scope, revocation, tenant-FK isolation and provider change demotion', async () => {
       license = await service.createLicense(tenant.id, actor, { provider: input.providerName, contentOwner: 'Fixture Rights Holder', authorizedContact: 'fixture@example.invalid', authorizationType: 'fixture-contract', allowedPlatforms: ['web'], allowedCountries: ['IQ'], commercialUse: true, redistributionPermission: true, territoryRestrictions: 'IQ only', startDate: '2020-01-01', expiryDate: '2099-01-01' });
       const evidence = Buffer.from('%PDF-1.4\nIsolated synthetic rights document, not a real authorization.').toString('base64');

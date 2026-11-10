@@ -131,8 +131,8 @@ try {
     const [row] = await client.$queryRaw`SELECT current_setting('server_version') AS version`;
     assert.match(row.version, /^17\./);
   });
-  await check('all 40 model delegates query migrated tables', async () => {
-    assert.equal(dmmf.datamodel.models.length, 40);
+  await check('all 46 model delegates query migrated tables', async () => {
+    assert.equal(dmmf.datamodel.models.length, 46);
     for (const model of dmmf.datamodel.models) {
       const delegate = model.name[0].toLowerCase() + model.name.slice(1);
       assert.equal(await client[delegate].count(), 0, model.name);
@@ -332,7 +332,7 @@ try {
         JOIN "XtreamCatalogSnapshot" c ON c."serverId"=s.id ORDER BY s.id`);
       assert.deepEqual(actual.rows, expected.rows);
       assert.equal((await connection.query(`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'
-        AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 42);
+        AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 48);
       assert.equal((await connection.query("SELECT rolbypassrls FROM pg_roles WHERE rolname='authenticated'")).rows[0].rolbypassrls, false);
       assert.equal((await connection.query('SELECT count(*)::int AS n FROM "AppUser" WHERE id=$1',[user.id])).rows[0].n, 1);
       assert.ok((await connection.query("SELECT count(*)::int AS n FROM pg_constraint WHERE contype='f'")).rows[0].n > 30);

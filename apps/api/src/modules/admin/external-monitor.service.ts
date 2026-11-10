@@ -1,3 +1,5 @@
+import { ExternalReportsService } from './external-reports.service';
+import { ExternalChannelsService } from './external-channels.service';
 import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { PrismaService } from '../../prisma.service';
@@ -10,7 +12,7 @@ export class ExternalMonitorService implements OnModuleInit, OnModuleDestroy {
   private running?: Promise<void>;
   private stopped = false;
   private readonly logger = new Logger(ExternalMonitorService.name);
-  constructor(private readonly prisma: PrismaService, private readonly servers: ExternalServersService) {}
+  constructor(private readonly prisma: PrismaService, private readonly servers: ExternalServersService, private readonly channels?: ExternalChannelsService, private readonly reports?: ExternalReportsService) {}
   onModuleInit() {
     if (process.env.EXTERNAL_MONITOR_SCHEDULER_ENABLED !== 'true') return;
     // No autonomous external requests unless an operator explicitly enables the worker.
@@ -35,6 +37,7 @@ export class ExternalMonitorService implements OnModuleInit, OnModuleDestroy {
    * No write/publish/failover is ever performed by a health job. */
   async tick() {
     const now = new Date();
+    await this.reports?.tick(now);
     const due = await this.prisma.serverSchedule.findMany({ where: { enabled: true, nextRunAt: { lte: now }, OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }], server: { deletedAt: null } }, take: 10, orderBy: { nextRunAt: 'asc' } });
     for (const row of due) {
       if (this.stopped) break;
@@ -42,7 +45,7 @@ export class ExternalMonitorService implements OnModuleInit, OnModuleDestroy {
       const claim = await this.prisma.serverSchedule.updateMany({ where: { serverId: row.serverId, enabled: true, updatedAt: row.updatedAt, OR: [{ leaseUntil: null }, { leaseUntil: { lt: new Date() } }] }, data: { leaseUntil } });
       if (!claim.count) continue;
       let lastError: string | null = null;
-      try { await this.servers.check(row.tenantId, row.actorId, row.serverId, { technicalAccessConfirmed: true }); }
+      try { await this.servers.check(row.tenantId, row.actorId, row.serverId, { technicalAccessConfirmed: true }); await this.channels?.evaluateServer(row.tenantId, row.serverId); }
       catch { lastError = 'MONITOR_JOB_FAILED_OR_RATE_LIMITED'; }
       // Fence completion against a newer claim/configuration. Failed checks are
       // recorded as failures, never successful playback or global provider outage.

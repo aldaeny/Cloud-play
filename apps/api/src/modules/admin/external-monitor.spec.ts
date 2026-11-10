@@ -18,7 +18,7 @@ describe('external monitor fixture classification (HTTP200 is not playback)', ()
   it.each([401, 403, 404, 429, 500, 302])('classifies HTTP%s without following redirects or disclosing body', async status => {
     const spy = jest.spyOn(transport, 'pinnedProviderRequest').mockResolvedValue(new Response('secret provider error', { status }));
     const result = await service.check(serverId, serverId, serverId, { technicalAccessConfirmed: true });
-    expect(result.result).toBe(status === 401 || status === 403 ? 'auth_required' : 'unreachable');
+    expect(result.result).toBe(status === 401 || status === 403 ? 'auth_required' : status === 429 ? 'rate_limited' : 'unreachable');
     expect((result.details as Record<string, unknown>).httpStatus).toBe(status); expect(JSON.stringify(result)).not.toContain('secret provider error');
     expect(spy).toHaveBeenCalledTimes(1);
   });

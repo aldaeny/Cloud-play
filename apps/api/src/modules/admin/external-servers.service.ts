@@ -1,3 +1,5 @@
+import { parseDash } from './external-manifests';
+import type { ProviderDiagnostics } from '../../common/pinned-provider-request';
 import { createHash } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { isUUID } from 'class-validator';
@@ -56,7 +58,7 @@ export class ExternalServersService {
     if (!['hls','m3u','dash','direct','xtream'].includes(protocol)) throw new BadRequestException('UNSUPPORTED_PROTOCOL');
     const endpoint = text(body, 'url', 4096); let url: URL;
     try { url = new URL(endpoint); } catch { throw new BadRequestException('INVALID_URL'); }
-    if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw new BadRequestException('HTTPS_REQUIRED');
+    if ((url.protocol !== 'https:' && !(process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true' && url.protocol === 'http:' && !url.search)) || url.username || url.password || url.hash) throw new BadRequestException('HTTPS_REQUIRED');
     const priority = body.priority ?? 100;
     if (!Number.isInteger(priority) || Number(priority) < 1 || Number(priority) > 1000) throw new BadRequestException('INVALID_PRIORITY');
     const xtreamServerId = body.xtreamServerId ? id(text(body, 'xtreamServerId')) : null;
@@ -173,32 +175,44 @@ export class ExternalServersService {
     // Durable per-server lease via compare-and-swap prevents duplicate probes across API replicas.
     const lease = await this.prisma.externalServer.updateMany({ where: { id: row.id, tenantId, deletedAt: null, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: new Date(Date.now() - 60000) } }] }, data: { lastCheckedAt: startedAt } });
     if (!lease.count) throw new BadRequestException('CHECK_ALREADY_RUNNING');
+    const diagnostics: ProviderDiagnostics = { dns: 'not_verified', tcp: 'not_verified', tls: endpoint.protocol === 'http:' ? 'not_applicable' : 'not_verified' };
     try {
       if (row.protocol === 'xtream') { result = 'not_checked'; details.reason = 'USE_EXISTING_XTREAM_HEALTH_ENDPOINT'; }
       else {
-        const response = await pinnedProviderRequest(endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 1024 * 1024);
-        details.dns = details.tcp = details.tls = 'passed'; details.httpStatus = response.status;
+        const response = await pinnedProviderRequest(endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 1024 * 1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true', diagnostics);
+        details.dns = details.tcp = 'passed'; details.tls = endpoint.protocol === 'https:' ? 'passed' : 'not_applicable'; details.httpStatus = response.status;
         const contentType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() || '';
         details.contentType = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl', 'video/mp2t', 'video/mp4', 'application/dash+xml', 'audio/aac', 'audio/mp4', 'text/html', 'text/plain', 'application/octet-stream'].includes(contentType) ? contentType : 'unknown';
         details.reason = response.status >= 300 && response.status < 400 ? 'REDIRECT_REFUSED' : `HTTP_${response.status}`;
-        if (response.status === 401 || response.status === 403) result = 'auth_required';
+        if (response.status === 401 || response.status === 403) { result = 'auth_required'; details.authentication = 'failed'; }
+        else if (response.status === 429) { result = 'rate_limited'; details.reason = 'RATE_LIMITED'; }
         else if (response.ok && ['hls', 'm3u'].includes(row.protocol)) {
           const mimeValid = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl'].includes(String(details.contentType).toLowerCase());
           const parsed = mimeValid ? parseHls(await response.text(), endpoint) : { result: 'malformed_playlist', reference: undefined, kind: undefined };
           if (!mimeValid) details.reason = 'HLS_MIME_INVALID'; result = parsed.result; details.hlsStatus = parsed.result; if (mimeValid) details.reason = parsed.result;
           if (parsed.reference && body.segmentAccessConfirmed === true && parsed.kind === 'segment') {
-            const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024);
+            const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true');
             const mime = segment.headers.get('content-type')?.split(';')[0] || '';
             details.segmentStatus = segment.ok && ['video/mp2t', 'video/mp4', 'audio/aac', 'audio/mp4'].includes(mime) ? 'fetched_mime_valid' : 'failed_or_invalid_mime';
           } else if (parsed.kind === 'variant') details.segmentStatus = 'variant_not_fetched';
+        } else if (response.ok && row.protocol === 'dash') {
+          try {
+            if (details.contentType !== 'application/dash+xml') throw new Error();
+            const parsed = parseDash(await response.text(), endpoint); result = parsed.result; details.manifestStatus = parsed.result;
+            if (parsed.reference && body.segmentAccessConfirmed === true) {
+              const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true');
+              details.segmentStatus = segment.ok && ['video/mp4','audio/mp4','application/octet-stream'].includes(segment.headers.get('content-type')?.split(';')[0] || '') ? 'fetched_mime_valid' : 'failed_or_invalid_mime';
+            }
+          } catch { result = 'malformed_playlist'; details.reason = 'INVALID_OR_UNSUPPORTED_DASH'; }
         } else if (response.ok) { result = 'reachable_not_playback_verified'; details.reason = 'REACHABLE_NOT_PLAYBACK_VERIFIED'; }
       }
-    } catch { details.reason = 'TRANSPORT_FAILED_OR_POLICY_DENIED'; }
+    } catch { Object.assign(details, diagnostics); details.reason = diagnostics.reason || 'TRANSPORT_FAILED_OR_POLICY_DENIED'; }
+    details.playbackReadiness = ['reachable_and_hls_valid','reachable_and_dash_valid'].includes(result) && details.segmentStatus === 'fetched_mime_valid' ? 'manifest_and_segment_verified_not_decode_certified' : 'not_verified';
     details.responseTimeMs = Date.now() - startedAt.getTime();
     const finishedAt = new Date();
     return this.prisma.$transaction(async tx => {
       const check = await tx.serverHealthCheck.create({ data: { tenantId, serverId, startedAt, finishedAt, result, details } });
-      if (result === 'reachable_and_hls_valid' && details.segmentStatus !== 'failed_or_invalid_mime') await tx.externalServer.updateMany({ where: { tenantId, id: serverId, lastCheckedAt: startedAt, endpointEncrypted: row.endpointEncrypted }, data: { lastSuccessfulCheck: finishedAt } });
+      if (['reachable_and_hls_valid','reachable_and_dash_valid'].includes(result) && details.segmentStatus !== 'failed_or_invalid_mime') await tx.externalServer.updateMany({ where: { tenantId, id: serverId, lastCheckedAt: startedAt, endpointEncrypted: row.endpointEncrypted }, data: { lastSuccessfulCheck: finishedAt } });
       await this.audit(tx, tenantId, actorId, serverId, 'TECHNICAL_CHECK_COMPLETED'); return check;
     });
   }

@@ -39,6 +39,8 @@ enum SubscriptionStatus {
 model Tenant {
   externalServers ExternalServer[]
   contentLicenses ContentLicense[]
+  providerGroups ProviderGroup[]
+  externalReportSchedules ExternalReportSchedule[]
   id          String @id @default(uuid()) @db.Uuid
   branding    TenantBranding?
   featureFlags FeatureFlag[]
@@ -529,6 +531,7 @@ model ExternalServer {
   updatedAt DateTime @updatedAt @db.Timestamptz
   checks ServerHealthCheck[]
   schedule ServerSchedule?
+  channelSources ChannelSource[]
   @@unique([tenantId, id])
   @@unique([tenantId, name])
   @@index([tenantId, status, priority])
@@ -628,4 +631,111 @@ model ServerSchedule {
   updatedAt DateTime @updatedAt @db.Timestamptz
   @@unique([tenantId, serverId])
   @@index([enabled, nextRunAt])
+}
+
+model ProviderGroup {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  name String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  channels ExternalChannel[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,name])
+}
+model ExternalChannel {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  groupId String @db.Uuid
+  group ProviderGroup @relation(fields: [tenantId,groupId], references: [tenantId,id])
+  name String
+  country String
+  platform String
+  enabled Boolean @default(false)
+  autoFailover Boolean @default(false)
+  failureThreshold Int @default(2)
+  retrySeconds Int @default(60)
+  holdDownSeconds Int @default(120)
+  stabilitySeconds Int @default(180)
+  freshnessSeconds Int @default(900)
+  activeSourceId String? @db.Uuid
+  activeSource ChannelSource? @relation("SelectedSource", fields: [tenantId,id,activeSourceId], references: [tenantId,channelId,id])
+  lastSwitchAt DateTime? @db.Timestamptz
+  lastEvaluationAt DateTime? @db.Timestamptz
+  outageStartedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  sources ChannelSource[] @relation("ChannelSources")
+  switches ExternalFailoverEvent[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,groupId,name])
+  @@index([tenantId,enabled])
+}
+model ChannelSource {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  channelId String @db.Uuid
+  channel ExternalChannel @relation("ChannelSources", fields: [tenantId,channelId], references: [tenantId,id])
+  serverId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId,serverId], references: [tenantId,id])
+  priority Int
+  role String
+  enabled Boolean @default(false)
+  consecutiveFailures Int @default(0)
+  healthySince DateTime? @db.Timestamptz
+  lastObservedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  selectedBy ExternalChannel[] @relation("SelectedSource")
+  @@unique([tenantId,channelId,id])
+  @@unique([tenantId,channelId,serverId])
+  @@unique([tenantId,channelId,priority])
+}
+model ExternalFailoverEvent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  channelId String @db.Uuid
+  channel ExternalChannel @relation(fields: [tenantId,channelId], references: [tenantId,id])
+  fromSourceId String? @db.Uuid
+  toSourceId String? @db.Uuid
+  reason String
+  outageDurationMs Int?
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId,channelId,createdAt])
+}
+model ExternalReportSchedule {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  actorId String @db.Uuid
+  period String @default("weekly")
+  enabled Boolean @default(false)
+  deliveryApproved Boolean @default(false)
+  nextRunAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  deliveries ExternalReportDelivery[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,period])
+  @@index([enabled,nextRunAt])
+}
+model ExternalReportDelivery {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  scheduleId String @db.Uuid
+  schedule ExternalReportSchedule @relation(fields: [tenantId,scheduleId], references: [tenantId,id])
+  periodStart DateTime @db.Timestamptz
+  payload Json
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  lastError String?
+  deliveredAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@unique([scheduleId,periodStart])
+  @@index([status,nextAttemptAt])
 }

@@ -1,3 +1,4 @@
+import { ExternalReportsService } from './external-reports.service';
 import { ExternalMonitorService } from './external-monitor.service';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { AdminJwtGuard, AdminPrincipal, CurrentAdmin, RequirePermissions } from '../../common';
@@ -7,7 +8,7 @@ import { ExternalServersService } from './external-servers.service';
 @UseGuards(AdminJwtGuard)
 @RequirePermissions('xtream:manage')
 export class ExternalServersController {
-  constructor(private readonly servers: ExternalServersService, private readonly monitor: ExternalMonitorService) {}
+  constructor(private readonly servers: ExternalServersService, private readonly monitor: ExternalMonitorService, private readonly reports: ExternalReportsService) {}
   @Get() list(@CurrentAdmin() a: AdminPrincipal, @Query('cursor') cursor?: string) { return this.servers.list(a.tenantId, cursor); }
   @Post() create(@CurrentAdmin() a: AdminPrincipal, @Body() body: unknown) { return this.servers.save(a.tenantId, a.id, body); }
   @Put(':id') update(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.servers.save(a.tenantId, a.id, body, id); }
@@ -28,5 +29,8 @@ export class ExternalServersController {
   readDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.readDocument(a.tenantId, a.id, id); }
   @Post(':id/schedule') schedule(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.monitor.configure(a.tenantId, a.id, id, body); }
   @Get('reports/:period') report(@CurrentAdmin() a: AdminPrincipal, @Param('period') period: string) { return this.monitor.report(a.tenantId, period); }
+  @Get('report-deliveries') deliveries(@CurrentAdmin() a: AdminPrincipal) { return this.reports.list(a.tenantId); }
+  @Post('report-schedule') @RequirePermissions('xtream:manage','external:reports')
+  reportSchedule(@CurrentAdmin() a: AdminPrincipal, @Body() body: unknown) { return this.reports.configure(a.tenantId,a.id,body); }
   @Get('audit') audits(@CurrentAdmin() a: AdminPrincipal) { return this.servers.audits(a.tenantId); }
 }

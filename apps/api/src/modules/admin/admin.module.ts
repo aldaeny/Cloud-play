@@ -1,3 +1,7 @@
+import { ExternalReportsService } from './external-reports.service';
+import { ExternalPlaybackController } from './external-playback.controller';
+import { ExternalChannelsService } from './external-channels.service';
+import { ExternalChannelsController } from './external-channels.controller';
 import { ExternalMonitorService } from './external-monitor.service';
 import { ExternalServersController } from './external-servers.controller';
 import { ExternalServersService } from './external-servers.service';
@@ -13,8 +17,8 @@ import { XtreamServersService } from './xtream-servers.service';
 import { XtreamHealthService } from './xtream-health.service';
 
 @Module({
-  controllers: [ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
-  providers: [ExternalMonitorService, ExternalServersService, XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
+  controllers: [ExternalPlaybackController, ExternalChannelsController, ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
+  providers: [ExternalReportsService, ExternalChannelsService, ExternalMonitorService, ExternalServersService, XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
   exports: [AdminService, XtreamHealthService],
 })
 export class AdminModule {}

@@ -18,7 +18,7 @@ export function parseHls(text: string, base: URL): { result: string; reference?:
     for (const ref of refs) {
       const url = new URL(ref, base);
       // Cross-origin segments need an explicit allowlist, not implicit provider trust.
-      if (url.protocol !== 'https:' || url.origin !== base.origin || url.username || url.password || url.hash) return { result: 'malformed_playlist' };
+      if (!['https:', 'http:'].includes(url.protocol) || url.origin !== base.origin || url.username || url.password || url.hash) return { result: 'malformed_playlist' };
       urls.push(url);
     }
   } catch { return { result: 'malformed_playlist' }; }
