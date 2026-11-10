@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from './prisma.module';
+import { SupabaseAuthModule } from './common/supabase-auth.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
@@ -26,6 +27,9 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
       signOptions: { expiresIn: jwtTtlSeconds('JWT_ACCESS_TTL', 900) },
     }),
     PrismaModule,
+    // Hybrid (D1 Option C): Supabase Auth is the identity source of truth.
+    // Global providers only — no route changes until a controller opts in.
+    SupabaseAuthModule,
     CatalogModule,
     IdentityModule,
     ProfilesModule,

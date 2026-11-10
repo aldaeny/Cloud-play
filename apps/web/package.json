@@ -21,7 +21,10 @@
     "test:popup": "node tests/public-popup-player.mjs",
     "test:xtream-url": "node tests/xtream-url.test.mjs",
     "test:search-security": "node tests/search-security.test.mjs",
-    "test:search:browser": "node tests/search-csp-browser.mjs"
+    "test:search:browser": "node tests/search-csp-browser.mjs",
+    "test:api-bridge": "node tests/api-bridge.test.mjs",
+    "test:rate-limit": "node tests/rate-limit.test.mjs",
+    "test:recovery": "node tests/password-recovery.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",

@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import { openStream, playlistSecret, sealStream, PLAYLIST_TOKEN_TTL_MS } from '../../../src/server/playlist-token';
 import { parsePublicUrl, safeFetch, SafeFetchError } from '../../../src/server/safe-fetch';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
  * GET /api/playlist/stream?t=<capability token>
@@ -35,6 +36,7 @@ function isPlaylist(url: URL, contentType: string): boolean {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'GET' && req.method !== 'HEAD') {

@@ -1,8 +1,10 @@
 import { legacySourcesAllowed } from '../../../src/server/legacy-source-policy';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getWorldChannels } from '../../../src/server/iraq-playlist';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 const PAGE_SIZE=60;
 export default async function handler(req:NextApiRequest,res:NextApiResponse){
+  if (!enforceRateLimit(req, res, { bucket: 'public' })) return;
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='GET'){res.setHeader('Allow','GET');return res.status(405).json({error:'METHOD_NOT_ALLOWED'})}
  const q=typeof req.query.q==='string'?req.query.q.trim():'';

@@ -1,5 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { XtreamServersService } from './xtream-servers.service';
+import { XtreamHealthService } from './xtream-health.service';
 
 describe('XtreamServersService', () => {
   const prisma = {
@@ -16,7 +17,7 @@ describe('XtreamServersService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.XTREAM_ENCRYPTION_KEY = 'a'.repeat(64);
-    service = new XtreamServersService(prisma as never);
+    service = new XtreamServersService(prisma as never, new XtreamHealthService());
   });
 
   afterAll(() => { delete process.env.XTREAM_ENCRYPTION_KEY; });

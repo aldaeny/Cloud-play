@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPublicFilm } from '../../../../src/server/public-films';
+import { enforceRateLimit } from '../../../../src/server/rate-limit';
 
 /**
  * GET /api/movies/watch/<film-id>
@@ -54,6 +55,7 @@ function pickPlayableFile(files: unknown): string | null {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!enforceRateLimit(req, res, { bucket: 'catalog' })) return;
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD');
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });

@@ -25,6 +25,18 @@
     },
     "express@4.22.1": {
       "qs": "6.16.2"
+    },
+    "@angular-devkit/core": {
+      "picomatch": "4.0.7",
+      "ajv": "8.20.0"
+    },
+    "@nestjs/cli": {
+      "glob": "10.5.0",
+      "inquirer": "8.2.7",
+      "webpack": "5.112.2"
+    },
+    "@angular-devkit/schematics-cli": {
+      "inquirer": "9.3.8"
     }
   }
 }

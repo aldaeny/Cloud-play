@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { PlaybackService } from './playback.service';
 import { PrismaService } from '../../prisma.service';
 import { RightsService } from '../rights/rights.service';
@@ -11,7 +12,16 @@ describe('PlaybackService', () => {
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
-      providers: [PlaybackService, PrismaService, RightsService, EntitlementService],
+      providers: [
+        PlaybackService,
+        PrismaService,
+        RightsService,
+        EntitlementService,
+        // EntitlementService takes ConfigService; without it Nest cannot build
+        // the graph. Mirror entitlement.service.spec.ts: free access stays the
+        // product default, and these tests stub `check` per case anyway.
+        { provide: ConfigService, useValue: { get: jest.fn((_key: string, fallback?: unknown) => fallback) } },
+      ],
     }).compile();
 
     service = moduleRef.get<PlaybackService>(PlaybackService);
