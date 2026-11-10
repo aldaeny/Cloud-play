@@ -27,7 +27,7 @@ export class AdminJwtGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Invalid or expired admin token');
     }
-    if (!payload.sub || payload.tokenType !== 'admin') throw new UnauthorizedException('Invalid admin token');
+    if (typeof payload.sub !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sub) || payload.tokenType !== 'admin') throw new UnauthorizedException('Invalid admin token');
     const staff = await this.prisma.staffUser.findUnique({ where: { id: payload.sub }, include: { role: true } });
     if (!staff || staff.role.tenantId !== staff.tenantId) throw new UnauthorizedException('Invalid admin account');
     let permissions: string[] = [];

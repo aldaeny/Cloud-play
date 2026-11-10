@@ -37,6 +37,10 @@ export class JwtAuthGuard implements CanActivate {
         algorithms: ['HS256'],
       });
 
+      if (typeof payload.sub !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sub)) {
+        throw new UnauthorizedException('Invalid identity');
+      }
+
       // Verify user still exists and is active
       const user = await this.prisma.appUser.findUnique({
         where: { id: payload.sub },

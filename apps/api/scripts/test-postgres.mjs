@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
+import { testRls } from './test-rls.mjs';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const require = createRequire(import.meta.url);
@@ -134,6 +135,7 @@ try {
     }
     assert.ok(indexes.some(i => i.tablename === 'XtreamServer' && i.indexdef.includes('WHERE ("isDefault" = true)')));
   });
+  await testRls(pool, root, check);
   const tenant = await client.tenant.create({ data: {} });
   const user = await client.appUser.create({ data: { tenantId: tenant.id, email: 'isolated@example.invalid',
     profiles: { create: { name: 'Disposable profile' } } }, include: { profiles: true } });
