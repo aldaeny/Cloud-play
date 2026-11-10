@@ -1,3 +1,4 @@
+import { protectLiveRows } from '../../../src/server/protected-live';
 import { publicFetch } from '../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
@@ -86,5 +87,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   res.setHeader('Cache-Control', 'public, s-maxage=21600, stale-while-revalidate=86400');
-  return res.status(200).json({ ...page, source: COMMUNITY_SOURCE_URL, project: COMMUNITY_PROJECT_URL });
+  return res.status(200).json({ ...page, data: protectLiveRows(page.data), source: COMMUNITY_SOURCE_URL, project: COMMUNITY_PROJECT_URL });
 }

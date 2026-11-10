@@ -1,3 +1,4 @@
+import { prepareMediaSession } from '../../lib/media-session';
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import CastControls from './CastControls';
@@ -24,6 +25,8 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
   const retryNetwork=(retry:()=>void)=>{if(cancelled)return;if(!navigator.onLine){setState('failed');return}if(networkRetries++<2){setState('buffering');window.setTimeout(()=>{if(!cancelled)retry()},1000*networkRetries)}else setState('failed')};
   async function playAutomatically(){try{await video!.play()}catch(e){if(cancelled)return;const name=e instanceof Error?e.name:'';if(name==='AbortError')return;if(name==='NotAllowedError')setState('blocked');else if(video!.error)setState('failed');else setState('ready')}}
   async function attach(){
+   try{await prepareMediaSession(url)}catch{if(!cancelled)setState('failed');return}
+   if(cancelled)return;
    if(!video)return;
    if(kind==='mp4'||(kind==='hls'&&video.canPlayType('application/vnd.apple.mpegurl'))){video.src=url;setState('ready');if(autoPlay)void playAutomatically();return}
    if(kind==='dash'){try{const dashjs=await import('dashjs');if(cancelled)return;const dash=dashjs.MediaPlayer().create();dashRef.current=dash;dash.updateSettings({streaming:{retryAttempts:{MPD:2,MediaSegment:2}}});dash.on('streamInitialized',()=>{if(!cancelled){markRecovered();setState('ready');if(autoPlay)void playAutomatically()}});dash.on('error',()=>retryNetwork(()=>dash.attachSource(url)));dash.on('playbackNotAllowed',()=>{if(!cancelled)setState('blocked')});dash.initialize(video,url,autoPlay);return}catch{if(!cancelled)setState('failed');return}}

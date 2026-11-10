@@ -1,3 +1,4 @@
+import { protectLiveRows } from './protected-live';
 /**
  * Curated PUBLIC live TV — free-to-air streams published by the broadcasters
  * themselves, on their own infrastructure. No account, no login, no operator
@@ -105,9 +106,9 @@ export function isSafePublicStream(raw: string): boolean {
 
 export function getPublicChannels(): PublicChannel[] {
   const seen = new Set<string>();
-  return PUBLIC_CHANNELS.filter(channel => {
+  return protectLiveRows(PUBLIC_CHANNELS.filter(channel => {
     if (seen.has(channel.id) || !isSafePublicStream(channel.streamUrl)) return false;
     seen.add(channel.id);
     return true;
-  });
+  }));
 }

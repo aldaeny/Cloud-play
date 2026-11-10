@@ -1,3 +1,4 @@
+import { prepareMediaSession } from '../../lib/media-session';
 'use client';
 
 import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -130,6 +131,8 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
       else fail('تعذر الوصول إلى مصدر البث بعد عدة محاولات. قد يكون متوقفاً أو يمنع التشغيل من هذا الموقع.');
     };
     async function attach() {
+      try { await prepareMediaSession(src); } catch { fail('يرجى تسجيل الدخول؛ التشغيل المحمي غير متاح.'); return; }
+      if (cancelled) return;
       if (!src || sourceError(src)) { fail('رابط البث غير صالح أو غير آمن.'); return; }
       if (type === 'mp4') { video!.src = src; video!.load(); return; }
       if (type === 'hls') {

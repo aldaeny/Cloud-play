@@ -123,3 +123,53 @@ NOT production-approved. Require explicit migration/key/role/deployment approval
 Final documentation/environment-example commit follows the tested runtime SHA. It changes no executable runtime or migration. Final Git status is checked after push; commit is reported in the delivery response. No merge, deployment, production migration, source publication, provider probe, actual recipient send or paid infrastructure action was performed.
 
 **Final acceptance remains NOT GRANTED:** green isolated CI is not equivalent to completed trusted edge/player integration, real AV/recipient setup, authorized provider/device/load acceptance or production approval.
+
+## Final integration follow-up — partial implementation, NOT production acceptance
+
+This checkpoint adds a fail-closed same-origin media transport to the existing
+Live TV UI, not a replacement player or a new identity authority.
+
+- Public SSR/catalog, licensed catalog and community catalog playback addresses
+  now use `/api/external/:id/manifest`; metadata and favorites IDs are retained.
+  No candidate is imported, approved or activated. Server-only
+  `EXTERNAL_CHANNEL_BINDINGS` maps existing directory IDs to approved backend
+  channel UUIDs; missing mappings fail closed. Mapping is not rights approval.
+- Existing VideoPlayer and MediaViewer prepare a Secure/HttpOnly/SameSite=Strict
+  cookie containing the existing Supabase access token through an origin-checked
+  POST. Native media requests can therefore use the same-origin bridge without
+  exposing a bearer in query strings. Cookie transport lasts at most five minutes.
+  Nest independently verifies identity and source/rights on each request.
+- The bridge refuses redirects, requires HTTPS internal API configuration, bounds
+  responses to 8 MiB/30 seconds, suppresses upstream error bodies and rewrites
+  protected manifest resource addresses to the same-origin route.
+- Signed context is forwarded only for Nest cryptographic verification. This is
+  NOT a hosting geo issuer implementation: a trusted ingress must provide the
+  channel/user/tenant-bound assertion on manifest requests. Without it playback
+  denies, intentionally. Browser country headers are not converted to assertions.
+
+Files: `apps/web/pages/api/external/{session.ts,[id]/[action].ts}`,
+`src/server/protected-live.ts`, `src/lib/media-session.ts`, existing player,
+PublicTv/CommunityTv and public/licensed/community metadata paths. No migration.
+
+Actual commands/results for this partial checkpoint:
+- `npx tsc --noEmit -p apps/web/tsconfig.json`: PASS.
+- `node apps/web/tests/protected-live.test.cjs`: PASS, 9 assertion groups;
+  isolated metadata/cookie/deny gates ONLY, not real Supabase or decode E2E.
+- Targeted `npx eslint` from `apps/web`: PASS. Initial invocation from repository
+  root failed because the web ESLint config is workspace-local; rerun corrected.
+- `git diff --check`: PASS.
+
+Remaining critical work is explicitly **unfinished**: deployable trusted hosting
+geo boundary, full real Supabase + frontend/backend synthetic decode integration,
+ongoing token renewal/logout propagation and bounded source-change recovery,
+review of all other historical Live entry points/casting, real scanner execution,
+telemetry/alerts/operational health, concurrency/load/recovery tests and actual
+Safari/Firefox/Android TV/Google TV evidence. Existing CI links above predate this
+checkpoint and do not validate it. No new CI success is claimed. This change
+intentionally makes unbound directory entries unavailable rather than retaining a
+direct-provider bypass. Browser catalog caching may require cache invalidation
+before rollout. Do not deploy before these remaining gates pass.
+
+Rollback: revert this follow-up commit on the session branch, without resetting
+history or touching production data. No production deployment, database migration,
+provider probe, candidate activation or report send occurred.
