@@ -53,4 +53,4 @@ try {
   await page.getByRole('button', { name: 'دخول', exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log('PASS actual Admin browser: denied login, authorized UI fixture, confirmation cancellation/acceptance, sync success/history, forbidden failure retention, empty/retry,390/820/1280layout, memory-only session clearing');
-} finally { await browser.close(); }
+} catch (error) { console.error(`::error::${String(error.message).replaceAll('\n', ' ')}`); throw error; } finally { await browser.close(); }

@@ -23,7 +23,7 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
       ['localhost', 'metadata', 'instance-data'].includes(host) ||
       /\.(localhost|local|internal|lan|home|corp|intranet|localdomain)$/.test(host) ||
       (!host.includes('.') && !host.includes(':'))) throw new ProviderTransportError('INVALID_URL');
-  if (init.method !== 'POST' || typeof init.body !== 'string') throw new ProviderTransportError('INVALID_URL');
+  if (!((init.method === 'POST' && typeof init.body === 'string') || (init.method === 'GET' && init.body === undefined))) throw new ProviderTransportError('INVALID_URL');
   const signal = init.signal || AbortSignal.timeout(8000);
   let records: Array<{ address: string; family: number }>;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -43,7 +43,7 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
       if (!settled) { settled = true; reject(new ProviderTransportError(code)); }
     };
     const req = deps.request(url, {
-      method: 'POST', agent: false, rejectUnauthorized: true,
+      method: init.method, agent: false, rejectUnauthorized: true,
       ...(isIP(host) ? {} : { servername: host }),
       // Native TLS still verifies the original URL hostname, NOT this IP.
       lookup: (_hostname, options, callback) => {
@@ -51,7 +51,7 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
         else callback(null, selected.address, selected.family);
       },
       signal, maxHeaderSize: 16 * 1024,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json',
+      headers: init.method === 'GET' ? { Accept: '*/*' } : { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json',
         'Content-Length': Buffer.byteLength(init.body as string) },
     }, response => {
       const rawStatus = response.statusCode || 502;
@@ -79,7 +79,7 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
       response.on('end', () => {
         if (!settled) {
           settled = true;
-          resolve(new Response(status === 204 ? null : Buffer.concat(chunks), { status }));
+          resolve(new Response(status === 204 ? null : Buffer.concat(chunks), { status, headers: { 'content-type': String(response.headers['content-type'] || '') } }));
         }
       });
     });

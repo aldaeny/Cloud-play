@@ -37,6 +37,8 @@ enum SubscriptionStatus {
 }
 
 model Tenant {
+  externalServers ExternalServer[]
+  contentLicenses ContentLicense[]
   id          String @id @default(uuid()) @db.Uuid
   branding    TenantBranding?
   featureFlags FeatureFlag[]
@@ -465,6 +467,7 @@ model CouponRedemption {
 }
 
 model XtreamServer {
+  externalCandidates ExternalServer[]
   catalogSnapshot XtreamCatalogSnapshot?
   id                 String   @id @default(uuid()) @db.Uuid
   tenantId           String   @db.Uuid
@@ -498,4 +501,96 @@ model XtreamCatalogSnapshot {
   history       Json @default("[]")
   lastSuccessAt DateTime? @db.Timestamptz
   lastFailureAt DateTime? @db.Timestamptz
+}
+
+/// Candidate intake only; existing Xtream credentials/adapters are reused by reference.
+model ExternalServer {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  name String
+  providerName String
+  protocol String
+  endpointEncrypted String @db.Text
+  xtreamServerId String? @db.Uuid
+  xtreamServer XtreamServer? @relation(fields: [xtreamServerId], references: [id])
+  country String
+  category String
+  priority Int @default(100)
+  notes String @default("")
+  status String @default("candidate")
+  enabled Boolean @default(false)
+  licenseId String? @db.Uuid
+  license ContentLicense? @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  lastCheckedAt DateTime? @db.Timestamptz
+  lastSuccessfulCheck DateTime? @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  checks ServerHealthCheck[]
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+  @@index([tenantId, status, priority])
+}
+
+model ContentLicense {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  provider String
+  contentOwner String
+  authorizedContact String
+  authorizationType String
+  allowedPlatforms String[]
+  allowedCountries String[]
+  commercialUse Boolean @default(false)
+  redistributionPermission Boolean @default(false)
+  territoryRestrictions String
+  startDate DateTime @db.Timestamptz
+  expiryDate DateTime @db.Timestamptz
+  status String @default("licensing_unverified")
+  verificationNotes String @default("")
+  reviewedBy String? @db.Uuid
+  reviewDate DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  servers ExternalServer[]
+  reviews LicenseReview[]
+  @@unique([tenantId, id])
+  @@index([tenantId, status, expiryDate])
+}
+
+model LicenseReview {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  licenseId String @db.Uuid
+  license ContentLicense @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  reviewedBy String @db.Uuid
+  status String
+  notes String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, licenseId, createdAt])
+}
+
+model ServerHealthCheck {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  serverId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId, serverId], references: [tenantId, id])
+  startedAt DateTime @db.Timestamptz
+  finishedAt DateTime @db.Timestamptz
+  result String
+  details Json
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, serverId, startedAt])
+}
+
+model ServerAuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  actorId String @db.Uuid
+  entityId String @db.Uuid
+  action String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, entityId, createdAt])
 }
