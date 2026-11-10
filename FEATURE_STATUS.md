@@ -1,3 +1,25 @@
+# Current execution status — External Server Manager
+
+Branch `arena/d4593efb-cloud-play`; runtime source `501c263`. This section supersedes historical branch/status claims below; the older inventory is retained, not deleted. No deployment or merge authorized/performed.
+
+|Area|Status|Evidence / limitation|
+|---|---|---|
+|Encrypted candidate CRUD and tenant isolation|VERIFIED|Actual isolated PostgreSQL/Nest HTTP; all new sources disabled candidates|
+|Separate rights scope, review/revoke/history|VERIFIED|Real DB + fixture policy matrix; no legal validity claim|
+|Confidential evidence attachment/reviewer access|VERIFIED|Actual encrypted DB roundtrip/cross-tenant/type denial;48KiB/20file limit; no scanner|
+|Safe bounded HTTPS/HLS check|VERIFIED|Pinned socket tests, real loopback policy denial, HTTP/manifest fixtures; not external provider certification|
+|Durable manual/15min/hour/day/week schedules|VERIFIED|Real PostgreSQL competing replicas/expired lease recovery/disable; runtime worker opt-in|
+|Admin candidate/schedule/empty/retry UI|VERIFIED|Actual local Chromium with API fixtures,390/820/1280; separate actual Nest/DB RBAC|
+|Daily/weekly on-demand reports|VERIFIED|Tenant aggregates and no-result weekly report test; not delivery|
+|Full requested multi-channel/failover system|NOT IMPLEMENTED|ChannelSource/provider groups/production publication/runtime failover missing|
+|Automatic weekly unchanged-report delivery|NOT IMPLEMENTED|Only on-demand endpoint, no scheduled delivery/outbox|
+|DASH/RTMP/HTTP/general M3U playback validation|NOT IMPLEMENTED|HTTPS candidate storage is not validation; HLS syntax only; existing Xtream adapter reused|
+|Production licensing/provider approval|BLOCKED|Requires actual rights scope/issuer and authorized provider; no external probes|
+|Production readiness|NOT IMPLEMENTED|See docs/EXTERNAL_SERVER_MANAGER.md and FINAL_PROJECT_STATUS.md|
+
+---
+## Historical inventory (not current release acceptance)
+
 # FEATURE_STATUS.md — Cloud Play Iraq
 
 **Date:** 2026-11-08 · **Branch:** `arena/4974524d-cloud-play` · **Base:** `b125cbe` (PR #21, live in production)

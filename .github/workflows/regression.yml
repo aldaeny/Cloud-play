@@ -35,6 +35,8 @@ jobs:
           npm run lint --workspace aether-admin
       - name: Production builds
         run: npm run build --workspaces
+      - name: Actual isolated HTTPS health transport and certificate rejection
+        run: node apps/api/scripts/test-external-tls.mjs
       - name: Install isolated browser and original media fixture tooling
         run: |
           node node_modules/playwright-core/cli.js install --with-deps chromium

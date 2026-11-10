@@ -1,3 +1,5 @@
+> Current checkpoint: see EXTERNAL_SERVER_MANAGER.md and FINAL_PROJECT_STATUS.md. The older results below are historical, not current scope/counts. Current schema40models/42backend tables; new candidate/rights/evidence/schedule tables have default-deny RLS; isolated PostgreSQL30checks and API544tests. No production migration executed. Isolated Auth/SMTP and native Prisma are now verified on earlier trusted CI; latest source requires its own run. Root production audit0/full18dev; separate mobile audit13including1high. Existing playback/provider integration still has explicitly listed implementation gaps.
+
 # Phase 2 security audit
 
 Fresh npm audit on the starting lockfile: **31 findings: 11 low, 16 moderate, 4 high, 0 critical**. After focused same-major updates: **21 findings: 8 low, 13 moderate, 0 high, 0 critical**. Findings are audit dependency nodes, not necessarily 31 independent exploitable defects. No suppressions, forced fix or framework major upgrade.
