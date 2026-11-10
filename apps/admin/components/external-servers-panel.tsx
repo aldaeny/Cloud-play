@@ -1,5 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 type Server = { id: string; name: string; providerName: string; protocol: string; country: string; category: string; status: string; lastCheckedAt: string | null; lastSuccessfulCheck: string | null; licenseId: string | null };
+type Document = { id: string; mimeType: string; byteLength: number; sha256: string };
 type License = { id: string; provider: string; contentOwner: string; status: string; expiryDate: string };
 const cls = 'block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15';
 const statuses = ['verified_authorized', 'provider_authorized', 'public_access_only', 'permission_pending', 'licensing_unverified', 'restricted', 'expired', 'revoked'];
@@ -7,6 +8,7 @@ export default function ExternalServersPanel({ token }: { token: string }) {
   const [servers, setServers] = useState<Server[]>([]), [licenses, setLicenses] = useState<License[]>([]);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [loading, setLoading] = useState(true);
   const [next, setNext] = useState<string | null>(null), [history, setHistory] = useState<unknown>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [editing, setEditing] = useState<Server | null>(null);
   const call = useCallback(async (path: string, method = 'GET', body?: unknown) => {
     const response = await fetch(`/api/admin/external-servers${path}`, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(22000) });
@@ -74,6 +76,20 @@ export default function ExternalServersPanel({ token }: { token: string }) {
         <button disabled={busy} className="p-3 border border-white/20 rounded">حفظ ترخيص غير متحقق</button>
       </form>
       {licenses.map(l => <article key={l.id} className="mt-3 p-3 border border-white/15 rounded"><p>{l.provider} · {l.contentOwner} · {l.status} · {l.expiryDate}</p>
+        <label className="block mt-2">إرفاق دليل سري (PDF/PNG/JPEG/نص/رسالة، حد 48KiB؛ لا يمنح اعتماداً تلقائياً)
+          <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt,.eml" disabled={busy} className={cls} onChange={e => {
+            const file = e.target.files?.[0]; e.target.value = ''; if (!file) return;
+            if (file.size > 49152 || !file.size) { setError('حجم المستند يجب أن يكون بين 1 بايت و48KiB.'); return; }
+            void action(async () => {
+              const data = new Uint8Array(await file.arrayBuffer());
+              let binary = ''; for (const byte of data) binary += String.fromCharCode(byte);
+              const mimeType = file.name.endsWith('.eml') ? 'message/rfc822' : file.type || 'text/plain';
+              await call(`/licenses/${l.id}/documents`, 'POST', { mimeType, contentBase64: btoa(binary) });
+              setDocuments(await call(`/licenses/${l.id}/documents`));
+            });
+          }} />
+        </label>
+        <button disabled={busy} onClick={() => void action(async () => setDocuments(await call(`/licenses/${l.id}/documents`)))}>عرض أدلة هذا الترخيص</button>
         <form onSubmit={e => { e.preventDefault(); const data = new FormData(e.currentTarget); void action(() => call(`/licenses/${l.id}/review`, 'POST', { status: data.get('status'), notes: data.get('notes'), scopeReviewed: data.has('scopeReviewed'), issuerVerified: data.has('issuerVerified') })); }} className="space-y-2">
           <select name="status" className={cls} defaultValue="licensing_unverified">{statuses.map(s => <option key={s}>{s}</option>)}</select>
           <label>ملاحظات المراجعة<input name="notes" className={cls} required maxLength={2000} /></label>
@@ -82,6 +98,15 @@ export default function ExternalServersPanel({ token }: { token: string }) {
         </form>
       </article>)}
     </details>
+    {documents.map(d => <div key={d.id} className="text-xs break-all p-2 border border-white/10"><p>{d.id} · {d.mimeType} · {d.byteLength} bytes · SHA256: {d.sha256}</p>
+      <button disabled={busy} onClick={() => void action(async () => {
+        const result = await call(`/documents/${d.id}`);
+        const bytes = Uint8Array.from(atob(result.contentBase64), ch => ch.charCodeAt(0));
+        // Download only. Never inline-render untrusted evidence or create an HTML data URL.
+        const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+        const link = document.createElement('a'); link.href = url; link.download = `${d.id}.evidence`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      })}>تنزيل الدليل للمراجعة (يتطلب rights:manage)</button>
+    </div>)}
     <button disabled={busy} onClick={() => void action(async () => setHistory(await call('/audit')))}>سجل التدقيق</button>
     {history !== null && <pre dir="ltr" className="text-xs overflow-auto max-h-80 p-3 bg-black rounded" aria-label="نتيجة العملية">{JSON.stringify(history, null, 2)}</pre>}
   </section>;

@@ -556,6 +556,7 @@ model ContentLicense {
   updatedAt DateTime @updatedAt @db.Timestamptz
   servers ExternalServer[]
   reviews LicenseReview[]
+  documents LicenseDocument[]
   @@unique([tenantId, id])
   @@index([tenantId, status, expiryDate])
 }
@@ -593,4 +594,19 @@ model ServerAuditLog {
   action String
   createdAt DateTime @default(now()) @db.Timestamptz
   @@index([tenantId, entityId, createdAt])
+}
+
+/// Small confidential rights evidence; not rendered inline, not automatic approval.
+model LicenseDocument {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  licenseId String @db.Uuid
+  license ContentLicense @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  mimeType String
+  byteLength Int
+  sha256 String
+  contentEncrypted String @db.Text
+  uploadedBy String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, licenseId, createdAt])
 }

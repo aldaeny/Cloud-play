@@ -23,6 +23,41 @@ export async function testExternalCandidates(client, tenant, check) {
       assert.equal((await service.list(tenant.id)).items.length, 1);
       await assert.rejects(service.remove(randomUUID(), actor, server.id), { status: 404 });
     });
+    await check('external HTTP RBAC: missing/forged privilege denied, authorized list, foreign tenant mutation denied', async () => {
+      const { Test } = require('@nestjs/testing');
+      const { JwtService } = require('@nestjs/jwt');
+      const { AppModule } = require('../dist/app.module.js');
+      const { PrismaService } = require('../dist/prisma.service.js');
+      const request = require('supertest');
+      const previousSecret = process.env.ADMIN_JWT_SECRET;
+      const secret = randomUUID(); process.env.ADMIN_JWT_SECRET = secret;
+      const role = await client.role.create({ data: { tenantId: tenant.id, name: 'External fixture', permissions: '[]' } });
+      const staff = await client.staffUser.create({ data: { tenantId: tenant.id, roleId: role.id, email: `${randomUUID()}@fixture.invalid`, passwordHash: 'unused' } });
+      const other = await client.tenant.create({ data: {} });
+      const otherRole = await client.role.create({ data: { tenantId: other.id, name: 'Other external fixture', permissions: '["xtream:manage"]' } });
+      const stranger = await client.staffUser.create({ data: { tenantId: other.id, roleId: otherRole.id, email: `${randomUUID()}@fixture.invalid`, passwordHash: 'unused' } });
+      const sign = id => new JwtService().sign({ sub: id, tokenType: 'admin', permissions: ['xtream:manage', 'rights:manage'] }, { secret, expiresIn: 60 });
+      let app;
+      try {
+        const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(PrismaService).useValue(client).compile();
+        app = mod.createNestApplication({ logger: false }); await app.init();
+        const url = '/admin/external-servers';
+        await request(app.getHttpServer()).get(url).expect(401);
+        await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(403);
+        await client.role.update({ where: { id: role.id }, data: { permissions: '["xtream:manage"]' } });
+        const response = await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(200);
+        assert.equal(response.body.items[0].id, server.id);
+        assert.ok(!JSON.stringify(response.body).includes('secret-fixture'));
+        await request(app.getHttpServer()).delete(`${url}/${server.id}`).set('Authorization', `Bearer ${sign(stranger.id)}`).expect(404);
+        await request(app.getHttpServer()).post(`${url}/licenses/${randomUUID()}/review`).set('Authorization', `Bearer ${sign(staff.id)}`).send({ status: 'verified_authorized', notes: 'forged permission' }).expect(403);
+      } finally {
+        await app?.close();
+        if (previousSecret === undefined) delete process.env.ADMIN_JWT_SECRET; else process.env.ADMIN_JWT_SECRET = previousSecret;
+        await client.staffUser.deleteMany({ where: { id: { in: [staff.id, stranger.id] } } });
+        await client.role.deleteMany({ where: { id: { in: [role.id, otherRole.id] } } });
+        await client.tenant.delete({ where: { id: other.id } });
+      }
+    });
     await check('external monitor: confirmed technical check of SSRF target denied; no publication and append-only history', async () => {
       await assert.rejects(service.check(tenant.id, actor, server.id, {}), { status: 403 });
       const result = await service.check(tenant.id, actor, server.id, { technicalAccessConfirmed: true });
@@ -34,6 +69,14 @@ export async function testExternalCandidates(client, tenant, check) {
     });
     await check('external rights: review scope, revocation, tenant-FK isolation and provider change demotion', async () => {
       license = await service.createLicense(tenant.id, actor, { provider: input.providerName, contentOwner: 'Fixture Rights Holder', authorizedContact: 'fixture@example.invalid', authorizationType: 'fixture-contract', allowedPlatforms: ['web'], allowedCountries: ['IQ'], commercialUse: true, redistributionPermission: true, territoryRestrictions: 'IQ only', startDate: '2020-01-01', expiryDate: '2099-01-01' });
+      const evidence = Buffer.from('%PDF-1.4\nIsolated synthetic rights document, not a real authorization.').toString('base64');
+      const document = await service.uploadDocument(tenant.id, actor, license.id, { mimeType: 'application/pdf', contentBase64: evidence });
+      assert.ok(!JSON.stringify(document).includes(evidence));
+      assert.equal((await service.documents(tenant.id, license.id)).length, 1);
+      assert.equal((await service.readDocument(tenant.id, actor, document.id)).contentBase64, evidence);
+      await assert.rejects(service.readDocument(randomUUID(), actor, document.id), { status: 404 });
+      await assert.rejects(service.uploadDocument(tenant.id, actor, license.id, { mimeType: 'application/pdf', contentBase64: Buffer.from('not pdf').toString('base64') }), { status: 400 });
+      assert.equal((await client.contentLicense.findUnique({ where: { id: license.id } })).status, 'licensing_unverified');
       await service.assignLicense(tenant.id, actor, server.id, license.id);
       assert.equal((await service.eligibility(tenant.id, server.id, 'web', 'IQ')).rightsEligible, false);
       await assert.rejects(service.reviewLicense(tenant.id, actor, license.id, { status: 'verified_authorized', notes: 'Fixture' }), { status: 400 });
@@ -55,6 +98,7 @@ export async function testExternalCandidates(client, tenant, check) {
     await client.serverHealthCheck.deleteMany({ where: { tenantId: tenant.id } });
     await client.externalServer.deleteMany({ where: { tenantId: tenant.id } });
     await client.licenseReview.deleteMany({ where: { tenantId: tenant.id } });
+    await client.licenseDocument.deleteMany({ where: { tenantId: tenant.id } });
     await client.contentLicense.deleteMany({ where: { tenantId: tenant.id } });
     await client.serverAuditLog.deleteMany({ where: { tenantId: tenant.id } });
     if (previous === undefined) delete process.env.XTREAM_ENCRYPTION_KEY; else process.env.XTREAM_ENCRYPTION_KEY = previous;

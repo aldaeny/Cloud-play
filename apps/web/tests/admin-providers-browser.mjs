@@ -13,6 +13,7 @@ await page.route('**/api/admin/**', async route => {
   const req = route.request(), url = new URL(req.url());
   if (url.pathname.endsWith('/login')) return route.fulfill({ status: denied ? 401 : 200, json: denied ? { error: 'denied' } : { accessToken: 'isolated-browser-fixture-token' } });
   assert.equal(req.headers().authorization, 'Bearer isolated-browser-fixture-token');
+  if (url.pathname.startsWith('/api/admin/external-servers')) return route.fulfill({ json: url.pathname.endsWith('/licenses') ? [] : { items: [], nextCursor: null } });
   if (url.pathname.endsWith('/titles')) return route.fulfill({ json: [] });
   if (url.pathname.endsWith('/catalog-sync/pull')) {
     pulls++; assert.deepEqual(req.postDataJSON(), { authorizationConfirmed: true });
@@ -46,7 +47,7 @@ try {
   await pull.waitFor();
   for (const width of [390, 820, 1280]) {
     await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(100);
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Admin overflows at${width}`);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Admin overflows at${width}: ${await page.evaluate(() => document.documentElement.scrollWidth)}`);
   }
   assert.equal(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }).includes('isolated-browser-fixture-token')), false);
   await page.getByRole('button', { name: 'مسح الجلسة من الصفحة', exact: true }).click();

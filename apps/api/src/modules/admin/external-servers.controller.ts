@@ -19,5 +19,11 @@ export class ExternalServersController {
   @Post(':id/check') check(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.servers.check(a.tenantId, a.id, id, body); }
   @Get(':id/history') history(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.history(a.tenantId, id); }
   @Get(':id/eligibility') eligibility(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Query('platform') platform: string, @Query('country') country: string) { return this.servers.eligibility(a.tenantId, id, platform, country); }
+  @Post('licenses/:id/documents')
+  uploadDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.servers.uploadDocument(a.tenantId, a.id, id, body); }
+  @Get('licenses/:id/documents')
+  documents(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.documents(a.tenantId, id); }
+  @Get('documents/:id') @RequirePermissions('xtream:manage', 'rights:manage')
+  readDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.readDocument(a.tenantId, a.id, id); }
   @Get('audit') audits(@CurrentAdmin() a: AdminPrincipal) { return this.servers.audits(a.tenantId); }
 }

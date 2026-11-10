@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { isUUID } from 'class-validator';
 import { Prisma, ExternalServer } from '@prisma/client';
@@ -116,6 +117,35 @@ export class ExternalServersService {
       await tx.externalServer.update({ where: { id: serverId, tenantId }, data: { licenseId, enabled: false, status: 'candidate' } });
       await this.audit(tx, tenantId, actorId, serverId, 'LICENSE_ATTACHED_NOT_PUBLISHED'); return { attached: true, status: 'candidate' };
     });
+  }
+  async uploadDocument(tenantId: string, actorId: string, licenseId: string, input: unknown) {
+    const body = object(input), mimeType = text(body, 'mimeType', 80), content = text(body, 'contentBase64', 65536);
+    if (!['application/pdf', 'image/png', 'image/jpeg', 'message/rfc822', 'text/plain'].includes(mimeType) || !/^[A-Za-z0-9+/]+={0,2}$/.test(content)) throw new BadRequestException('INVALID_DOCUMENT');
+    const bytes = Buffer.from(content, 'base64');
+    if (!bytes.length || bytes.length > 49152 || bytes.toString('base64') !== content) throw new BadRequestException('DOCUMENT_TOO_LARGE_OR_INVALID');
+    if ((mimeType === 'application/pdf' && bytes.subarray(0, 5).toString() !== '%PDF-') ||
+      (mimeType === 'image/png' && bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') ||
+      (mimeType === 'image/jpeg' && bytes.subarray(0, 3).toString('hex') !== 'ffd8ff')) throw new BadRequestException('DOCUMENT_TYPE_MISMATCH');
+    return this.prisma.$transaction(async tx => {
+      const license = await tx.contentLicense.findFirst({ where: { tenantId, id: id(licenseId) } });
+      if (!license) throw new NotFoundException('LICENSE_NOT_FOUND');
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${licenseId}, 0))`;
+      if (await tx.licenseDocument.count({ where: { tenantId, licenseId } }) >= 20) throw new BadRequestException('DOCUMENT_LIMIT');
+      const row = await tx.licenseDocument.create({ data: { tenantId, licenseId, uploadedBy: actorId, mimeType, byteLength: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'), contentEncrypted: this.vault.encryptSecret(content) } });
+      await this.audit(tx, tenantId, actorId, row.id, 'RIGHTS_DOCUMENT_ATTACHED_NOT_APPROVED');
+      return { id: row.id, mimeType, byteLength: row.byteLength, sha256: row.sha256, createdAt: row.createdAt };
+    });
+  }
+  async documents(tenantId: string, licenseId: string) {
+    return this.prisma.licenseDocument.findMany({ where: { tenantId, licenseId: id(licenseId) }, select: { id: true, licenseId: true, mimeType: true, byteLength: true, sha256: true, createdAt: true }, take: 20 });
+  }
+  async readDocument(tenantId: string, actorId: string, documentId: string) {
+    const row = await this.prisma.licenseDocument.findFirst({ where: { tenantId, id: id(documentId) } });
+    if (!row) throw new NotFoundException('DOCUMENT_NOT_FOUND');
+    const contentBase64 = this.vault.decryptSecret(row.contentEncrypted);
+    await this.prisma.$transaction(tx => this.audit(tx, tenantId, actorId, documentId, 'RIGHTS_DOCUMENT_READ'));
+    return { id: row.id, mimeType: row.mimeType, contentBase64 };
   }
   async eligibility(tenantId: string, serverId: string, platform: string, country: string) {
     const row = await this.server(tenantId, serverId);
