@@ -122,6 +122,30 @@ try {
     assert.equal(user.status, 'active'); assert.equal(user.profiles.length, 1);
     assert.equal(user.profiles[0].maturityMax, 'PG-13');
   });
+  await check('real Nest profiles HTTP guard/service against real PostgreSQL (auth fixture only)', async () => {
+    require('reflect-metadata');
+    const { Test } = require('@nestjs/testing');
+    const { AppModule } = require(path.join(api, 'dist/app.module.js'));
+    const { PrismaService } = require(path.join(api, 'dist/prisma.service.js'));
+    const { SupabaseAuthService } = require(path.join(api, 'dist/common/supabase-auth.service.js'));
+    const request = require('supertest');
+    const mod = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PrismaService).useValue(client)
+      .overrideProvider(SupabaseAuthService).useValue({
+        verifyAccessToken: async () => ({ id: user.id, email: user.email, emailConfirmed: false }),
+      }).compile();
+    const app = mod.createNestApplication({ logger: false });
+    try {
+      await app.init();
+      await request(app.getHttpServer()).get('/hybrid/profiles').expect(401);
+      const response = await request(app.getHttpServer()).get('/hybrid/profiles')
+        .query({ userId: randomUUID() }).set('Authorization', 'Bearer fixture.session.token').expect(200);
+      assert.equal(response.body.data.length, 1);
+      assert.equal(response.body.data[0].id, user.profiles[0].id);
+      assert.equal(response.body.data[0].userId, user.id);
+      assert.ok(!('pinHash' in response.body.data[0]));
+    } finally { await app.close(); }
+  });
   await check('update/read', async () => {
     await client.profile.update({ where: { id: user.profiles[0].id }, data: { name: 'Updated' } });
     assert.equal((await client.profile.findUnique({ where: { id: user.profiles[0].id } })).name, 'Updated');

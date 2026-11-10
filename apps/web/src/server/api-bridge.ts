@@ -133,7 +133,10 @@ export async function callApi<T>(request: BridgeRequest): Promise<BridgeResult<T
 
   let payload: string | undefined;
   if (request.body !== undefined && method !== 'GET') {
-    payload = JSON.stringify(request.body);
+    try { payload = JSON.stringify(request.body); } catch {
+      return { ok: false, code: 'UPSTREAM_REJECTED', status: 400 };
+    }
+    if (typeof payload !== 'string') return { ok: false, code: 'UPSTREAM_REJECTED', status: 400 };
     if (Buffer.byteLength(payload, 'utf8') > MAX_BODY_BYTES) {
       return { ok: false, code: 'UPSTREAM_REJECTED', status: 413 };
     }
@@ -158,15 +161,42 @@ export async function callApi<T>(request: BridgeRequest): Promise<BridgeResult<T
     return { ok: false, code: 'API_UNAVAILABLE', status: 503 };
   }
 
-  // Parse defensively: an upstream proxy may return HTML or an empty body.
+  // Never buffer an unlimited upstream body, including chunked responses.
+  // A failed/truncated body must not become a successful null response.
   let data: unknown = null;
-  const text = await response.text().catch(() => '');
-  if (text) {
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => {});
+  } else {
     try {
-      data = JSON.parse(text);
+      const length = response.headers.get('content-length');
+      if (length && Number(length) > MAX_BODY_BYTES) {
+        await response.body?.cancel().catch(() => {});
+        return { ok: false, code: 'API_UNAVAILABLE', status: 502, upstreamStatus: response.status };
+      }
+      const chunks: Uint8Array[] = [];
+      let size = 0;
+      const reader = response.body?.getReader();
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            size += value.byteLength;
+            if (size > MAX_BODY_BYTES) {
+              await reader.cancel().catch(() => {});
+              return { ok: false, code: 'API_UNAVAILABLE', status: 502, upstreamStatus: response.status };
+            }
+            chunks.push(value);
+          }
+        } finally { reader.releaseLock(); }
+      }
+      const text = Buffer.concat(chunks).toString('utf8');
+      if (text) data = JSON.parse(text);
+      else if (response.status !== 204) {
+        return { ok: false, code: 'API_UNAVAILABLE', status: 502, upstreamStatus: response.status };
+      }
     } catch {
-      if (response.ok) return { ok: false, code: 'API_UNAVAILABLE', status: 502, upstreamStatus: response.status };
-      data = null;
+      return { ok: false, code: 'API_UNAVAILABLE', status: 502, upstreamStatus: response.status };
     }
   }
 

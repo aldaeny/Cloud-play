@@ -35,7 +35,7 @@ const realEnv = process.env.API_INTERNAL_URL;
 try {
   const tsc = path.join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc');
   execFileSync(process.execPath, [
-    tsc, 'src/server/api-bridge.ts',
+    tsc, 'src/server/api-bridge.ts', 'pages/api/account/profiles.ts',
     '--outDir', out, '--rootDir', '.', '--module', 'commonjs',
     '--target', 'es2022', '--skipLibCheck', '--strict', '--lib', 'es2022,dom',
   ], { cwd: webRoot, stdio: 'pipe' });
@@ -56,12 +56,45 @@ try {
   }
 
   function jsonResponse(status, body) {
-    return {
-      ok: status >= 200 && status < 300,
-      status,
-      text: async () => JSON.stringify(body),
-    };
+    return new Response(status === 204 ? null : JSON.stringify(body), { status });
   }
+
+  const routeModule = await import(pathToFileURL(path.join(out, 'pages/api/account/profiles.js')).href);
+  const profilesHandler = routeModule.default.default || routeModule.default;
+  async function route(method = 'GET', authorization = AUTH) {
+    const response = { statusCode: 200, headers: {}, body: null,
+      setHeader(key, value) { this.headers[key] = value; return this; },
+      status(value) { this.statusCode = value; return this; },
+      json(value) { this.body = value; return this; },
+    };
+    await profilesHandler({ method, headers: { authorization }, socket: { remoteAddress: '127.0.0.1' },
+      query: { userId: 'forged', path: '/admin' } }, response);
+    return response;
+  }
+
+  await check('profiles proxy uses a fixed backend path and no-store', async () => {
+    setOrigin('https://api.example.com');
+    let target;
+    mockFetch(async url => { target = String(url); return jsonResponse(200, { data: [] }); });
+    const response = await route();
+    assert.equal(target, 'https://api.example.com/hybrid/profiles');
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.headers['Cache-Control'], 'no-store');
+    assert.deepEqual(response.body, { data: [] });
+  });
+
+  await check('profiles proxy refuses writes', async () => {
+    const response = await route('POST');
+    assert.equal(response.statusCode, 405);
+    assert.equal(response.headers.Allow, 'GET');
+  });
+
+  await check('profiles proxy fails closed when backend is unconfigured', async () => {
+    setOrigin(undefined);
+    const response = await route();
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(response.body, { error: 'API_NOT_CONFIGURED' });
+  });
 
   console.log('\napi-bridge');
 
@@ -213,7 +246,7 @@ try {
 
   await check('treats a non-JSON success body as unavailable, not as data', async () => {
     setOrigin('https://api.example.com');
-    mockFetch(async () => ({ ok: true, status: 200, text: async () => '<html>gateway</html>' }));
+    mockFetch(async () => new Response('<html>gateway</html>', { status: 200 }));
     const result = await callApi({ path: '/profiles', authorization: AUTH });
     assert.equal(result.ok, false);
     assert.equal(result.status, 502);
@@ -221,11 +254,42 @@ try {
 
   await check('handles an empty 204 response', async () => {
     setOrigin('https://api.example.com');
-    mockFetch(async () => ({ ok: true, status: 204, text: async () => '' }));
+    mockFetch(async () => new Response(null, { status: 204 }));
     const result = await callApi({ path: '/profiles/p1', method: 'DELETE', authorization: AUTH });
     assert.equal(result.ok, true);
     assert.equal(result.status, 204);
     assert.equal(result.data, null);
+  });
+
+  await check('rejects oversized declared and chunked responses', async () => {
+    setOrigin('https://api.example.com');
+    for (const headers of [{ 'content-length': '999999' }, {}]) {
+      mockFetch(async () => new Response('x'.repeat(300 * 1024), { headers }));
+      const result = await callApi({ path: '/profiles', authorization: AUTH });
+      assert.equal(result.ok, false);
+      assert.equal(result.status, 502);
+    }
+  });
+
+  await check('fails closed when response stream breaks or JSON is empty', async () => {
+    setOrigin('https://api.example.com');
+    for (const response of [new Response(''), new Response(new ReadableStream({
+      start(controller) { controller.error(new Error('broken transport')); },
+    }))]) {
+      mockFetch(async () => response);
+      const result = await callApi({ path: '/profiles', authorization: AUTH });
+      assert.equal(result.ok, false);
+      assert.equal(result.status, 502);
+    }
+  });
+
+  await check('rejects unserializable request data without throwing or fetching', async () => {
+    setOrigin('https://api.example.com');
+    mockFetch(async () => { throw new Error('must not fetch'); });
+    const cyclic = {}; cyclic.self = cyclic;
+    const result = await callApi({ path: '/profiles', method: 'POST', authorization: AUTH, body: cyclic });
+    assert.equal(result.ok, false);
+    assert.equal(result.status, 400);
   });
 
   await check('allows an explicitly public endpoint without a session', async () => {
