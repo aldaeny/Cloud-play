@@ -354,6 +354,7 @@ try {
     const before=await client.appUser.count();
     await pool.query(await readFile(path.join(api,'prisma/external-channel-failover-rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/migrations/202611120001_external_channel_failover/migration.sql'),'utf8'));
+    await pool.query(await readFile(path.join(api,'prisma/migrations/202611120003_external_switch_integrity/migration.sql'),'utf8'));
     const evidence=path.join(api,'prisma/migrations/202611120002_evidence_quarantine');
     await pool.query(await readFile(path.join(evidence,'rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(evidence,'migration.sql'),'utf8'));

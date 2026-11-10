@@ -100,6 +100,16 @@ export class ExternalChannelsService {
       await this.audit(tx, tenantId, actorId, sourceId, 'EXPLICIT_SOURCE_PUBLICATION_APPROVED'); return { approved: true };
     });
   }
+  async disableSource(tenantId:string,actorId:string,channelId:string,sourceId:string){
+    await this.channel(tenantId,channelId);
+    await this.prisma.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${channelId}, 0))`;
+      const result=await tx.channelSource.updateMany({where:{id:externalId(sourceId),tenantId,channelId},data:{enabled:false}});
+      if(!result.count)throw new NotFoundException('SOURCE_NOT_FOUND');
+      await this.audit(tx,tenantId,actorId,sourceId,'CHANNEL_SOURCE_DISABLED');
+    });
+    return this.evaluate(tenantId,channelId,true);
+  }
   async activate(tenantId: string, actorId: string, channelId: string, input: unknown) {
     const body = externalBody(input); await this.channel(tenantId, channelId);
     if (typeof body.enabled !== 'boolean' || (body.enabled && body.publicationApproved !== true)) throw new ForbiddenException('EXPLICIT_CHANNEL_APPROVAL_REQUIRED');

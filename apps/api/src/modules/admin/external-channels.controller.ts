@@ -17,6 +17,7 @@ export class ExternalChannelsController {
   approve(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Param('sourceId') sourceId: string, @Body() body: unknown) { return this.channels.approveSource(a.tenantId,a.id,id,sourceId,body); }
   @Post(':id/activation') @RequirePermissions('xtream:manage','rights:manage','external:publish')
   activate(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.channels.activate(a.tenantId,a.id,id,body); }
+  @Post(':id/sources/:sourceId/disable') disable(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Param('sourceId') sourceId: string) { return this.channels.disableSource(a.tenantId,a.id,id,sourceId); }
   @Post(':id/evaluate') evaluate(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.channels.evaluate(a.tenantId,id); }
   @Get(':id/history') history(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.channels.history(a.tenantId,id); }
 }

@@ -60,6 +60,16 @@ export async function testExternalFailover(client,tenant,check,vault){
       await assert.rejects(service.selected(tenant.id,channel.id,'IQ','web'),{status:503});
       await service.policy(tenant.id,actor,channel.id,{autoFailover:false,failureThreshold:1,retrySeconds:5,holdDownSeconds:10,stabilitySeconds:30,freshnessSeconds:900});
       await assert.rejects(service.selected(tenant.id,channel.id,'IQ','web'),{status:503});
+      await service.disableSource(tenant.id,actor,channel.id,sources[1].id);
+      assert.equal((await client.channelSource.findUnique({where:{id:sources[1].id}})).enabled,false);
+      await assert.rejects(service.disableSource(randomUUID(),actor,channel.id,sources[0].id),{status:404});
+      await assert.rejects(client.externalFailoverEvent.create({data:{tenantId:tenant.id,channelId:channel.id,fromSourceId:randomUUID(),toSourceId:sources[0].id,reason:'foreign fixture'}}),{code:'P2003'});
+      await client.contentLicense.update({where:{id:licenses[0].id},data:{status:'verified_authorized'}});await observation(servers[0]);
+      const {ExternalServersService}=require('../dist/modules/admin/external-servers.service.js');
+      const rights=new ExternalServersService(client,vault);
+      const race=await Promise.allSettled([service.approveSource(tenant.id,actor,channel.id,sources[0].id,{publicationApproved:true}),rights.reviewLicense(tenant.id,actor,licenses[0].id,{status:'revoked',notes:'Synthetic concurrent revocation'})]);
+      assert.equal(race[1].status,'fulfilled');if(race[0].status==='rejected')assert.equal(race[0].reason.status,403);
+      assert.equal((await client.externalServer.findUnique({where:{id:servers[0].id}})).enabled,false,'approval cannot race past revocation');
     });
     await check('durable reports: racing weekly generation, unchanged weeks retained, no transport/approval means no sending',async()=>{
       const saved=process.env.EXTERNAL_REPORT_WEBHOOK_URL;delete process.env.EXTERNAL_REPORT_WEBHOOK_URL;
@@ -90,6 +100,6 @@ export async function testExternalFailover(client,tenant,check,vault){
     await client.externalReportDelivery.deleteMany({where:{tenantId:tenant.id}});await client.externalReportSchedule.deleteMany({where:{tenantId:tenant.id}});
     await client.externalChannel.updateMany({where:{tenantId:tenant.id},data:{activeSourceId:null}});
     await client.externalFailoverEvent.deleteMany({where:{tenantId:tenant.id}});await client.channelSource.deleteMany({where:{tenantId:tenant.id}});await client.externalChannel.deleteMany({where:{tenantId:tenant.id}});await client.providerGroup.deleteMany({where:{tenantId:tenant.id}});
-    await client.serverHealthCheck.deleteMany({where:{serverId:{in:servers.map(s=>s.id)}}});await client.externalServer.deleteMany({where:{id:{in:servers.map(s=>s.id)}}});await client.contentLicense.deleteMany({where:{id:{in:licenses.map(l=>l.id)}}});
+    await client.serverHealthCheck.deleteMany({where:{serverId:{in:servers.map(s=>s.id)}}});await client.externalServer.deleteMany({where:{id:{in:servers.map(s=>s.id)}}});await client.licenseReview.deleteMany({where:{licenseId:{in:licenses.map(l=>l.id)}}});await client.contentLicense.deleteMany({where:{id:{in:licenses.map(l=>l.id)}}});
   }
 }

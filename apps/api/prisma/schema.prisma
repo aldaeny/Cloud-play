@@ -691,6 +691,8 @@ model ChannelSource {
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
   selectedBy ExternalChannel[] @relation("SelectedSource")
+  switchFrom ExternalFailoverEvent[] @relation("SwitchFrom")
+  switchTo ExternalFailoverEvent[] @relation("SwitchTo")
   @@unique([tenantId,channelId,id])
   @@unique([tenantId,channelId,serverId])
   @@unique([tenantId,channelId,priority])
@@ -701,7 +703,9 @@ model ExternalFailoverEvent {
   channelId String @db.Uuid
   channel ExternalChannel @relation(fields: [tenantId,channelId], references: [tenantId,id])
   fromSourceId String? @db.Uuid
+  fromSource ChannelSource? @relation("SwitchFrom", fields:[tenantId,channelId,fromSourceId], references:[tenantId,channelId,id])
   toSourceId String? @db.Uuid
+  toSource ChannelSource? @relation("SwitchTo", fields:[tenantId,channelId,toSourceId], references:[tenantId,channelId,id])
   reason String
   outageDurationMs Int?
   createdAt DateTime @default(now()) @db.Timestamptz
