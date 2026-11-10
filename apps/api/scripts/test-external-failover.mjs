@@ -47,7 +47,9 @@ export async function testExternalFailover(client,tenant,check,vault){
       await Promise.all([service.evaluate(tenant.id,channel.id,true),service.evaluate(tenant.id,channel.id,true)]);
       assert.equal((await service.selected(tenant.id,channel.id,'IQ','web')).id,sources[1].id);
       let switches=(await service.history(tenant.id,channel.id)).filter(e=>e.fromSourceId===sources[0].id&&e.toSourceId===sources[1].id);assert.equal(switches.length,1);
-      await observation(servers[0]);await service.evaluate(tenant.id,channel.id,true);
+      await observation(servers[0]);await observation(servers[1],'unreachable');await service.evaluate(tenant.id,channel.id,true);
+      assert.equal((await service.channel(tenant.id,channel.id)).activeSourceId,sources[1].id,'hold-down forbids bouncing to a just-recovered primary even when active backup fails; serving remains denied');
+      await observation(servers[1]);await service.evaluate(tenant.id,channel.id,true);
       assert.equal((await service.channel(tenant.id,channel.id)).activeSourceId,sources[1].id,'no immediate primary flapping');
       await service.evaluate(tenant.id,channel.id,true,new Date(Date.now()+31000));
       assert.equal((await service.channel(tenant.id,channel.id)).activeSourceId,sources[0].id);

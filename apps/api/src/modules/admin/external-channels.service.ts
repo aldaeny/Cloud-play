@@ -134,7 +134,7 @@ export class ExternalChannelsService {
         // Rights denial always stops serving immediately, regardless of hold-down,
         // retry intervals, failure thresholds or whether automatic switching is off.
         chosen = undefined;
-        if (channel.autoFailover && retryDue && (!currentRights || current.consecutiveFailures >= channel.failureThreshold || !current.server.checks[0] || now.getTime() - current.server.checks[0].finishedAt.getTime() > channel.freshnessSeconds * 1000)) {
+        if (channel.autoFailover && retryDue && (!holdDown || !currentRights) && (!currentRights || current.consecutiveFailures >= channel.failureThreshold || !current.server.checks[0] || now.getTime() - current.server.checks[0].finishedAt.getTime() > channel.freshnessSeconds * 1000)) {
           chosen = states.find(s => s.id !== current.id && eligible(s)); reason = currentRights ? 'PRIMARY_OR_ACTIVE_FAILED' : 'ACTIVE_RIGHTS_DENIED';
         } else reason = currentRights ? 'AWAITING_RETRY_OR_FAILURE_THRESHOLD' : 'ACTIVE_RIGHTS_DENIED';
       } else if (current && channel.autoFailover && !holdDown && retryDue) {
@@ -143,10 +143,10 @@ export class ExternalChannelsService {
       }
       const nextId = chosen?.id || (channel.enabled ? channel.activeSourceId : null);
       const changed = nextId !== channel.activeSourceId;
-      const outageStartedAt = chosen ? null : channel.outageStartedAt || now;
+      const outageStartedAt = !channel.enabled || chosen ? null : channel.outageStartedAt || now;
       if (changed || (!chosen && !channel.outageStartedAt && !!channel.activeSourceId) || (chosen && !!channel.outageStartedAt)) await tx.externalFailoverEvent.create({ data: { tenantId, channelId, fromSourceId: channel.activeSourceId, toSourceId: chosen?.id || null, reason,
         outageDurationMs: chosen && channel.outageStartedAt ? Math.min(2147483647, Math.max(0, now.getTime() - channel.outageStartedAt.getTime())) : null } });
-      await tx.externalChannel.update({ where: { id: channelId, tenantId }, data: { activeSourceId: nextId, outageStartedAt, ...(retryDue ? { lastEvaluationAt: now } : {}), ...(changed ? { lastSwitchAt: now } : {}) } });
+      await tx.externalChannel.update({ where: { id: channelId, tenantId }, data: { activeSourceId: nextId, outageStartedAt, ...(retryDue ? { lastEvaluationAt: now } : {}), ...(changed && channel.activeSourceId ? { lastSwitchAt: now } : {}) } });
       return { activeSourceId: nextId, reason, changed };
     }, { timeout: 10000 });
   }
