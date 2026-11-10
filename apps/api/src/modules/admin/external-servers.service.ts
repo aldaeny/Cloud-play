@@ -171,7 +171,7 @@ export class ExternalServersService {
     const details: Record<string, string | number | boolean | null> = { dns: 'not_verified', tcp: 'not_verified', tls: 'not_verified', httpStatus: null,
       hlsStatus: 'not_tested', segmentStatus: 'not_requested', reason: 'ORIGIN_UNREACHABLE', licensingStatus: license && license.expiryDate <= startedAt ? 'expired' : license?.status || 'licensing_unverified' };
     // Durable per-server lease via compare-and-swap prevents duplicate probes across API replicas.
-    const lease = await this.prisma.externalServer.updateMany({ where: { id: row.id, tenantId, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: new Date(Date.now() - 60000) } }] }, data: { lastCheckedAt: startedAt } });
+    const lease = await this.prisma.externalServer.updateMany({ where: { id: row.id, tenantId, deletedAt: null, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: new Date(Date.now() - 60000) } }] }, data: { lastCheckedAt: startedAt } });
     if (!lease.count) throw new BadRequestException('CHECK_ALREADY_RUNNING');
     try {
       if (row.protocol === 'xtream') { details.reason = 'USE_EXISTING_XTREAM_HEALTH_ENDPOINT'; }

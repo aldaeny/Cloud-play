@@ -23,6 +23,6 @@ export function parseHls(text: string, base: URL): { result: string; reference?:
     }
   } catch { return { result: 'malformed_playlist' }; }
   const master = lines.some(line => line.startsWith('#EXT-X-STREAM-INF:'));
-  if (!master && !lines.some(line => line.startsWith('#EXTINF:'))) return { result: 'malformed_playlist' };
+  if (!master && (!lines.some(line => line.startsWith('#EXTINF:')) || !lines.some(line => /^#EXT-X-TARGETDURATION:[1-9][0-9]*$/.test(line)))) return { result: 'malformed_playlist' };
   return { result: 'reachable_and_hls_valid', reference: urls[0], kind: master ? 'variant' : 'segment' };
 }

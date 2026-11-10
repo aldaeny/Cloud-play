@@ -15,7 +15,7 @@ describe('external content rights are independent of technical reachability', ()
 describe('bounded HLS inspection; never implies decoded playback', () => {
   const base = new URL('https://provider.example/live/index.m3u8');
   it('recognizes a local segment without fetching', () => {
-    const result = parseHls('#EXTM3U\n#EXTINF:1,\nsegment.ts', base);
+    const result = parseHls('#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nsegment.ts', base);
     expect(result.result).toBe('reachable_and_hls_valid'); expect(result.reference?.href).toBe('https://provider.example/live/segment.ts'); expect(result.kind).toBe('segment');
   });
   it('separates master variant from segment', () => expect(parseHls('#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100\na.m3u8', base).kind).toBe('variant'));
