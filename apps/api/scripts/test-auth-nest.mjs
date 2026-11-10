@@ -94,7 +94,7 @@ try {
   const {testProtectedAuthPlayback}=await import('./test-protected-auth-playback.mjs');
   const playbackSession=JSON.parse(process.env.AUTH_PLAYBACK_SESSION);
   const prisma=app.get(require(path.join(api,'dist/prisma.service.js')).PrismaService);
-  assert.equal(await testProtectedAuthPlayback({app,prisma,tenant,userId:user.id,session:playbackSession,certDir:process.env.AUTH_FIXTURE_CERT_DIR,refreshToken:playbackSession.refresh_token}),6);
+  assert.equal(await testProtectedAuthPlayback({app,prisma,tenant,userId:user.id,session:playbackSession,certDir:process.env.AUTH_FIXTURE_CERT_DIR,refreshToken:playbackSession.refresh_token,otherSessionToken:access}),6);
   console.log('PASS actual Nest native Prisma Supabase identity: own create/read, forged body ignored, cross-user/cross-tenant update/delete denied, disabled/expired/forged/malformed rejected');
 } finally {
   await app?.close(); tls.closeAllConnections(); await new Promise(resolve => tls.close(resolve)); await pool.end();

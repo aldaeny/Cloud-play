@@ -10,7 +10,7 @@ import {createHash,createHmac,randomUUID,randomBytes} from 'node:crypto';
 import path from 'node:path';
 import {setTimeout as wait} from 'node:timers/promises';
 const require=createRequire(import.meta.url);
-export async function testProtectedAuthPlayback({app,prisma,tenant,userId,session,certDir,refreshToken}){
+export async function testProtectedAuthPlayback({app,prisma,tenant,userId,session,certDir,refreshToken,otherSessionToken}){
  const root=path.resolve(''),media=process.env.MEDIA_FIXTURES;
  if(!media||!process.env.AUTH_TEST_DATABASE_URL?.includes('127.0.0.1:5439'))throw new Error('ISOLATED_AUTH_MEDIA_REQUIRED');
  const tlsOptions={key:await readFile(path.join(certDir,'key.pem')),cert:await readFile(path.join(certDir,'cert.pem'))};
@@ -19,11 +19,11 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
  const vault=app.get(require('../dist/modules/admin/xtream-servers.service.js').XtreamServersService);
  const channels=app.get(require('../dist/modules/admin/external-channels.service.js').ExternalChannelsService);
  const request=require('supertest');const key='isolated-request-geo-key-at-least-32-characters';process.env.EXTERNAL_GEO_SIGNING_KEY=key;
- let mediaServer,apiServer,edge,next,browser;const fixtures=[];let checks=0;let secondUserId;let stage='synthetic_setup';
+ let mediaServer,apiServer,edge,next,browser;const fixtures=[];let checks=0;let secondUserId;let stage='synthetic_setup';let transientDrops=0;
  const pass=label=>{checks++;console.log('PASS protected authenticated playback: '+label);};
  try{
   mediaServer=createServer(tlsOptions,async(req,res)=>{
-   try{const url=new URL(req.url,'https://fixture.example');if(url.pathname.includes('..'))throw new Error();const file=path.join(media,url.pathname);if(!file.startsWith(path.resolve(media)+path.sep))throw new Error();const data=await readFile(file);const ext=path.extname(file);res.setHeader('content-type',({'.m3u8':'application/vnd.apple.mpegurl','.mpd':'application/dash+xml','.ts':'video/mp2t','.m4s':'video/mp4','.mp4':'video/mp4','.vtt':'text/vtt'})[ext]||'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}
+   try{const url=new URL(req.url,'https://fixture.example');if(url.pathname.endsWith('.ts')&&transientDrops===0){transientDrops++;res.destroy();return;}if(url.pathname.includes('..'))throw new Error();const file=path.join(media,url.pathname);if(!file.startsWith(path.resolve(media)+path.sep))throw new Error();const data=await readFile(file);const ext=path.extname(file);res.setHeader('content-type',({'.m3u8':'application/vnd.apple.mpegurl','.mpd':'application/dash+xml','.ts':'video/mp2t','.m4s':'video/mp4','.mp4':'video/mp4','.vtt':'text/vtt'})[ext]||'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}
   });await new Promise(resolve=>mediaServer.listen(0,'127.0.0.1',resolve));
   const deps={lookup:async()=>[{address:'8.8.8.8',family:4}],request:(url,opts,done)=>httpsRequest(url,{...opts,port:mediaServer.address().port,ca:tlsOptions.cert,servername:undefined,checkServerIdentity:(_host,cert)=>require('node:tls').checkServerIdentity('127.0.0.1',cert),lookup:(_name,options,cb)=>options.all?cb(null,[{address:'127.0.0.1',family:4}]):cb(null,'127.0.0.1',4)},done)};
   transport.pinnedProviderRequest=(url,init,_deps,limit,allowHttp,trace)=>{assert.equal(url.hostname,'fixture.example','no external provider contact');return original(url,init,deps,limit,allowHttp,trace);};
@@ -56,13 +56,13 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   await create(assertion).expect(403);
   const races=await Promise.all([1,2,3,4].map(()=>create(geo(fixtures[0].channel.id))));assert.equal(races.filter(r=>r.status===201).length,1);assert.equal(races.filter(r=>r.status===429).length,3);
   const get=(url,id=lease.body.id,bearer=token)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${bearer}`).set('x-playback-session',id);
-  await get(base+'/manifest').expect(200);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
+  await get(base+'/manifest').expect(200);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get(base+'/manifest',lease.body.id,otherSessionToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id)).expect(200);
   await prisma.externalPlaybackLease.update({where:{id:lease.body.id},data:{expiresAt:new Date(0)}});
   await get(base+'/manifest').expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id)).expect(403);
   await prisma.externalPlaybackLease.updateMany({where:{userId},data:{revokedAt:new Date()}});
-  pass('real GoTrue/PG: unsigned/expired/replayed geo denied; four racing creates enforce limit; renewal, expiry and cross-channel denial');
+  pass('real GoTrue/PG: cross-user and same-user cross-session reuse denied; unsigned/expired/replayed geo denied; four racing creates enforce limit; renewal, expiry and cross-channel denial');
   stage='next_https_startup';
   apiServer=createServer(tlsOptions,app.getHttpAdapter().getInstance());await new Promise(resolve=>apiServer.listen(9444,'127.0.0.1',resolve));
   // This proxy models a trusted ingress and overwrites country. It does NOT
@@ -85,9 +85,10 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
    const video=page.locator('video').first();await video.waitFor();await video.evaluate(v=>{v.muted=true;void v.play().catch(()=>{});});
    await page.waitForFunction(()=>{const v=document.querySelector('video');return v&&v.currentTime>1&&v.videoWidth>0;},null,{timeout:60000});
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+   assert.equal(transientDrops,1,'actual dropped TLS segment request recovered by bounded backend retry');
    const cookie=await context.cookies();assert.ok(cookie.some(c=>c.name==='__Host-cloudplay-lease'&&c.httpOnly&&c.secure));
    assert.ok(!(await page.content()).includes('fixture.example'));
-   pass(`actual existing player decoded ${name==='alsharqiya'?'HLS':'DASH'} at ${width}px via Next/Nest/GoTrue/PG/TLS; no provider URL in HTML`);
+   pass(`actual existing player decoded ${name==='alsharqiya'?'HLS':'DASH'} at ${width}px via Next/Nest/GoTrue/PG/TLS with a dropped segment request recovered; no provider URL in HTML`);
    // Force network interruption and restore before lease TTL expires.
    await context.setOffline(true);await wait(300);await context.setOffline(false);
    const before=await video.evaluate(v=>v.currentTime);await page.waitForFunction(value=>document.querySelector('video')?.currentTime>value+0.1,before,{timeout:20000});

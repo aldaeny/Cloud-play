@@ -63,7 +63,8 @@ jobs:
         if: always()
         run: |
           if [ -f auth-recovery-evidence.txt ]; then
-            while IFS= read -r line; do printf '::notice title=Isolated Auth assertion::%s\n' "$line"; done < auth-recovery-evidence.txt
+            evidence=$(paste -sd '|' auth-recovery-evidence.txt)
+            printf '::notice title=Isolated Auth assertions::%s\n' "$evidence"
           fi
       - uses: actions/upload-artifact@v4
         if: always()

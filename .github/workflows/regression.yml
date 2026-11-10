@@ -63,6 +63,7 @@ jobs:
           done
           export MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures"
           npm run test:browser --workspace aether-web
+          npm run test:channels:browser --workspace aether-web
           npm run test:layout --workspace aether-web
           npm run test:search:browser --workspace aether-web
           npm run test:popup --workspace aether-web
