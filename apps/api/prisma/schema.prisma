@@ -465,6 +465,7 @@ model CouponRedemption {
 }
 
 model XtreamServer {
+  catalogSnapshot XtreamCatalogSnapshot?
   id                 String   @id @default(uuid()) @db.Uuid
   tenantId           String   @db.Uuid
   tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -486,4 +487,15 @@ model XtreamServer {
   @@unique([tenantId, name])
   @@index([tenantId, enabled])
   @@index([tenantId, enabled, priority])
+}
+
+/// Provider-scoped metadata-only catalog imports. No credentials or playback URLs.
+model XtreamCatalogSnapshot {
+  serverId      String @id @db.Uuid
+  server        XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  revision      Int @default(0)
+  catalog       Json @default("[]")
+  history       Json @default("[]")
+  lastSuccessAt DateTime? @db.Timestamptz
+  lastFailureAt DateTime? @db.Timestamptz
 }

@@ -243,3 +243,7 @@ key is in use, so set it explicitly.
 - [ ] Explicit approval obtained for destructive/production steps
 - [ ] Known-good Vercel deployment id noted for app rollback
 - [ ] Post-change verification plan written (which URLs, which API responses)
+
+## Phase 2 catalog staging migration
+
+`20261108010000_xtream_catalog_snapshot` adds a backend-only staging table with RLS and no browser policy. It does not alter existing content/user tables. The isolated PG17 runner applies and rolls back/reapplies it and verifies provider rows survive. Rollback intentionally loses imported staging snapshots/history: export/backup that table and obtain approval before running `rollback.sql` anywhere non-disposable. Production default grants, role bypass rights and backups still need review. No production migration or rollback was run.

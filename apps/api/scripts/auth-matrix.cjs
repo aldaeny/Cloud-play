@@ -29,7 +29,7 @@ for (const folder of fs.readdirSync(modules).sort()) {
             const endpoint = '/' + [base, suffix].filter(Boolean).join('/');
             const auth = guards.includes('Supabase') ? 'Supabase /auth/v1/user' : guards.includes('Admin') ? 'legacy staff HS256' : guards.includes('Jwt') ? 'legacy user HS256' : 'public credential operation';
             const ownership = guards.includes('Admin') ? 'DB staff tenant/role; handler scope needs per-route verification' : guards.includes('Jwt') || guards.includes('Supabase') ? 'DB user/tenant; handler scope needs per-route verification' : 'N/A; inspect credential flow';
-            const evidence = folder === 'profiles' && endpoint === '/hybrid/profiles' ? 'hybrid-profiles.http.spec.ts + real PG read' : 'module/service tests only; route-specific security NOT proven';
+            const evidence = file === 'xtream-catalog-sync.controller.ts' ? 'test:postgres real HTTP/DB roles + sync service unit tests' : folder === 'profiles' && endpoint === '/hybrid/profiles' ? 'hybrid-profiles.http.spec.ts + real PG read' : 'module/service tests only; route-specific security NOT proven';
             rows.push(`| ${folder} | ${method.toUpperCase()} \`${endpoint}\` | ${auth} (${guards}) | ${required} | ${ownership} | main.ts global limiter* | ${evidence}; [source](../apps/api/src/modules/${folder}/${file}#L${line}) |`);
           }
         }

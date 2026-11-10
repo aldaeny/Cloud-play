@@ -15,7 +15,7 @@ npm ci --no-audit --no-fund
 npm run test:postgres:native --workspace aether-api
 ```
 
-The new native mode generates a temporary client from the production schema with only its output directory changed. It does NOT enable driverAdapters, does NOT use the WASM client, and does NOT silently fall back. On success it runs the same 12 real PostgreSQL17 checks (32 model delegates, CRUD, relationships, defaults, constraint errors, transaction rollback, HTTP business read and actual outage/recovery) using the native client. Supabase verification in the HTTP subtest is a fixture, not real Supabase.
+The new native mode generates a temporary client from the production schema with only its output directory changed. It does NOT enable driverAdapters, does NOT use the WASM client, and does NOT silently fall back. On success it runs the same real PostgreSQL17 suite (now 20 checks, 33 model delegates, CRUD, relationships, defaults, constraint errors, transaction rollback, HTTP business read and actual outage/recovery) using the native client. Supabase verification in the HTTP subtest is a fixture, not real Supabase.
 
 The runner creates its own random-password loopback PostgreSQL cluster and supplies its URL explicitly to the temporary native client. It never reads/reuses production DATABASE_URL. It deletes only its own temporary cluster/client.
 
@@ -25,4 +25,4 @@ Native generation exited **1** before database operations. Exact failure: TLS co
 
 Therefore **native runtime verification remains BLOCKED**. To complete: run the command on a trusted CI/staging host that can download the official Prisma engine (or provision the matching verified native library/schema engine through supported Prisma environment variables). Repeat using the exact approved backend Node/OS/container image. A successful types-only build is not sufficient.
 
-The existing `test:postgres` command separately passed all 12 checks using the real WASM query engine against real PostgreSQL. That evidence is preserved and clearly labeled WASM, not substituted for the blocked native gate.
+The existing `test:postgres` command separately passed all 20 current checks using the real WASM query engine against real PostgreSQL. That evidence is preserved and clearly labeled WASM, not substituted for the blocked native gate.

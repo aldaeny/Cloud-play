@@ -100,8 +100,8 @@ try {
     const [row] = await client.$queryRaw`SELECT current_setting('server_version') AS version`;
     assert.match(row.version, /^17\./);
   });
-  await check('all 32 model delegates query migrated tables', async () => {
-    assert.equal(dmmf.datamodel.models.length, 32);
+  await check('all 33 model delegates query migrated tables', async () => {
+    assert.equal(dmmf.datamodel.models.length, 33);
     for (const model of dmmf.datamodel.models) {
       const delegate = model.name[0].toLowerCase() + model.name.slice(1);
       assert.equal(await client[delegate].count(), 0, model.name);
@@ -180,6 +180,82 @@ try {
   await check('transaction rollback', async () => {
     await assert.rejects(client.$transaction(async tx => { await tx.tenant.create({ data: {} }); throw new Error('rollback'); }), /rollback/);
     assert.equal(await client.tenant.count(), 1);
+  });
+  const { XtreamCatalogSyncService } = require(path.join(api, 'dist/modules/admin/xtream-catalog-sync.service.js'));
+  const sync = new XtreamCatalogSyncService(client);
+  const makeServer = name => client.xtreamServer.create({ data: { tenantId: tenant.id, name,
+    baseUrl: 'https://fixture.invalid', username: 'fixture-only', passwordEncrypted: 'unused-test-ciphertext' } });
+  const first = await makeServer('Fixture A'), second = await makeServer('Fixture B');
+  const emptyCatalog = () => ({ live: [], movie: [], series: [], liveCategory: [], movieCategory: [], seriesCategory: [] });
+  await check('real catalog imports persist provider-isolated ids and metadata diffs', async () => {
+    await sync.importExport(tenant.id, first.id, { ...emptyCatalog(), live: [{ id: 1, name: 'Fixture A' }, { id: 2, name: 'Removed' }] }, true);
+    await sync.importExport(tenant.id, second.id, { ...emptyCatalog(), live: [{ id: 1, name: 'Fixture B' }] }, true);
+    const result = await sync.importExport(tenant.id, first.id, { ...emptyCatalog(), live: [{ id: 1, name: 'Changed' }, { id: 3, name: 'Added' }] }, true);
+    assert.deepEqual({ added: result.added, changed: result.changed, removed: result.removed }, { added: 1, changed: 1, removed: 1 });
+    assert.equal((await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: second.id } })).catalog[0].name, 'Fixture B');
+  });
+  await check('real catalog failure history preserves successful snapshot; tenant escape denied', async () => {
+    const before = await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: first.id } });
+    await assert.rejects(sync.importExport(tenant.id, first.id, { live: [] }, true), /INVALID_CATALOG/);
+    const after = await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: first.id } });
+    assert.deepEqual(after.catalog, before.catalog);
+    assert.equal(after.lastSuccessAt.getTime(), before.lastSuccessAt.getTime());
+    assert.equal(after.history[0].status, 'FAILED');
+    assert.ok(after.lastFailureAt);
+    await assert.rejects(sync.status(randomUUID(), first.id), /not found/);
+  });
+  await check('real catalog advisory lock rejects concurrent import across connections', async () => {
+    const locker = await pool.connect();
+    try {
+      await locker.query('BEGIN');
+      await locker.query('SELECT pg_advisory_xact_lock(hashtext($1))', [first.id]);
+      await assert.rejects(sync.importExport(tenant.id, first.id, emptyCatalog(), true), /SYNC_IN_PROGRESS/);
+    } finally { await locker.query('ROLLBACK'); locker.release(); }
+    assert.equal((await sync.importExport(tenant.id, first.id, emptyCatalog(), true)).status, 'SUCCEEDED');
+  });
+  await check('real catalog HTTP authorization uses live DB roles and rejects tenant escape', async () => {
+    const { Test } = require('@nestjs/testing');
+    const { JwtService } = require('@nestjs/jwt');
+    const { AppModule } = require(path.join(api, 'dist/app.module.js'));
+    const { PrismaService } = require(path.join(api, 'dist/prisma.service.js'));
+    const request = require('supertest');
+    const previousSecret = process.env.ADMIN_JWT_SECRET;
+    const secret = randomUUID(); process.env.ADMIN_JWT_SECRET = secret;
+    const other = await client.tenant.create({ data: {} });
+    const role = await client.role.create({ data: { tenantId: tenant.id, name: 'Fixture', permissions: '[]' } });
+    const roleOther = await client.role.create({ data: { tenantId: other.id, name: 'Other', permissions: '["xtream:manage"]' } });
+    const staff = await client.staffUser.create({ data: { tenantId: tenant.id, roleId: role.id, email: 'staff@fixture.invalid', passwordHash: 'unused' } });
+    const staffOther = await client.staffUser.create({ data: { tenantId: other.id, roleId: roleOther.id, email: 'other@fixture.invalid', passwordHash: 'unused' } });
+    const sign = id => new JwtService().sign({ sub: id, tokenType: 'admin', permissions: ['xtream:manage'] }, { secret, expiresIn: 60 });
+    let app;
+    try {
+      const mod = await Test.createTestingModule({ imports: [AppModule] }).overrideProvider(PrismaService).useValue(client).compile();
+      app = mod.createNestApplication({ logger: false }); await app.init();
+      const url = `/admin/xtream-servers/${first.id}/catalog-sync`;
+      await request(app.getHttpServer()).get(url).expect(401);
+      await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(403);
+      await client.role.update({ where: { id: role.id }, data: { permissions: '["xtream:manage"]' } });
+      await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staffOther.id)}`).expect(404);
+      await request(app.getHttpServer()).post(url).set('Authorization', `Bearer ${sign(staff.id)}`)
+        .send({ catalog: emptyCatalog(), authorizationConfirmed: true }).expect(201);
+      const response = await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(200);
+      assert.equal(response.body.history[0].status, 'SUCCEEDED');
+      assert.ok(!JSON.stringify(response.body).includes('unused-test-ciphertext'));
+    } finally {
+      await app?.close();
+      if (previousSecret === undefined) delete process.env.ADMIN_JWT_SECRET; else process.env.ADMIN_JWT_SECRET = previousSecret;
+      await client.staffUser.deleteMany({ where: { id: { in: [staff.id, staffOther.id] } } });
+      await client.role.deleteMany({ where: { id: { in: [role.id, roleOther.id] } } });
+      await client.tenant.delete({ where: { id: other.id } });
+    }
+  });
+  await check('snapshot migration rollback/reapply preserves provider rows', async () => {
+    const dir = path.join(api, 'prisma/migrations/20261108010000_xtream_catalog_snapshot');
+    await pool.query(await readFile(path.join(dir, 'rollback.sql'), 'utf8'));
+    assert.equal(await client.xtreamServer.count(), 2);
+    await pool.query(await readFile(path.join(dir, 'migration.sql'), 'utf8'));
+    assert.equal(await client.xtreamCatalogSnapshot.count(), 0);
+    await client.xtreamServer.deleteMany({ where: { tenantId: tenant.id } });
   });
   await check('delete disposable records', async () => {
     await client.profile.deleteMany({ where: { userId: user.id } });

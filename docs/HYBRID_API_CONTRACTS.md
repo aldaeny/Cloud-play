@@ -21,3 +21,7 @@ Backend: `GET /hybrid/profiles` (NestJS ProfilesModule).
 `api-bridge.test.mjs` invokes the real Next handler with fetch fixtures and verifies fixed-target forwarding, method restriction, missing configuration, bounded streaming body reads, transport errors and opaque error responses (23 checks total).
 
 `test:postgres` separately verifies the real Prisma/PostgreSQL path; it is not a combined browser-to-production end-to-end test. Existing UI uses its established account/library flow until business provisioning, schema deployment, staging and permission tests support a coordinated cutover.
+
+## Provider metadata import/status (admin)
+
+See `IPTV_SYNC_ARCHITECTURE.md` for the exact full-export JSON contract and limits. GET/POST `/admin/xtream-servers/:id/catalog-sync` use verified legacy admin context + xtream:manage, never browser-supplied tenant/roles. Status excludes raw snapshots and credentials. POST success is 201; invalid/incomplete export is 400 with FAILED history preserved; competing import is 409; wrong tenant/disabled provider is 404. These routes are reachable through the existing admin server proxy but no visible sync UI has been added. Scheduled/online provider pulling is NOT implemented. Native backend runtime and production schema deployment remain separate approval gates.
