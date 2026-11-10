@@ -3,7 +3,10 @@ import {
   ExecutionContext,
   UnauthorizedException,
   CanActivate,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
+import { SupabaseAuthGuard } from './supabase-auth.guard';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma.service';
 import type { Request } from 'express';
@@ -20,9 +23,18 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly supabase?: SupabaseAuthGuard,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const authority = process.env.API_END_USER_AUTHORITY || 'legacy';
+    if (authority === 'supabase') {
+      if (!this.supabase) throw new ServiceUnavailableException('AUTH_NOT_CONFIGURED');
+      // Never fall back to a legacy JWT when Supabase denies or is unavailable.
+      return this.supabase.canActivate(context);
+    }
+    if (authority !== 'legacy') throw new ServiceUnavailableException('AUTH_NOT_CONFIGURED');
+
     const request = context.switchToHttp().getRequest<Request & { user?: UserRequest }>();
     const token = this.extractToken(request);
 
