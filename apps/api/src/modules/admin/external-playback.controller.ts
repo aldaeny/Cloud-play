@@ -5,7 +5,7 @@ import { SupabaseAuthGuard } from '../../common/supabase-auth.guard';
 import { CurrentUser, UserRequest } from '../../common/permissions.decorator';
 import { ExternalChannelsService } from './external-channels.service';
 import { XtreamServersService } from './xtream-servers.service';
-import { pinnedProviderRequest } from '../../common/pinned-provider-request';
+import { pinnedProviderRequest, ProviderTransportError, ProviderDiagnostics } from '../../common/pinned-provider-request';
 import { parseHls } from './external-policy';
 import { expandTemplate, mediaReference, parseDash } from './external-manifests';
 
@@ -58,10 +58,24 @@ export class ExternalPlaybackController {
     const selected = await this.channels.selected(user.tenantId, ticket.channelId, ticket.country, ticket.platform);
     if (selected.id !== ticket.sourceId) throw new ForbiddenException('SOURCE_CHANGED_REFRESH_MANIFEST');
     const base = new URL(ticket.base), url = mediaReference(ticket.url, base);
-    let response: globalThis.Response;
-    try { response = await pinnedProviderRequest(url, { method:'GET', signal:AbortSignal.timeout(8000) }, undefined, 8*1024*1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true'); }
-    catch { return res.status(502).json({ error:'MEDIA_TRANSPORT_FAILED' }); }
-    if (!response.ok) return res.status(502).json({ error:'UPSTREAM_MEDIA_UNAVAILABLE' });
+    let response: globalThis.Response | undefined;
+    const policy=await this.channels.channel(user.tenantId,ticket.channelId);
+    const maxAttempts=Math.min(3,policy.failureThreshold);
+    let attempts=0;
+    for(;attempts<maxAttempts;attempts++){
+      if(ticket.expiresAt<=Date.now())throw new ForbiddenException('MEDIA_CONTEXT_EXPIRED');
+      if(attempts>0){const retrySource=await this.channels.selected(user.tenantId,ticket.channelId,ticket.country,ticket.platform);if(retrySource.id!==ticket.sourceId)throw new ForbiddenException('SOURCE_CHANGED_REFRESH_MANIFEST');}
+      const diagnostics:ProviderDiagnostics={dns:'not_verified',tcp:'not_verified',tls:'not_verified'};
+      try {
+        response = await pinnedProviderRequest(url, { method:'GET', signal:AbortSignal.timeout(8000) }, undefined, 8*1024*1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true',diagnostics);
+        if(response.ok || ![500,502,503,504].includes(response.status))break;
+      } catch(error) { response=undefined; if((error instanceof ProviderTransportError && error.code==='INVALID_URL') || diagnostics.reason==='TLS_CERTIFICATE_INVALID')break; }
+      if(attempts+1<maxAttempts)await new Promise(resolve=>setTimeout(resolve,250*(attempts+1)));
+    }
+    if (!response?.ok) {
+      await this.channels.playbackFailure(user.tenantId,ticket.channelId,ticket.sourceId,Math.min(maxAttempts,attempts+1));
+      return res.status(502).json({ error:'UPSTREAM_MEDIA_UNAVAILABLE_REFRESH_MANIFEST' });
+    }
     const mime = response.headers.get('content-type')?.split(';')[0].toLowerCase();
     const reference = (value: string, representations = ticket.representations) => {
       // Tokens are encrypted/authenticated resource addresses, not identity tokens.
@@ -86,6 +100,7 @@ export class ExternalPlaybackController {
       body = Buffer.from(await response.arrayBuffer());
     }
     // A rights revocation/source switch while bytes were fetching must fail closed.
+    if(ticket.expiresAt<=Date.now())throw new ForbiddenException('MEDIA_CONTEXT_EXPIRED');
     const rechecked = await this.channels.selected(user.tenantId, ticket.channelId, ticket.country, ticket.platform);
     if (rechecked.id !== selected.id) throw new ForbiddenException('SOURCE_CHANGED_REFRESH_MANIFEST');
     res.setHeader('Cache-Control','private, no-store'); res.setHeader('X-Content-Type-Options','nosniff');

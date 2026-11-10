@@ -38,7 +38,7 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
   const selected=jest.fn().mockResolvedValue({id:'source-fixture',server:{endpointEncrypted:'endpoint-fixture'}});
   // Test-only reversible address codec. Actual AES-GCM/DB isolation is separately tested.
   const vault={decryptSecret:(value:string)=>value==='endpoint-fixture'?'https://fixture.example/manifest.m3u8':Buffer.from(value,'base64url').toString(),encryptSecret:(value:string)=>Buffer.from(value).toString('base64url')};
-  const controller=new ExternalPlaybackController({selected} as unknown as ExternalChannelsService,vault as unknown as XtreamServersService);
+  const controller=new ExternalPlaybackController({selected,channel:jest.fn().mockResolvedValue({failureThreshold:1}),playbackFailure:jest.fn()} as unknown as ExternalChannelsService,vault as unknown as XtreamServersService);
   const res={setHeader:jest.fn(),type:jest.fn(),send:jest.fn(),status:jest.fn(),json:jest.fn()};res.status.mockReturnValue(res);
   return {controller,selected,res:res as unknown as Response,send:res.send};
  }

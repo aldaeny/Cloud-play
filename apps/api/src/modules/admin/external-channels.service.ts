@@ -155,6 +155,19 @@ export class ExternalChannelsService {
     if (!row?.enabled || !row.activeSource || !sourceRights(row.activeSource, row, new Date()) || !healthySource(row.activeSource, row, new Date())) throw new ServiceUnavailableException('NO_RIGHTS_ELIGIBLE_HEALTHY_SOURCE');
     return row.activeSource;
   }
+  async playbackFailure(tenantId: string, channelId: string, sourceId: string, attempts: number) {
+    const source=await this.prisma.channelSource.findFirst({where:{id:sourceId,tenantId,channelId}});
+    if(!source)return;
+    const count=Math.max(1,Math.min(3,attempts)),now=new Date();
+    await this.prisma.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${channelId}, 0))`;
+      const claimed=await tx.externalServer.updateMany({where:{id:source.serverId,tenantId,deletedAt:null,OR:[{lastCheckedAt:null},{lastCheckedAt:{lt:new Date(now.getTime()-1000)}}]},data:{lastCheckedAt:now}});
+      if(!claimed.count)return; // Coalesce simultaneous viewer failures, not a write storm.
+      await tx.serverHealthCheck.create({data:{tenantId,serverId:source.serverId,startedAt:now,finishedAt:now,result:'unreachable',details:{reason:'TRUSTED_BACKEND_PLAYBACK_FETCH_FAILED',attempts:count,playbackReadiness:'failed'}}});
+      await tx.channelSource.update({where:{id:sourceId},data:{consecutiveFailures:{increment:count},healthySince:null,lastObservedAt:now}});
+    });
+    await this.evaluate(tenantId,channelId,true);
+  }
   async history(tenantId: string, channelId: string) { await this.channel(tenantId, channelId); return this.prisma.externalFailoverEvent.findMany({ where: { tenantId, channelId }, take: 100, orderBy: { createdAt: 'desc' } }); }
   async evaluateServer(tenantId: string, serverId: string) {
     const sources = await this.prisma.channelSource.findMany({ where: { tenantId, serverId }, select: { channelId: true }, take: 100 });

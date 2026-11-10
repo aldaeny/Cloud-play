@@ -350,6 +350,15 @@ try {
     await client.xtreamServer.deleteMany({ where: { tenantId: tenant.id } });
   });
   await testExternalCandidates(client, tenant, check);
+  await check('new channel/report and quarantine migrations rollback/reapply on isolated empty feature state preserve existing users', async()=>{
+    const before=await client.appUser.count();
+    await pool.query(await readFile(path.join(api,'prisma/external-channel-failover-rollback.sql'),'utf8'));
+    await pool.query(await readFile(path.join(api,'prisma/migrations/202611120001_external_channel_failover/migration.sql'),'utf8'));
+    const evidence=path.join(api,'prisma/migrations/202611120002_evidence_quarantine');
+    await pool.query(await readFile(path.join(evidence,'rollback.sql'),'utf8'));
+    await pool.query(await readFile(path.join(evidence,'migration.sql'),'utf8'));
+    assert.equal(await client.providerGroup.count(),0);assert.equal(await client.appUser.count(),before);
+  });
   await check('delete disposable records', async () => {
     await client.profile.deleteMany({ where: { userId: user.id } });
     await client.appUser.delete({ where: { id: user.id } });
