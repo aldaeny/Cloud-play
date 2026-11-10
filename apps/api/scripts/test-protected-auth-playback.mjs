@@ -134,7 +134,8 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   assert.equal(JSON.parse(Buffer.from(fresh.access_token.split('.')[1],'base64url')).session_id,JSON.parse(Buffer.from(token.split('.')[1],'base64url')).session_id);
   await request(app.getHttpServer()).put('/external-playback/'+fixtures[1].channel.id+'/session').set('Authorization',`Bearer ${fresh.access_token}`).set('x-playback-session',dashCookie.value).set('x-external-geo',geo(fixtures[1].channel.id,fresh.access_token)).expect(200);
   const logout=await fetch('http://127.0.0.1:9999/logout?scope=local',{method:'POST',headers:{Authorization:`Bearer ${fresh.access_token}`}});assert.equal(logout.status,204);
-  await request(app.getHttpServer()).get('/external-playback/'+fixtures[1].channel.id+'/manifest').set('Authorization',`Bearer ${fresh.access_token}`).set('x-playback-session',dashCookie.value).expect(403);
+  const afterLogout=await request(app.getHttpServer()).get('/external-playback/'+fixtures[1].channel.id+'/manifest').set('Authorization',`Bearer ${fresh.access_token}`).set('x-playback-session',dashCookie.value);
+  assert.ok([401,403].includes(afterLogout.status),'logout must deny whether GoTrue rejects JWT or authoritative session row is absent');
   pass('actual refresh-token rotation renews same-session lease; real GoTrue logout immediately denies still-signed access JWT');
   await dashContext.close();
   return checks;
