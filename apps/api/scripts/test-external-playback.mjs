@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { createServer, request as httpsRequest } from 'node:https';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 const require=createRequire(import.meta.url);
@@ -11,6 +11,9 @@ export async function testExternalPlayback(client,tenant,channel,licenses,check)
  await check('actual Nest/DB/TLS synthetic playback: URL rewriting, resource user binding, scope checks and revocation during fetch (identity fixture)',async()=>{
   const temp=await mkdtemp(path.join(tmpdir(),'external-playback-'));
   const oldContext=process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY;process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY=randomUUID();
+  const oldGeo=process.env.EXTERNAL_GEO_SIGNING_KEY;process.env.EXTERNAL_GEO_SIGNING_KEY=randomUUID();
+  const user={id:randomUUID(),tenantId:tenant.id,profiles:[]};
+  await client.appUser.create({data:{id:user.id,tenantId:tenant.id,status:'active'}});
   const transport=require('../dist/common/pinned-provider-request.js'),original=transport.pinnedProviderRequest;
   let server,app,revoke=false;
   try{
@@ -24,26 +27,36 @@ export async function testExternalPlayback(client,tenant,channel,licenses,check)
    const deps={lookup:async()=>[{address:'8.8.8.8',family:4}],request:(url,opts,done)=>httpsRequest(url,{...opts,port:server.address().port,ca:cert,lookup:(_name,options,cb)=>options.all?cb(null,[{address:'127.0.0.1',family:4}]):cb(null,'127.0.0.1',4)},done)};
    transport.pinnedProviderRequest=(url,init,_deps,limit,allowHttp,trace)=>{assert.equal(url.hostname,'fixture.example');return original(url,init,deps,limit,allowHttp,trace);};
    const {Test}=require('@nestjs/testing'),{AppModule}=require('../dist/app.module.js'),{PrismaService}=require('../dist/prisma.service.js'),{SupabaseAuthGuard}=require('../dist/common/supabase-auth.guard.js');
-   const user={id:randomUUID(),tenantId:tenant.id,profiles:[]};
+
    // Explicit identity fixture. Real GoTrue verification remains a separate CI job.
    const mod=await Test.createTestingModule({imports:[AppModule]}).overrideProvider(PrismaService).useValue(client).overrideGuard(SupabaseAuthGuard).useValue({canActivate(context){const req=context.switchToHttp().getRequest();req.user={...user,...(req.headers['x-fixture-other-user']?{id:randomUUID()}:{})};return true;}}).compile();
+   // ONLY the identity/session authority is a fixture here; real GoTrue is tested separately.
+   mod.get(require('../dist/modules/admin/external-playback-session.service.js').ExternalPlaybackSessionService).assertSupabaseSession=async()=>{};
    app=mod.createNestApplication({logger:false});await app.init();
    const request=require('supertest');
    const assertion=(patch={})=>{const value=Buffer.from(JSON.stringify({userId:user.id,tenantId:tenant.id,channelId:channel.id,country:'IQ',platform:'web',expiresAt:Date.now()+60000,...patch})).toString('base64url');return value+'.'+createHmac('sha256',process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY).update(value).digest('base64url');};
+   const token='fixture.'+Buffer.from(JSON.stringify({session_id:randomUUID()})).toString('base64url')+'.fixture';
+   const geo=()=>{const value=Buffer.from(JSON.stringify({channelId:channel.id,tokenHash:createHash('sha256').update(token).digest('hex'),country:'IQ',platform:'web',issuedAt:Date.now(),expiresAt:Date.now()+30000,nonce:randomUUID()})).toString('base64url');return value+'.'+createHmac('sha256',process.env.EXTERNAL_GEO_SIGNING_KEY).update(value).digest('base64url');};
+   const created=await request(app.getHttpServer()).post(`/external-playback/${channel.id}/session`).set('Authorization',`Bearer ${token}`).set('x-external-geo',geo()).expect(201);
+   const get=(url)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${token}`).set('x-playback-session',created.body.id);
    const url=`/external-playback/${channel.id}/manifest`;
    await request(app.getHttpServer()).get(url).expect(403);
    await request(app.getHttpServer()).get(url).set('x-external-context',assertion({country:'US'})).expect(403);
-   const manifest=await request(app.getHttpServer()).get(url).set('x-external-context',assertion()).buffer(true).parse((res,done)=>{let body='';res.on('data',chunk=>body+=chunk.toString());res.on('end',()=>done(null,body));}).expect(200);
+   const manifest=await get(url).buffer(true).parse((res,done)=>{let body='';res.on('data',chunk=>body+=chunk.toString());res.on('end',()=>done(null,body));}).expect(200);
    assert.ok(!manifest.body.includes('https://fixture.example'));assert.equal(manifest.headers['cache-control'],'private, no-store');
    const resource=manifest.body.split('\n').find(line=>line.startsWith('/external-playback/'));
-   const segment=await request(app.getHttpServer()).get(resource).expect(200);assert.equal(segment.body.length,188);
-   await request(app.getHttpServer()).get(resource).set('x-fixture-other-user','true').expect(403);
+   const segment=await get(resource).expect(200);assert.equal(segment.body.length,188);
+   await get(resource).set('x-fixture-other-user','true').expect(403);
+   await get(resource).set('Range','bytes=0-9').expect(206).expect('Content-Range','bytes 0-9/188');
+   await get(resource).set('Range','bytes=999-').expect(416);
    revoke=true;
-   const blocked=await request(app.getHttpServer()).get(resource);assert.ok(blocked.status>=400);assert.ok(blocked.body?.length!==188);
+   const blocked=await get(resource);assert.ok(blocked.status>=400);assert.ok(blocked.body?.length!==188);
   }finally{
    transport.pinnedProviderRequest=original;
    await client.contentLicense.update({where:{id:licenses[0].id},data:{status:'verified_authorized'}});
    await app?.close();if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+   await client.externalPlaybackLease.deleteMany({where:{userId:user.id}});await client.appUser.delete({where:{id:user.id}});
+   if(oldGeo===undefined)delete process.env.EXTERNAL_GEO_SIGNING_KEY;else process.env.EXTERNAL_GEO_SIGNING_KEY=oldGeo;
    if(oldContext===undefined)delete process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY;else process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY=oldContext;
    await rm(temp,{recursive:true,force:true});
   }

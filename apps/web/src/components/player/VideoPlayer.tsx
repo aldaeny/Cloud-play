@@ -1,4 +1,5 @@
-import { prepareMediaSession } from '../../lib/media-session';
+import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
+import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 'use client';
 
 import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
@@ -27,10 +28,12 @@ function sourceError(src: string): boolean {
 
 /** Browser-native media element + on-demand MSE engines. No credentials, fake tracks or page reloads. */
 export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onError, onQualityChange, onReady }: Props) {
+  useEffect(() => () => { if(src.startsWith('/api/external/'))void releaseMediaSession(src).catch(()=>{}); },[src]);
   const preferences = useContext(PlaybackPreferencesContext);
   const saved = getPrefsSnapshot();
   const shouldAutoPlay = autoPlay ?? (preferences.autoPlay && saved.playbackAuto);
   const videoRef = useRef<HTMLVideoElement>(null);
+  usePlaybackMetrics(src,videoRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const dashRef = useRef<MediaPlayerClass | null>(null);

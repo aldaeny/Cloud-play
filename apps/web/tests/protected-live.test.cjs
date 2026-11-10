@@ -1,14 +1,26 @@
-const assert=require('node:assert/strict');const fs=require('node:fs');const Module=require('node:module');const ts=require('typescript');
+// Isolated contracts only. Actual Auth/DB/browser evidence runs separately.
+const assert=require('node:assert/strict'),fs=require('node:fs'),Module=require('node:module'),ts=require('typescript');
 function load(file,deps={}){const m=new Module(file,module);m.filename=file;m.paths=module.paths;m.require=name=>name in deps?deps[name]:require(name);m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file);return m.exports;}
-const root='apps/web/';const live=load(root+'src/server/protected-live.ts');
-assert.equal(live.protectedLiveUrl('a/b'),'/api/external/a%2Fb/manifest');
-assert.throws(()=>live.backendChannel('legacy'));assert.throws(()=>live.backendChannel('../x'));
-process.env.EXTERNAL_CHANNEL_BINDINGS=JSON.stringify({legacy:'12345678-1234-1234-1234-123456789abc'});
-assert.equal(live.backendChannel('legacy'),'12345678-1234-1234-1234-123456789abc');
-assert.deepEqual(live.protectLiveRows([{id:'a',url:'https://secret',name:'Keep'}]),[{id:'a',url:'/api/external/a/manifest',name:'Keep'}]);
-const handler=load(root+'pages/api/external/session.ts').default;
-function response(){return {headers:{},code:0,setHeader(k,v){this.headers[k]=v},status(n){this.code=n;return this},end(){return this}}}
-for(const [req,code] of [[{method:'GET',headers:{}},405],[{method:'POST',headers:{origin:'https://evil',host:'good'}},403],[{method:'POST',headers:{origin:'https://good',host:'good'}},401]]){const res=response();handler(req,res);assert.equal(res.code,code)}
-const res=response();handler({method:'POST',headers:{origin:'https://good',host:'good',authorization:'Bearer '+'a'.repeat(30)}},res);assert.equal(res.code,204);assert.match(res.headers['Set-Cookie'],/HttpOnly; Secure; SameSite=Strict/);
-const bridge=load(root+'pages/api/external/[id]/[action].ts',{'../../../../src/server/protected-live':live,'../../../../src/server/rate-limit':{enforceRateLimit:()=>true}}).default;
-(async()=>{const res=response();res.json=()=>res;await bridge({method:'GET',headers:{},cookies:{},query:{id:'legacy',action:'manifest'}},res);assert.equal(res.code,401);console.log('PASS protected Live metadata, channel binding, cookie method/origin/auth gates, cookie attributes and media deny gate (9 groups). Not E2E or real Auth evidence.');})().catch(e=>{console.error(e);process.exitCode=1});
+const root=fs.existsSync('apps/web')?'apps/web/':'';
+const live=load(root+'src/server/protected-live.ts'),geo=load(root+'src/server/playback-geo.ts');
+let checks=0;function check(name,fn){return Promise.resolve().then(fn).then(()=>{checks++;console.log('PASS '+name);});}
+function response(){return {headers:{},code:200,setHeader(k,v){this.headers[k]=v},status(n){this.code=n;return this},end(){return this},json(data){this.data=data;return this},send(data){this.data=data;return this}};}
+const rate={enforceRateLimit:()=>true};
+const handler=load(root+'pages/api/external/session.ts',{'../../../src/server/protected-live':live,'../../../src/server/playback-geo':geo,'../../../src/server/rate-limit':rate}).default;
+const bridge=load(root+'pages/api/external/[id]/[action].ts',{'../../../../src/server/protected-live':live,'../../../../src/server/rate-limit':rate}).default;
+(async()=>{
+ const id='12345678-1234-1234-1234-123456789abc';process.env.EXTERNAL_CHANNEL_BINDINGS=JSON.stringify({legacy:id});process.env.EXTERNAL_PUBLIC_ORIGIN='https://good';
+ await check('metadata addressing, binding and preserved metadata',()=>{assert.equal(live.backendChannel('legacy'),id);assert.throws(()=>live.backendChannel('../x'));assert.throws(()=>live.backendChannel('unbound'));assert.deepEqual(live.protectLiveRows([{id:'a',url:'https://private',name:'Keep'}]),[{id:'a',url:'/api/external/a/manifest',name:'Keep'}]);assert.equal(live.protectedLiveUrl('a','https://private/m.mpd'),'/api/external/a/manifest.mpd');});
+ await check('hosting geo fails closed off Vercel, missing or invalid country',()=>{delete process.env.VERCEL;assert.throws(()=>geo.signHostingGeo({headers:{'x-vercel-ip-country':'IQ'}},id,'token'));process.env.VERCEL='1';process.env.EXTERNAL_TRUST_VERCEL_GEO='true';process.env.EXTERNAL_GEO_SIGNING_KEY='isolated-signing-key-of-at-least-32-bytes';for(const country of [undefined,'iq','IQ,US'])assert.throws(()=>geo.signHostingGeo({headers:{'x-vercel-ip-country':country}},id,'token'));});
+ await check('hosting issuer signs fresh distinct request nonces',()=>{const req={headers:{'x-vercel-ip-country':'IQ','x-country':'US'}};const a=geo.signHostingGeo(req,id,'token'),b=geo.signHostingGeo(req,id,'token');assert.notEqual(a,b);const payload=JSON.parse(Buffer.from(a.split('.')[0],'base64url'));assert.equal(payload.country,'IQ');assert.equal(payload.channelId,id);assert.ok(!a.includes('token'));});
+ await check('session method, configured-origin and bearer gates',async()=>{for(const [req,code] of [[{method:'GET',headers:{}},405],[{method:'POST',headers:{origin:'https://evil',host:'evil'}},403],[{method:'POST',headers:{origin:'https://good'}},401]]){const res=response();await handler(req,res);assert.equal(res.code,code);assert.equal(res.headers['Set-Cookie'],undefined);}});
+ process.env.API_INTERNAL_URL='https://backend.invalid';const originalFetch=global.fetch;
+ try{
+ const req={method:'POST',headers:{origin:'https://good',authorization:'Bearer header.payload.signature','x-vercel-ip-country':'IQ'},cookies:{},body:{channelId:'legacy'}};
+ await check('backend denial never creates playback cookies',async()=>{global.fetch=async()=>new Response('{}',{status:403});const res=response();await handler(req,res);assert.equal(res.code,403);assert.equal(res.headers['Set-Cookie'],undefined);});
+ await check('successful verified lease uses short secure HttpOnly cookies',async()=>{global.fetch=async(url,init)=>{assert.equal(String(url),`https://backend.invalid/external-playback/${id}/session`);assert.equal(init.redirect,'error');assert.ok(init.headers['x-external-geo']);return Response.json({id,expiresAt:new Date(Date.now()+120000)});};const res=response();await handler(req,res);assert.equal(res.code,200);for(const cookie of res.headers['Set-Cookie'])assert.match(cookie,/HttpOnly; Secure; SameSite=Strict; Max-Age=120/);assert.ok(!JSON.stringify(res.data).includes('payload'));});
+ await check('media requires both lease and Supabase bearer transport',async()=>{const res=response();await bridge({method:'GET',headers:{},cookies:{},query:{id:'legacy',action:'manifest'}},res);assert.equal(res.code,401);});
+ await check('media rewrite, range and protected headers without client assertions',async()=>{global.fetch=async(url,init)=>{assert.equal(init.headers['x-external-context'],undefined);assert.equal(init.headers.Range,'bytes=0-9');return new Response(`/${'external-playback'}/${id}/resource?ticket=opaque`,{status:200,headers:{'content-type':'application/vnd.apple.mpegurl'}});};const res=response();await bridge({method:'GET',headers:{range:'bytes=0-9','x-external-context':'forged'},cookies:{'__Host-cloudplay-media':'header.payload.signature','__Host-cloudplay-lease':id},query:{id:'legacy',action:'manifest'}},res);assert.match(res.data,/\/api\/external\/legacy\/resource/);});
+ }finally{global.fetch=originalFetch;}
+ console.log(`PROTECTED LIVE CONTRACTS: ${checks} checks passed (not E2E).`);
+})().catch(e=>{console.error(e);process.exitCode=1;});

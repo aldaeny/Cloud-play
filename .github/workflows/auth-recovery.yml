@@ -7,7 +7,7 @@ permissions:
 jobs:
   recovery:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,8 +48,14 @@ jobs:
           mkdir -p .cache/auth-fixture
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=127.0.0.1' \
             -addext 'subjectAltName=IP:127.0.0.1' -keyout .cache/auth-fixture/key.pem -out .cache/auth-fixture/cert.pem
+      - name: Install isolated playback browser and generate synthetic media
+        run: |
+          node node_modules/playwright-core/cli.js install --with-deps chromium
+          if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          FFMPEG="$(command -v ffmpeg)" node scripts/generate-media-fixtures.mjs .cache/media-fixtures
       - name: Execute actual Auth and SMTP lifecycle
         env:
+          MEDIA_FIXTURES: ${{ github.workspace }}/.cache/media-fixtures
           AUTH_FIXTURE_CERT_DIR: ${{ github.workspace }}/.cache/auth-fixture
           AUTH_TEST_DATABASE_URL: postgresql://postgres:isolated-fixture-only@127.0.0.1:5439/postgres
         run: node apps/api/scripts/test-auth-recovery.mjs

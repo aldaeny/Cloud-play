@@ -3,6 +3,8 @@ const { securityHeaders } = require('./security-headers');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Media ticket query strings must not enter application request logs.
+  logging: { incomingRequests: false },
   turbopack: { root: require('path').resolve(__dirname, '../..') },
   images: {
     // Remote artwork already renders unoptimized in our components. Do not

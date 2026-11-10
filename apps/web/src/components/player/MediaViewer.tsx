@@ -1,4 +1,5 @@
-import { prepareMediaSession } from '../../lib/media-session';
+import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
+import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import CastControls from './CastControls';
@@ -8,6 +9,7 @@ type State='loading'|'ready'|'playing'|'buffering'|'blocked'|'failed';
 type Track={label:string;id:number};
 type Props={language:Language;title:string;url:string;kind:'hls'|'mp4'|'dash';onClose:()=>void;className?:string;footer?:ReactNode;progressKey?:string};
 export default function MediaViewer({language,title,url,kind,onClose,className='',footer,progressKey}:Props){
+ useEffect(()=>()=>{if(url.startsWith('/api/external/'))void releaseMediaSession(url).catch(()=>{});},[url]);
  const preferences=useContext(PlaybackPreferencesContext);const preferencesRef=useRef(preferences);const [initialScroll]=useState(preferences.scrollToPlayer);
  useEffect(()=>{preferencesRef.current=preferences},[preferences]);
  const lastSaved=useRef(0);
@@ -15,6 +17,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  function restoreProgress(video:HTMLVideoElement){if(!progressKey)return;try{const p=JSON.parse(localStorage.getItem(`cloudplay-progress-v1-${progressKey}`)||'null');if(p&&Number.isFinite(p.position)&&p.position>=5&&Number.isFinite(video.duration)&&p.position<video.duration-10)video.currentTime=p.position;}catch{/* Ignore unavailable or invalid storage. */}}
  const hlsRef=useRef<import('hls.js').default|null>(null);const dashRef=useRef<import('dashjs').MediaPlayerClass|null>(null);const failTimerRef=useRef<number|null>(null);const [levels,setLevels]=useState<Track[]>([]);const [audio,setAudio]=useState<Track[]>([]);const [subtitles,setSubtitles]=useState<Track[]>([]);const [qualityChoice,setQualityChoice]=useState(-1);const [audioChoice,setAudioChoice]=useState(-1);const [subtitleChoice,setSubtitleChoice]=useState(-1);
  const ar=language==='ar';const videoRef=useRef<HTMLVideoElement>(null);const viewerRef=useRef<HTMLDivElement>(null);const [state,setState]=useState<State>('loading');const [slow,setSlow]=useState(false);const [attempt,setAttempt]=useState(0);
+ usePlaybackMetrics(url,videoRef);
  useEffect(()=>{if(initialScroll)viewerRef.current?.scrollIntoView({behavior:(viewerRef.current?.closest('.motion-off') || window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'instant':'smooth',block:'center'})},[initialScroll]);
  useEffect(()=>{
   const video=videoRef.current;if(!video)return;const {autoPlay,startMuted}=preferencesRef.current;video.muted=startMuted;let cancelled=false;let hls:import('hls.js').default|null=null;setState('loading');setSlow(false);setLevels([]);setAudio([]);setSubtitles([]);setQualityChoice(-1);setAudioChoice(-1);setSubtitleChoice(-1);

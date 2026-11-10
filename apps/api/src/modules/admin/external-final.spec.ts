@@ -1,3 +1,4 @@
+import { ExternalPlaybackSessionService } from './external-playback-session.service';
 import { createHmac } from 'node:crypto';
 import { ExternalPlaybackController, playbackScope } from './external-playback.controller';
 import { ExternalChannelsService } from './external-channels.service';
@@ -38,7 +39,7 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
   const selected=jest.fn().mockResolvedValue({id:'source-fixture',server:{endpointEncrypted:'endpoint-fixture'}});
   // Test-only reversible address codec. Actual AES-GCM/DB isolation is separately tested.
   const vault={decryptSecret:(value:string)=>value==='endpoint-fixture'?'https://fixture.example/manifest.m3u8':Buffer.from(value,'base64url').toString(),encryptSecret:(value:string)=>Buffer.from(value).toString('base64url')};
-  const controller=new ExternalPlaybackController({selected,channel:jest.fn().mockResolvedValue({failureThreshold:1}),playbackFailure:jest.fn()} as unknown as ExternalChannelsService,vault as unknown as XtreamServersService);
+  const controller=new ExternalPlaybackController({selected,channel:jest.fn().mockResolvedValue({failureThreshold:1}),playbackFailure:jest.fn()} as unknown as ExternalChannelsService,vault as unknown as XtreamServersService,{require:jest.fn().mockResolvedValue({id:'lease-fixture',country:'IQ',platform:'web',absoluteExpiresAt:new Date(Date.now()+300000)})} as unknown as ExternalPlaybackSessionService);
   const res={setHeader:jest.fn(),type:jest.fn(),send:jest.fn(),status:jest.fn(),json:jest.fn()};res.status.mockReturnValue(res);
   return {controller,selected,res:res as unknown as Response,send:res.send};
  }
@@ -52,7 +53,7 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
   await f.controller.start(user,channel,{headers:{'x-external-context':assertion()}} as unknown as Request,f.res);
   const body=f.send.mock.calls[0][0] as string;expect(body).not.toContain('https://fixture.example');expect(f.selected).toHaveBeenCalledTimes(3);
   const url=new URL(body.split('\n').pop()!,'https://api.fixture');
-  await expect(f.controller.resource({...user,id:'different-user'},channel,url.searchParams.get('ticket')!,undefined,undefined,undefined,f.res)).rejects.toThrow('INVALID_MEDIA_RESOURCE');
+  await expect(f.controller.resource({...user,id:'different-user'},channel,url.searchParams.get('ticket')!,undefined,undefined,undefined,{headers:{}} as Request,f.res)).rejects.toThrow('INVALID_MEDIA_RESOURCE');
  });
  it('does not echo provider origins or unexpected URI syntax hidden in manifest metadata',async()=>{
   for(const suffix of ['#provider https://fixture.example/private',"#EXT-X-MEDIA:TYPE=AUDIO,URI='https://fixture.example/audio.m3u8'"]){

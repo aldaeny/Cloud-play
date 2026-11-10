@@ -81,10 +81,15 @@ try {
   const newLogin = await call('/token?grant_type=password', { email, password: newPassword });
   assert.equal(newLogin.status, 200);
   await passed('password replacement rejects old password and accepts new password');
-  await promisify(execFile)(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-auth-nest.mjs')], {
-    timeout: 60000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
+  const playbackLogin=await call('/token?grant_type=password',{email,password:newPassword});
+  assert.equal(playbackLogin.status,200);
+  const nestResult=await promisify(execFile)(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-auth-nest.mjs')], {
+    timeout: 300000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
+      AUTH_PLAYBACK_SESSION:JSON.stringify(playbackLogin.data),
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
   });
+  for(const line of nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')))await passed(line.slice(5));
+  assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,5);
   await passed('actual Nest native Prisma and Web owner-ID ACL integrate with Supabase identity; tenant disabled and invalid-token checks pass');
 
   const row = (await pool.query('SELECT recovery_token FROM auth.users WHERE email=$1', [email])).rows[0];

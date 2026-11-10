@@ -68,7 +68,7 @@ export async function testRls(pool, root, check) {
   await check('all application tables: browser roles denied SELECT INSERT UPDATE DELETE', async () => {
     const result = await pool.query(`SELECT tablename, rowsecurity FROM pg_tables
       WHERE schemaname = 'public' AND tablename NOT LIKE 'cloudplay_%' ORDER BY tablename`);
-    assert.equal(result.rows.length, 48, 'all46 models plus two implicit relationship tables inventoried');
+    assert.equal(result.rows.length, 50, 'all48 models plus two implicit relationship tables inventoried');
     let assertions = 0;
     for (const { tablename, rowsecurity } of result.rows) {
       assert.equal(rowsecurity, true, `${tablename} must enable RLS`);
@@ -84,7 +84,7 @@ export async function testRls(pool, root, check) {
         }
       }
     }
-    console.log(`  ${assertions} real SQL denials across48 backend tables; browser roles have no table privileges`);
+    console.log(`  ${assertions} real SQL denials across50 backend tables; browser roles have no table privileges`);
   });
 
   await check('all backend tables: default-deny RLS survives accidental browser CRUD grants', async () => {
@@ -129,10 +129,10 @@ export async function testRls(pool, root, check) {
     await pool.query(await readFile(path.join(migration, 'rollback.sql'), 'utf8'));
     const flags = await pool.query(`SELECT tablename,rowsecurity FROM pg_tables WHERE schemaname='public'
       AND tablename NOT LIKE 'cloudplay_%'`);
-    for (const row of flags.rows) assert.equal(row.rowsecurity, ['XtreamCatalogSnapshot','ExternalServer','ContentLicense','LicenseReview','LicenseDocument','ProviderGroup','ExternalChannel','ChannelSource','ExternalFailoverEvent','ExternalReportSchedule','ExternalReportDelivery','ServerSchedule','ServerHealthCheck','ServerAuditLog'].includes(row.tablename));
+    for (const row of flags.rows) assert.equal(row.rowsecurity, ['ExternalPlaybackLease','ExternalGeoNonce','XtreamCatalogSnapshot','ExternalServer','ContentLicense','LicenseReview','LicenseDocument','ProviderGroup','ExternalChannel','ChannelSource','ExternalFailoverEvent','ExternalReportSchedule','ExternalReportDelivery','ServerSchedule','ServerHealthCheck','ServerAuditLog'].includes(row.tablename));
     await pool.query(await readFile(path.join(migration, 'migration.sql'), 'utf8'));
     assert.equal((await pool.query(`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'
-      AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 48);
+      AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 50);
   });
 
 }

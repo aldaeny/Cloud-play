@@ -73,8 +73,8 @@ async function main() {
     assert.ok(channels.length >= 30, `expected >= 30 channels, got ${channels.length}`);
   });
 
-  await check('every stream is credential-free HTTPS HLS', () => {
-    for (const channel of channels) {
+  await check('server-only curation remains credential-free HTTPS HLS', () => {
+    for (const channel of mod.PUBLIC_CHANNELS) {
       assert.ok(mod.isSafePublicStream(channel.streamUrl), `unsafe stream for ${channel.id}`);
       const url = new URL(channel.streamUrl);
       assert.equal(url.protocol, 'https:');
@@ -87,8 +87,9 @@ async function main() {
     for (const channel of channels) {
       // Xtream puts credentials at the START of the path: /live/<user>/<pass>/<id>.ext
       // (A CDN path like /hls/live/<id>/<name>/ is legitimate and must not match.)
-      assert.ok(!/^\/(live|movie|series)\/[^/]+\/[^/]+\/\d+\./.test(new URL(channel.streamUrl).pathname),
+      assert.ok(!/^\/(live|movie|series)\/[^/]+\/[^/]+\/\d+\./.test(new URL(channel.streamUrl,'https://cloudplay.invalid').pathname),
         `credential-shaped path for ${channel.id}`);
+      assert.ok(channel.streamUrl.startsWith('/api/external/'),'browser receives protected address only');
       assert.ok(!channel.streamUrl.includes('redchicks'), 'private provider must never appear publicly');
     }
   });

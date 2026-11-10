@@ -131,8 +131,8 @@ try {
     const [row] = await client.$queryRaw`SELECT current_setting('server_version') AS version`;
     assert.match(row.version, /^17\./);
   });
-  await check('all 46 model delegates query migrated tables', async () => {
-    assert.equal(dmmf.datamodel.models.length, 46);
+  await check('all 48 model delegates query migrated tables', async () => {
+    assert.equal(dmmf.datamodel.models.length, 48);
     for (const model of dmmf.datamodel.models) {
       const delegate = model.name[0].toLowerCase() + model.name.slice(1);
       assert.equal(await client[delegate].count(), 0, model.name);
@@ -332,7 +332,7 @@ try {
         JOIN "XtreamCatalogSnapshot" c ON c."serverId"=s.id ORDER BY s.id`);
       assert.deepEqual(actual.rows, expected.rows);
       assert.equal((await connection.query(`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'
-        AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 48);
+        AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 50);
       assert.equal((await connection.query("SELECT rolbypassrls FROM pg_roles WHERE rolname='authenticated'")).rows[0].rolbypassrls, false);
       assert.equal((await connection.query('SELECT count(*)::int AS n FROM "AppUser" WHERE id=$1',[user.id])).rows[0].n, 1);
       assert.ok((await connection.query("SELECT count(*)::int AS n FROM pg_constraint WHERE contype='f'")).rows[0].n > 30);
@@ -352,12 +352,16 @@ try {
   await testExternalCandidates(client, tenant, check);
   await check('new channel/report and quarantine migrations rollback/reapply on isolated empty feature state preserve existing users', async()=>{
     const before=await client.appUser.count();
+    const leaseMigration=path.join(api,'prisma/migrations/202611120004_external_playback_leases');
+    await pool.query(await readFile(path.join(leaseMigration,'rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/external-channel-failover-rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/migrations/202611120001_external_channel_failover/migration.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/migrations/202611120003_external_switch_integrity/migration.sql'),'utf8'));
     const evidence=path.join(api,'prisma/migrations/202611120002_evidence_quarantine');
     await pool.query(await readFile(path.join(evidence,'rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(evidence,'migration.sql'),'utf8'));
+    await pool.query(await readFile(path.join(leaseMigration,'migration.sql'),'utf8'));
+    assert.equal(await client.externalPlaybackLease.count(),0);
     assert.equal(await client.providerGroup.count(),0);assert.equal(await client.appUser.count(),before);
   });
   await check('delete disposable records', async () => {

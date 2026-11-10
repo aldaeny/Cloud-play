@@ -1,3 +1,4 @@
+import {getStreamType} from '../../lib/player-utils';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import MediaViewer from '../player/MediaViewer';
@@ -258,7 +259,7 @@ export default function CommunityTv({ language }: { language: Language }) {
             language={language}
             title={selected.name}
             url={selected.url}
-            kind="hls"
+            kind={getStreamType(selected.url)??'hls'}
             onClose={() => setSelected(null)}
           />
           <p className="ptv-note">{t.browserNote}</p>
