@@ -24,6 +24,8 @@ export function parseDash(text: string, base: URL) {
     if (tag.local === 'ContentProtection') protectedMedia = true;
     if (['BaseURL','Location','UTCTiming'].includes(tag.local) || Object.values(tag.attributes).some(a => a.prefix === 'xlink')) unsupported = true;
     const attr = (key: string) => Object.values(tag.attributes).find(a => a.local === key)?.value;
+    const codecs=attr('codecs');if(codecs&&codecs.split(',').some(codec=>!/^(?:avc1\.[a-f0-9]{6}|mp4a\.40\.2|wvtt)$/i.test(codec.trim())))unsupported=true;
+    const mime=attr('mimeType');if(mime&&!['video/mp4','audio/mp4','text/vtt','application/mp4'].includes(mime))unsupported=true;
     if (tag.local === 'Representation' && attr('id')) representationIds.push(attr('id')!);
     if (tag.local === 'SegmentTemplate') { if (attr('media')) templates.push(attr('media')!); if (attr('initialization')) templates.push(attr('initialization')!); }
     if (tag.local === 'SegmentURL' && attr('media')) templates.push(attr('media')!);

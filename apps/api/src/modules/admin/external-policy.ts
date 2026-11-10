@@ -10,6 +10,8 @@ export function mayRedistribute(license: RightsScope | null, provider: string, p
 export function parseHls(text: string, base: URL): { result: string; reference?: URL; kind?: string } {
   if (!text.trimStart().startsWith('#EXTM3U') || text.length > 1024 * 1024) return { result: 'malformed_playlist' };
   if (/#EXT-X-(SESSION-)?KEY:[^\n]*METHOD=(?!NONE)/.test(text)) return { result: 'drm_protected' };
+  const codecs=[...text.matchAll(/\bCODECS="([^"]+)"/g)].flatMap(match=>match[1].split(','));
+  if(codecs.some(codec=>! /^(?:avc1\.[a-f0-9]{6}|mp4a\.40\.2|wvtt)$/i.test(codec.trim())))return {result:'unsupported_codec'};
   const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
   const refs = lines.filter(line => !line.startsWith('#'));
   if (!refs.length || refs.length > 10000) return { result: 'malformed_playlist' };

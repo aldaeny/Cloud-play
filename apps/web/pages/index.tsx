@@ -13,7 +13,7 @@ import Icon from '../src/components/icons/Icon';
 import AppHeader from '../src/components/layout/AppHeader';
 import SearchField from '../src/components/search/SearchField';
 import OwnerPlayerLink from '../src/components/account/OwnerPlayerLink';
-import { PUBLIC_CHANNELS } from '../src/server/public-tv';
+import { getPublicChannels } from '../src/server/public-tv';
 
 type Language = 'ar' | 'en';
 // Sample art is retained solely for explicit local design preview, never shown by default.
@@ -30,7 +30,8 @@ const words = {
 function Brand() {
   return <Link className="footer-reference-brand" href="/" aria-label="Cloud Play home"><CloudPlayBrand/></Link>;
 }
-export default function Home() {
+export const getStaticProps=async()=>({props:{curatedChannelCount:getPublicChannels().length}});
+export default function Home({curatedChannelCount}:{curatedChannelCount:number}) {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('ar');
   const [active, setActive] = useState(0);
@@ -154,7 +155,7 @@ export default function Home() {
       <OwnerPlayerLink language={language}/>
       <Link href="/live" className="home-live-card">
         <span className="home-live-badge"><span className="ptv-dot" aria-hidden="true"/>{language === 'ar' ? 'مباشر الآن' : 'LIVE NOW'}</span>
-        <strong>{language === 'ar' ? `بث مباشر مجاني — ${PUBLIC_CHANNELS.length} قناة` : `Free live TV — ${PUBLIC_CHANNELS.length} channels`}</strong>
+        <strong>{language === 'ar' ? `بث مباشر مجاني — ${curatedChannelCount} قناة` : `Free live TV — ${curatedChannelCount} channels`}</strong>
         <small>{language === 'ar' ? 'قنوات عراقية وعربية وعالمية يبثّها أصحابها مجاناً — بدون تسجيل دخول ولا اشتراك.' : 'Iraqi, Arabic and international channels streamed free by their owners — no sign-in, no subscription.'}</small>
         <span className="home-live-go">{language === 'ar' ? 'شاهد الآن' : 'Watch now'} <span aria-hidden="true">↗</span></span>
       </Link>

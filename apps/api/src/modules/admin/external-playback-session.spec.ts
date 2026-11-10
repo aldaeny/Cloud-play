@@ -17,3 +17,17 @@ describe('bounded buffered media ranges',()=>{
  it.each(['bytes=100-','bytes=9-0','bytes=-0','bytes=-','bytes=0-1,4-5','other=0-1','bytes=90071992547409930-'])('rejects %s',value=>{expect(()=>mediaRange(value,100)).toThrow();});
  it('preserves full media without Range',()=>expect(mediaRange(undefined,100)).toBeNull());
 });
+
+describe('safe structured playback observations',()=>{
+ it('rejects unknown event labels and nonfinite/user-controlled durations',async()=>{
+  const {Logger}=await import('@nestjs/common');const spy=jest.spyOn(Logger.prototype,'log').mockImplementation(()=>{});
+  const {playbackMetric}=await import('./external-playback-metrics');
+  try{playbackMetric('https://private/token=secret',1);playbackMetric('startup',Infinity);playbackMetric('startup',-1);expect(spy).not.toHaveBeenCalled();playbackMetric('segment_delivery',12.4,206);expect(JSON.parse(spy.mock.calls[0][0])).toEqual({event:'segment_delivery',value:12,status:206});}finally{spy.mockRestore();}
+ });
+});
+
+describe('declared unsupported media codecs',()=>{
+ it.each(['hvc1.1.6.L93.B0','av01.0.04M.08','vp09.00.10.08','mp4a.40.5'])('refuses HLS %s',async codec=>{
+  const {parseHls}=await import('./external-policy');expect(parseHls(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=200000,CODECS="${codec}"\nvariant.m3u8`,new URL('https://fixture.example/a.m3u8')).result).toBe('unsupported_codec');
+ });
+});
