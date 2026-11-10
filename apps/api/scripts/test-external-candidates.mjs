@@ -67,6 +67,26 @@ export async function testExternalCandidates(client, tenant, check) {
       await assert.rejects(service.check(tenant.id, actor, server.id, { technicalAccessConfirmed: true }), { status: 400 });
       assert.equal((await service.eligibility(tenant.id, server.id, 'web', 'IQ')).productionEnabled, false);
     });
+    await check('external scheduling: replica-safe lease, crashed lease recovery, disabled schedule and empty weekly report', async () => {
+      const { ExternalMonitorService } = require('../dist/modules/admin/external-monitor.service.js');
+      const a = new ExternalMonitorService(client, service), b = new ExternalMonitorService(client, service);
+      await assert.rejects(a.configure(tenant.id, actor, server.id, { frequency: 'hourly', enabled: true }), { status: 400 });
+      await a.configure(tenant.id, actor, server.id, { frequency: 'quarter_hour', enabled: true, technicalAccessConfirmed: true });
+      await client.externalServer.update({ where: { id: server.id }, data: { lastCheckedAt: null } });
+      const before = await client.serverHealthCheck.count({ where: { serverId: server.id } });
+      await Promise.all([a.tick(), b.tick()]);
+      assert.equal(await client.serverHealthCheck.count({ where: { serverId: server.id } }), before + 1);
+      await client.serverSchedule.update({ where: { serverId: server.id }, data: { leaseUntil: new Date(0), nextRunAt: new Date(0) } });
+      await client.externalServer.update({ where: { id: server.id }, data: { lastCheckedAt: null } });
+      await b.tick();
+      assert.equal(await client.serverHealthCheck.count({ where: { serverId: server.id } }), before + 2);
+      await a.configure(tenant.id, actor, server.id, { frequency: 'weekly', enabled: false });
+      await a.tick();
+      assert.equal(await client.serverHealthCheck.count({ where: { serverId: server.id } }), before + 2);
+      const empty = await a.report(randomUUID(), 'weekly');
+      assert.deepEqual(empty.checks, []); assert.equal(empty.deliveryStatus, 'on_demand_only');
+      await a.onModuleDestroy(); await b.onModuleDestroy();
+    });
     await check('external rights: review scope, revocation, tenant-FK isolation and provider change demotion', async () => {
       license = await service.createLicense(tenant.id, actor, { provider: input.providerName, contentOwner: 'Fixture Rights Holder', authorizedContact: 'fixture@example.invalid', authorizationType: 'fixture-contract', allowedPlatforms: ['web'], allowedCountries: ['IQ'], commercialUse: true, redistributionPermission: true, territoryRestrictions: 'IQ only', startDate: '2020-01-01', expiryDate: '2099-01-01' });
       const evidence = Buffer.from('%PDF-1.4\nIsolated synthetic rights document, not a real authorization.').toString('base64');
@@ -95,6 +115,7 @@ export async function testExternalCandidates(client, tenant, check) {
       assert.equal(await client.licenseReview.count({ where: { licenseId: license.id } }), 2);
     });
   } finally {
+    await client.serverSchedule.deleteMany({ where: { tenantId: tenant.id } });
     await client.serverHealthCheck.deleteMany({ where: { tenantId: tenant.id } });
     await client.externalServer.deleteMany({ where: { tenantId: tenant.id } });
     await client.licenseReview.deleteMany({ where: { tenantId: tenant.id } });

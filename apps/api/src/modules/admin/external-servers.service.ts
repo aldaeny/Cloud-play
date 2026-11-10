@@ -167,8 +167,9 @@ export class ExternalServersService {
     const startedAt = new Date();
     const endpoint = new URL(this.vault.decryptSecret(row.endpointEncrypted));
     let result = 'unreachable';
+    const license = row.licenseId ? await this.prisma.contentLicense.findFirst({ where: { id: row.licenseId, tenantId } }) : null;
     const details: Record<string, string | number | boolean | null> = { dns: 'not_verified', tcp: 'not_verified', tls: 'not_verified', httpStatus: null,
-      hlsStatus: 'not_tested', segmentStatus: 'not_requested', reason: 'ORIGIN_UNREACHABLE', licensingStatus: 'licensing_unverified' };
+      hlsStatus: 'not_tested', segmentStatus: 'not_requested', reason: 'ORIGIN_UNREACHABLE', licensingStatus: license && license.expiryDate <= startedAt ? 'expired' : license?.status || 'licensing_unverified' };
     // Durable per-server lease via compare-and-swap prevents duplicate probes across API replicas.
     const lease = await this.prisma.externalServer.updateMany({ where: { id: row.id, tenantId, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: new Date(Date.now() - 60000) } }] }, data: { lastCheckedAt: startedAt } });
     if (!lease.count) throw new BadRequestException('CHECK_ALREADY_RUNNING');
@@ -181,7 +182,9 @@ export class ExternalServersService {
         details.reason = response.status >= 300 && response.status < 400 ? 'REDIRECT_REFUSED' : `HTTP_${response.status}`;
         if (response.status === 401 || response.status === 403) result = 'auth_required';
         else if (response.ok && ['hls', 'm3u'].includes(row.protocol)) {
-          const parsed = parseHls(await response.text(), endpoint); result = parsed.result; details.hlsStatus = parsed.result; details.reason = parsed.result;
+          const mimeValid = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl'].includes(String(details.contentType).toLowerCase());
+          const parsed = mimeValid ? parseHls(await response.text(), endpoint) : { result: 'malformed_playlist', reference: undefined, kind: undefined };
+          if (!mimeValid) details.reason = 'HLS_MIME_INVALID'; result = parsed.result; details.hlsStatus = parsed.result; if (mimeValid) details.reason = parsed.result;
           if (parsed.reference && body.segmentAccessConfirmed === true && parsed.kind === 'segment') {
             const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024);
             const mime = segment.headers.get('content-type')?.split(';')[0] || '';

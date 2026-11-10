@@ -65,6 +65,12 @@ export default function ExternalServersPanel({ token }: { token: string }) {
         <button disabled={busy} onClick={() => void action(async () => setHistory(await call(`/${server.id}/history`)))}>سجل الفحوص</button>
         <button disabled={busy} onClick={() => { if (confirm('إزالة المصدر مع الاحتفاظ بسجله؟')) void action(() => call(`/${server.id}`, 'DELETE')); }}>حذف آمن</button>
       </div>
+      <label>جدولة الفحص التقني (Asia/Baghdad)<select className={cls} defaultValue="" disabled={busy} onChange={e => {
+        const frequency = e.target.value; if (!frequency) return;
+        const enabled = frequency !== 'manual';
+        if (enabled && !confirm('تأكيد السماح بالفحص الدوري؟ يحتاج تشغيل العامل إلى إعداد مستقل، ولا يمنح إذن نشر.')) return;
+        void action(async () => setHistory(await call(`/${server.id}/schedule`, 'POST', { frequency: enabled ? frequency : 'hourly', enabled, technicalAccessConfirmed: enabled })));
+      }}><option value="">اختر الجدولة</option><option value="manual">يدوي فقط</option><option value="quarter_hour">كل 15 دقيقة</option><option value="hourly">كل ساعة</option><option value="daily">يومي</option><option value="weekly">أسبوعي</option></select></label>
       <label>ربط ترخيص دون نشر<select className={cls} value={server.licenseId || ''} disabled={busy} onChange={e => { if (e.target.value) void action(() => call(`/${server.id}/license/${e.target.value}`, 'POST', {})); }}><option value="">بدون ترخيص</option>{licenses.map(l => <option key={l.id} value={l.id}>{l.provider} · {l.status}</option>)}</select></label>
     </article>)}</div>
     {next && <button disabled={loading} onClick={() => void load(next)}>تحميل المزيد</button>}
@@ -107,6 +113,7 @@ export default function ExternalServersPanel({ token }: { token: string }) {
         const link = document.createElement('a'); link.href = url; link.download = `${d.id}.evidence`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       })}>تنزيل الدليل للمراجعة (يتطلب rights:manage)</button>
     </div>)}
+    <div className="flex gap-3"><button disabled={busy} onClick={() => void action(async () => setHistory(await call('/reports/daily')))}>التقرير اليومي</button><button disabled={busy} onClick={() => void action(async () => setHistory(await call('/reports/weekly')))}>التقرير الأسبوعي عند الطلب (ليس إرسالاً تلقائياً)</button></div>
     <button disabled={busy} onClick={() => void action(async () => setHistory(await call('/audit')))}>سجل التدقيق</button>
     {history !== null && <pre dir="ltr" className="text-xs overflow-auto max-h-80 p-3 bg-black rounded" aria-label="نتيجة العملية">{JSON.stringify(history, null, 2)}</pre>}
   </section>;

@@ -17,7 +17,7 @@ export async function forwardAdminRequest(req: NextApiRequest, res: NextApiRespo
       headers: { ...(authorization ? { authorization } : {}), ...(['POST', 'PATCH', 'PUT'].includes(req.method || '') ? { 'content-type': 'application/json' } : {}) },
       ...(['POST', 'PATCH', 'PUT'].includes(req.method || '') ? { body: JSON.stringify(req.body) } : {}),
       redirect: 'error',
-      signal: AbortSignal.timeout(/^\/admin\/xtream-servers\/[a-f0-9-]{36}\/catalog-sync\/pull$/i.test(path) ? 65000 : 10000),
+      signal: AbortSignal.timeout(/^\/admin\/xtream-servers\/[a-f0-9-]{36}\/catalog-sync\/pull$/i.test(path) ? 65000 : /^\/admin\/external-servers\/[a-f0-9-]{36}\/check$/i.test(path) ? 22000 : 10000),
     });
     const body: unknown = await response.json();
     res.setHeader('Cache-Control', 'no-store');

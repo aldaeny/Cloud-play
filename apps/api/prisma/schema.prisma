@@ -528,6 +528,7 @@ model ExternalServer {
   createdAt DateTime @default(now()) @db.Timestamptz
   updatedAt DateTime @updatedAt @db.Timestamptz
   checks ServerHealthCheck[]
+  schedule ServerSchedule?
   @@unique([tenantId, id])
   @@unique([tenantId, name])
   @@index([tenantId, status, priority])
@@ -609,4 +610,22 @@ model LicenseDocument {
   uploadedBy String @db.Uuid
   createdAt DateTime @default(now()) @db.Timestamptz
   @@index([tenantId, licenseId, createdAt])
+}
+
+/// Durable technical monitoring schedule; never publishes or changes content rights.
+model ServerSchedule {
+  serverId String @id @db.Uuid
+  tenantId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId, serverId], references: [tenantId, id])
+  actorId String @db.Uuid
+  intervalSeconds Int
+  timezone String @default("Asia/Baghdad")
+  enabled Boolean @default(false)
+  nextRunAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@unique([tenantId, serverId])
+  @@index([enabled, nextRunAt])
 }
