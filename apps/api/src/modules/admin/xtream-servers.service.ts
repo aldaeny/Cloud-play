@@ -8,6 +8,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
 import { failoverCandidates, isValidPriority, selectServer, MAX_PRIORITY, MIN_PRIORITY } from './xtream-selection';
+import { XtreamProviderAdapter } from './xtream-provider.adapter';
 import { XtreamHealthService, MAX_SERVERS_PER_SWEEP } from './xtream-health.service';
 
 type ServerInput = {
@@ -21,6 +22,13 @@ export class XtreamServersService {
     private readonly prisma: PrismaService,
     private readonly health: XtreamHealthService,
   ) {}
+
+  /** Internal only: normalized metadata, never return decrypted account data. */
+  async retrieveCatalog(tenantId: string, id: string, adapter: XtreamProviderAdapter, signal: AbortSignal) {
+    const server = await this.prisma.xtreamServer.findFirst({ where: { id, tenantId, enabled: true } });
+    if (!server) throw new NotFoundException('Enabled Xtream server not found');
+    return adapter.retrieve(server.baseUrl, server.username, this.decrypt(server.passwordEncrypted), signal);
+  }
 
   private key(): Buffer {
     const value = process.env.XTREAM_ENCRYPTION_KEY;

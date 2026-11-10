@@ -16,7 +16,8 @@ type Dependencies = { lookup: typeof lookup; request: typeof request };
  * HTTP Host, TLS verification name and SNI. No second DNS lookup can rebind it.
  * Optional dependencies are a test seam; production calls use only Node APIs. */
 export async function pinnedProviderRequest(url: URL, init: RequestInit,
-  deps: Dependencies = { lookup, request }): Promise<Response> {
+  deps: Dependencies = { lookup, request }, maxBytes = 64 * 1024): Promise<Response> {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > 8 * 1024 * 1024) throw new ProviderTransportError('INVALID_URL');
   const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
   if (url.protocol !== 'https:' || url.username || url.password || !host ||
       ['localhost', 'metadata', 'instance-data'].includes(host) ||
@@ -63,7 +64,6 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
         response.destroy();
         return;
       }
-      const maxBytes = 64 * 1024;
       if (Number(response.headers['content-length']) > maxBytes) {
         fail('UNEXPECTED_RESPONSE'); response.destroy(); req.destroy(); return;
       }

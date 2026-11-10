@@ -235,6 +235,35 @@ try {
     } finally { await locker.query('ROLLBACK'); locker.release(); }
     assert.equal((await sync.importExport(tenant.id, first.id, emptyCatalog(), true)).status, 'SUCCEEDED');
   });
+  await check('real provider pull lock, successful persistence and isolated failure history', async () => {
+    const { XtreamSyncRunner } = require(path.join(api, 'dist/modules/admin/xtream-sync-runner.service.js'));
+    let failed = false, calls = 0;
+    const servers = { retrieveCatalog: async (_tenant, server) => {
+      calls++;
+      if (failed && server === first.id) throw new Error('PROVIDER_AUTH_REJECTED');
+      return { ...emptyCatalog(), live: [{ id: 'fixture-1', name: server === first.id ? 'Authorized fixture A' : 'Authorized fixture B' }] };
+    } };
+    const runner = new XtreamSyncRunner(client, servers, {}, sync);
+    const locker = await pool.connect();
+    try {
+      await locker.query('BEGIN');
+      await locker.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`sync-pull:${first.id}`]);
+      await assert.rejects(runner.run(tenant.id, first.id, true), /SYNC_IN_PROGRESS/);
+      assert.equal(calls, 0);
+    } finally { await locker.query('ROLLBACK'); locker.release(); }
+    try {
+      await runner.run(tenant.id, first.id, true);
+      const before = await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: first.id } });
+      failed = true;
+      await assert.rejects(runner.run(tenant.id, first.id, true), /PROVIDER_AUTH_REJECTED/);
+      const after = await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: first.id } });
+      assert.deepEqual(after.catalog, before.catalog);
+      assert.equal(after.lastSuccessAt.getTime(), before.lastSuccessAt.getTime());
+      assert.equal(after.history[0].reason, 'PROVIDER_AUTH_REJECTED');
+      await runner.run(tenant.id, second.id, true);
+      assert.equal((await client.xtreamCatalogSnapshot.findUnique({ where: { serverId: second.id } })).catalog[0].name, 'Authorized fixture B');
+    } finally { runner.onModuleDestroy(); }
+  });
   await check('real catalog HTTP authorization uses live DB roles and rejects tenant escape', async () => {
     const { Test } = require('@nestjs/testing');
     const { JwtService } = require('@nestjs/jwt');

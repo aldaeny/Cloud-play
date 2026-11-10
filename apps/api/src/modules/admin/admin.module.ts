@@ -1,3 +1,5 @@
+import { XtreamSyncRunner } from './xtream-sync-runner.service';
+import { XtreamProviderAdapter } from './xtream-provider.adapter';
 import { XtreamCatalogSyncController } from './xtream-catalog-sync.controller';
 import { XtreamCatalogSyncService } from './xtream-catalog-sync.service';
 import { Module } from '@nestjs/common';
@@ -9,7 +11,7 @@ import { XtreamHealthService } from './xtream-health.service';
 
 @Module({
   controllers: [AdminController, XtreamServersController, XtreamCatalogSyncController],
-  providers: [AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
+  providers: [XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
   exports: [AdminService, XtreamHealthService],
 })
 export class AdminModule {}

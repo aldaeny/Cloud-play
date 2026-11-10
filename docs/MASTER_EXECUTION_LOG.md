@@ -21,3 +21,7 @@ Verified latent defect: ProfilesService.verifyPin treated nonexistent profiles a
 ## Phase4 backend default-deny RLS
 
 Added reversible isolated-tested migration enabling all34remaining backend tables (35total already including snapshot). No browser policies/grants added; Nest owner connections retain existing behavior. Fresh real PostgreSQL23checks include280ACL denials, all-table RLS behavior even after temporary CRUD grants, privileged owner sentinel visibility, existing browser-owned RLS and new migration rollback/reapply. No production DB access. See RLS_VERIFICATION.md for exact evidence and unverified managed service-role/tenant lifecycle scope.
+
+## Phase5 authorized Xtream pull/scheduler/Admin increment
+
+Added server-only six-list adapter, manual protected pull endpoint, opt-in bounded scheduler, per-provider cross-process advisory lock, retries/backoff, durable sanitized failure history/last-good preservation and Admin controls/history. Actual isolated PostgreSQL test proves separate-connection lock denial plus provider-isolated failure/success with fixture retrieval. New local Admin HTTP bridge suite executes actual sockets and checks auth-header/path/method/no-store forwarding boundaries. API35suites496tests, isolatedPG24checks, Admin type/lint/build/bridge passed. Inventory now91routes. Full external sync/playlist adapter/episode expansion/durable cancellation are not complete; limitations explicitly documented in IPTV_OPERATIONS.md. No provider contacts or production schedule configured.

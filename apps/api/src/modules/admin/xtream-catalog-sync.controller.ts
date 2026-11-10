@@ -1,3 +1,4 @@
+import { XtreamSyncRunner } from './xtream-sync-runner.service';
 import { Body, Controller, Get, Header, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { AdminJwtGuard, CurrentAdmin, type AdminPrincipal, RequirePermissions } from '../../common';
 import { XtreamCatalogSyncService } from './xtream-catalog-sync.service';
@@ -6,12 +7,19 @@ import { XtreamCatalogSyncService } from './xtream-catalog-sync.service';
 @UseGuards(AdminJwtGuard)
 @RequirePermissions('xtream:manage')
 export class XtreamCatalogSyncController {
-  constructor(private readonly sync: XtreamCatalogSyncService) {}
+  constructor(private readonly sync: XtreamCatalogSyncService, private readonly runner: XtreamSyncRunner) {}
 
   @Get()
   @Header('Cache-Control', 'no-store')
   status(@CurrentAdmin() admin: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string) {
     return this.sync.status(admin.tenantId, id);
+  }
+
+  @Post('pull')
+  @Header('Cache-Control', 'no-store')
+  pull(@CurrentAdmin() admin: AdminPrincipal, @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { authorizationConfirmed?: boolean }) {
+    return this.runner.run(admin.tenantId, id, body?.authorizationConfirmed === true);
   }
 
   @Post()

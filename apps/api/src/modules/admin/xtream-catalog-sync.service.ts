@@ -61,7 +61,7 @@ export class XtreamCatalogSyncService {
       { revision: 0, itemCount: 0, lastSuccessAt: null, lastFailureAt: null, history: [] };
   }
 
-  async importExport(tenantId: string, serverId: string, input: unknown, authorizationConfirmed: boolean) {
+  async importExport(tenantId: string, serverId: string, input: unknown, authorizationConfirmed: boolean, failureReason: 'INVALID_CATALOG' | 'PROVIDER_FETCH_FAILED' | 'PROVIDER_AUTH_REJECTED' | 'SYNC_CANCELLED' = 'INVALID_CATALOG') {
     if (authorizationConfirmed !== true) throw new BadRequestException('AUTHORIZATION_CONFIRMATION_REQUIRED');
     let catalog: CatalogRow[] = [], invalid = false;
     try { catalog = normalizeCatalog(input); } catch { invalid = true; }
@@ -76,7 +76,7 @@ export class XtreamCatalogSyncService {
       const at = new Date();
       const diff = invalid ? { added: 0, changed: 0, removed: 0 } : catalogDiff(state.catalog as unknown as CatalogRow[], catalog);
       const event = { revision: state.revision + 1, at: at.toISOString(), status: invalid ? 'FAILED' : 'SUCCEEDED',
-        reason: invalid ? 'INVALID_CATALOG' : 'OK', ...diff };
+        reason: invalid ? failureReason : 'OK', ...diff };
       const history = [event, ...(Array.isArray(state.history) ? state.history : [])].slice(0, 20);
       await tx.xtreamCatalogSnapshot.update({ where: { serverId }, data: {
         revision: { increment: 1 }, history: history as Prisma.InputJsonValue,

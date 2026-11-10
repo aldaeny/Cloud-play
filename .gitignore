@@ -70,3 +70,6 @@ docker-compose.override.yml
 apps/web/.private-test-*
 apps/web/.public-test-*
 apps/web/.playlist-test-*
+
+# Disposable compiled Admin HTTP regression fixtures
+apps/admin/.http-test-*/
