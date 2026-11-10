@@ -40,8 +40,17 @@ jobs:
             -e GOTRUE_SMTP_MAX_FREQUENCY=0s -e GOTRUE_RATE_LIMIT_EMAIL_SENT=100 \
             -e GOTRUE_MAILER_URLPATHS_CONFIRMATION=/verify -e GOTRUE_MAILER_URLPATHS_RECOVERY=/verify \
             supabase/gotrue:v2.197.0
+      - name: Build actual API and isolated TLS bridge certificate
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
+        run: |
+          npm run build --workspace aether-api
+          mkdir -p .cache/auth-fixture
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=127.0.0.1' \
+            -addext 'subjectAltName=IP:127.0.0.1' -keyout .cache/auth-fixture/key.pem -out .cache/auth-fixture/cert.pem
       - name: Execute actual Auth and SMTP lifecycle
         env:
+          AUTH_FIXTURE_CERT_DIR: ${{ github.workspace }}/.cache/auth-fixture
           AUTH_TEST_DATABASE_URL: postgresql://postgres:isolated-fixture-only@127.0.0.1:5439/postgres
         run: node apps/api/scripts/test-auth-recovery.mjs
       - name: Publish sanitized fixture assertions

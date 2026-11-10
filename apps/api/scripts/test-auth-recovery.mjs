@@ -1,6 +1,10 @@
 // Actual disposable GoTrue + PostgreSQL + Mailpit SMTP, never production.
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { writeFile } from 'node:fs/promises';
 import { setTimeout as wait } from 'node:timers/promises';
 import pg from 'pg';
@@ -77,6 +81,12 @@ try {
   const newLogin = await call('/token?grant_type=password', { email, password: newPassword });
   assert.equal(newLogin.status, 200);
   await passed('password replacement rejects old password and accepts new password');
+  await promisify(execFile)(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-auth-nest.mjs')], {
+    timeout: 60000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
+      NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
+  });
+  await passed('actual Nest native Prisma and Supabase identity integrate; owner tenant disabled and invalid-token checks pass');
+
   const row = (await pool.query('SELECT recovery_token FROM auth.users WHERE email=$1', [email])).rows[0];
   assert.ok(row && !row.recovery_token);
   await passed('used recovery token cleared from actual Auth database');

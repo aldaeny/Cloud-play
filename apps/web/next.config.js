@@ -5,9 +5,9 @@ const nextConfig = {
   reactStrictMode: true,
   turbopack: { root: require('path').resolve(__dirname, '../..') },
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-    ],
+    // Remote artwork already renders unoptimized in our components. Do not
+    // expose an unused general-purpose server-side image fetch proxy.
+    remotePatterns: [],
   },
   async headers() {
     return [
