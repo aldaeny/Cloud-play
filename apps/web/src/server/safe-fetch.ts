@@ -75,7 +75,7 @@ export function isPrivateAddress(address: string): boolean {
 
   if (!isIP(ip)) return true;
   if (ip.includes(':')) {
-    if (!/^[23][0-9a-f]{3}:/.test(ip) || ip.startsWith('2002:') || (ip.startsWith('2001:') && parseInt(ip.split(':')[1] || '0', 16) < 0x200)) return true;
+    if (!/^[23][0-9a-f]{3}:/.test(ip) || ip.startsWith('2002:') || ip.startsWith('3fff:') || (ip.startsWith('2001:') && parseInt(ip.split(':')[1] || '0', 16) < 0x200)) return true;
     if (ip === '::' || ip === '::1') return true;
     const head = ip.split(':')[0];
     const first = parseInt(head || '0', 16);
@@ -163,6 +163,19 @@ export function resetHostVerdicts(): void {
   publicHosts.clear();
 }
 
+/** A DNS resolver must not outlive the connection's security budget. */
+async function boundedLookup(host: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      lookup(host, { all: true, verbatim: true }),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new SafeFetchError('DNS_FAILED')), 2000);
+      }),
+    ]);
+  } finally { clearTimeout(timer); }
+}
+
 /** Resolve the host and require every address to be public. */
 export async function assertPublicHost(url: URL): Promise<void> {
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
@@ -171,7 +184,7 @@ export async function assertPublicHost(url: URL): Promise<void> {
 
   let records: { address: string }[];
   try {
-    records = await lookup(host, { all: true, verbatim: true });
+    records = await boundedLookup(host);
   } catch {
     throw new SafeFetchError('DNS_FAILED');
   }
@@ -229,7 +242,7 @@ export async function safeFetch(
     try {
       const socketLookup: LookupFunction = (_hostname, lookupOptions, callback) => {
         // This is the actual connection lookup, not a cached preflight verdict.
-        lookup(target.hostname.replace(/^\[|\]$/g, ''), { all: true, verbatim: true }).then(records => {
+        boundedLookup(target.hostname.replace(/^\[|\]$/g, '')).then(records => {
           if (!records.length || records.some(record => !isIP(record.address) ||
               record.family !== isIP(record.address) || isPrivateAddress(record.address))) {
             callback(new Error('BLOCKED_ADDRESS'), '', 4); return;
