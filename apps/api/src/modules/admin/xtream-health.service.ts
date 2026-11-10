@@ -19,7 +19,7 @@
  * are never placed in the URL, and redirects are refused so a provider cannot
  * bounce the probe (and its credentials) to an internal address.
  */
-import { lookup } from 'node:dns/promises';
+import { pinnedProviderRequest, ProviderTransportError } from '../../common/pinned-provider-request';
 import { isIP } from 'node:net';
 import { publicProviderAddress } from '../../common/provider-address';
 import { Injectable, Logger } from '@nestjs/common';
@@ -95,28 +95,9 @@ export class XtreamHealthService {
   async probe(target: ProbeTarget, allowHttp = false): Promise<ProbeResult> {
     const checkedAt = new Date();
     const base = probeUrlAllowed(target.baseUrl, allowHttp);
-    if (!base) {
-      const reason: HealthReason = /^http:\/\//i.test(target.baseUrl) && !allowHttp ? 'HTTP_DISABLED' : 'INVALID_URL';
+    if (!base || base.protocol !== 'https:') {
+      const reason: HealthReason = (base?.protocol === 'http:' || (/^http:\/\//i.test(target.baseUrl) && !allowHttp)) ? 'HTTP_DISABLED' : 'INVALID_URL';
       return { status: 'unhealthy', reason, latencyMs: null, httpStatus: null, checkedAt };
-    }
-
-    // Check every DNS answer before transmitting credentials. Residual DNS
-    // rebinding window exists because fetch resolves again: egress restrictions
-    // or a pinned transport are still required before hostile-provider use.
-    const hostname = base.hostname.replace(/^\[|\]$/g, '');
-    if (!isIP(hostname)) {
-      let timer: ReturnType<typeof setTimeout> | undefined;
-      try {
-        const addresses = await Promise.race([
-          lookup(hostname, { all: true, verbatim: true }),
-          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('DNS_TIMEOUT')), 2000); }),
-        ]);
-        if (!addresses.length || addresses.some(row => !publicProviderAddress(row.address))) {
-          return { status: 'unhealthy', reason: 'INVALID_URL', latencyMs: null, httpStatus: null, checkedAt };
-        }
-      } catch {
-        return { status: 'unhealthy', reason: 'ORIGIN_UNREACHABLE', latencyMs: null, httpStatus: null, checkedAt };
-      } finally { clearTimeout(timer); }
     }
 
     // Credentials go in the POST body, never the query string, so they cannot
@@ -127,7 +108,7 @@ export class XtreamHealthService {
 
     let response: Response;
     try {
-      response = await fetch(endpoint, {
+      response = await pinnedProviderRequest(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
         body: body.toString(),
@@ -135,7 +116,10 @@ export class XtreamHealthService {
         cache: 'no-store',
         signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof ProviderTransportError && error.code !== 'ORIGIN_UNREACHABLE') {
+        return { status: 'unhealthy', reason: error.code, latencyMs: null, httpStatus: null, checkedAt };
+      }
       // Unreachable right now. Not a credential verdict, not "permanently offline".
       return { status: 'unhealthy', reason: 'ORIGIN_UNREACHABLE', latencyMs: null, httpStatus: null, checkedAt };
     }
