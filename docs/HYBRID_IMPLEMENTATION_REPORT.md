@@ -1,5 +1,8 @@
 # D1 Option C — implementation evidence and remaining gates
 
+> **Current Phase 2 evidence:** see [PRODUCTION_READINESS.md](PRODUCTION_READINESS.md). Earlier sections below are historical. Current totals: API 29 suites/295 tests; real isolated PostgreSQL20 checks with 33 models/six migrations; Web251 checks; Chromium smoke16/search19/layout120. Native engine remains BLOCKED. Audit21 findings (0high/0critical), not zero vulnerabilities. Manual full-export catalog import/history/locking is implemented; online/scheduled sync and full authentication cutover are not completed.
+
+
 ## Scope and history
 
 Work stays on `arena/c5c3c018-cloud-play`, based on verified merged PR #22 (`76df97e`). PR #23 contains the changes; no production deployment or database migration is authorized by this document. Existing Cloud Play UI is preserved.
@@ -128,3 +131,13 @@ All 13 pass isolated composition tests. Only the explicitly described local prof
 Five SQL migrations work on the fresh isolated PG17 cluster; this does not establish safety against unknown production data or Supabase exposure policies. Before any production apply: verified backup + restore rehearsal, current schema diff, role/grant/RLS design for all new public tables, tenant/identity provisioning, native runtime or separately reviewed adapter adoption, permission and subscription coverage, then explicit approval. Existing migration SQL must not simply expose all 32 tables via Supabase REST without a reviewed access policy. No production DDL has been executed.
 
 Next independent work: remediate dependency advisories with focused upgrades/tests; extend incremental Supabase API surfaces and real-DB authorization tests; add recovery lifecycle tests in an isolated auth/email environment; implement provider-independent synchronization against controlled fixtures. None of these warrants declaring the platform production-ready today.
+
+## Phase 2 implementation follow-up
+
+Committed native-only verification mode (9d9ba9f), focused dependency fixes (b91549d), guard hardening/auth inventory/isolated RLS (2c17001), durable provider catalog imports (d45bc04), and DNS/response-size health hardening (cd088c9). `test-rls.mjs` additionally verifies local anon/authenticated cannot SELECT the new backend-only snapshot table.
+
+New endpoint matrix inventories 90 declared routes and explicitly marks ownership/coverage gaps. No legacy auth was removed. Fourteen real-JWT guard boundary tests use fixture account records; catalog HTTP tests additionally use actual local PostgreSQL roles/permissions and signed admin tokens. No real hosted Supabase Auth/SMTP lifecycle was run.
+
+The new additive migration and rollback were exercised only on disposable PostgreSQL; production table/role/policy configuration is unchanged. The schema now contains 33 models because one provider-scoped staging snapshot model was added; existing 32 models are preserved. Real provider playback, online scheduled sync, native backend compatibility and deployment are not claimed.
+
+No interface redesign or frontend styling change. Existing browser regression suites were executed after supplying Chromium's missing packaged shared libraries; 155 checks passed across three suites, media decoding explicitly skipped. Clean dependency reinstall, typechecks, unit/HTTP/PG tests and all builds passed. Detailed remaining release blockers, phase statuses and exact environment limitations are in PRODUCTION_READINESS.md.

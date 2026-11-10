@@ -244,7 +244,7 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
 - **Implemented + tested successfully:** Arabic-aware search across all four surfaces; CSP/HSTS/Permissions-Policy
   with zero browser violations; plus every pre-existing web feature listed ✅ above.
   **Updated 2026-11-08:** the NestJS API now also builds and tests green — `tsc` 0 errors (was 18),
-  **27/27 jest suites / 259/259 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
+  **29/29 jest suites / 295/295 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
   The 18 errors were missing generated Prisma types, not logic defects; see
   `apps/api/scripts/generate-client.cjs`.
   Also newly implemented and unit-verified: Supabase-backed auth guard (50 cases), server-side
@@ -271,3 +271,13 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
 Hybrid cutover limitations and current runtime evidence: see `docs/HYBRID_IMPLEMENTATION_REPORT.md`. The 13-module smoke test replaces Prisma only; it is not live database verification.
 
 Follow-up verification: 12 real isolated PostgreSQL 17 checks (all 32 model delegates, five migrations, CRUD, constraints, transaction rollback and outage/recovery); separate test-only WASM/pg client, not production native runtime. Additive Supabase-guarded profiles read API and fixed Next.js proxy are tested; visual UI cutover remains pending. Web: 13 suites / 251 checks; build 53 pages. See `docs/HYBRID_API_CONTRACTS.md`.
+
+## Phase 2 — current evidence (supersedes earlier test totals)
+
+- Native Prisma: **BLOCKED**, official engine download fails; `test:postgres:native` never falls back. See `docs/PRISMA_NATIVE_VERIFICATION.md`.
+- Real isolated PostgreSQL17: **20 checks passed**, 33 model delegates and six migrations; real WASM engine, not native. Includes owner/stranger/anonymous RLS tests and real admin HTTP/DB-role checks.
+- Provider metadata full-export imports: implemented/tested, durable provider-scoped snapshot/history, diff counts and advisory lock. Online pulling, scheduling and visible import UI remain **NOT IMPLEMENTED**.
+- API: **29 suites / 295 tests**. Web: **13 non-browser suites / 251 checks**. Chromium: smoke16 + search/CSP19 + layout120 passed. Decoding fixtures skipped; physical devices unverified.
+- Clean npm ci, workspace typechecks/lint/builds passed (Web lint has three warnings). npm audit: **31 → 21**, high **4 → 0**, critical0; remaining 8low/13moderate not suppressed.
+- Full authentication cutover and isolated SMTP/recovery lifecycle remain incomplete. No production changes or provider probes.
+- Current gate and exact limitations: `docs/PRODUCTION_READINESS.md`, `docs/SECURITY_AUDIT.md`, `docs/AUTHENTICATION_MATRIX.md`, `docs/IPTV_SYNC_ARCHITECTURE.md`.

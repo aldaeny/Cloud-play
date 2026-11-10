@@ -58,6 +58,9 @@ export async function testRls(pool, root, check) {
       for (const table of tables) assert.equal((await conn.query(`SELECT * FROM ${table}`)).rowCount, 0);
     });
     await assert.rejects(asRole('anon', '', conn => conn.query("INSERT INTO cloudplay_favorites VALUES ($1,'movie','anon',now())", [owner])), { code: '42501' });
+    for (const role of ['anon', 'authenticated']) {
+      await assert.rejects(asRole(role, owner, conn => conn.query('SELECT * FROM "XtreamCatalogSnapshot"')), { code: '42501' });
+    }
     await asRole('authenticated', owner, async conn => {
       for (const table of tables) assert.equal((await conn.query(`DELETE FROM ${table}`)).rowCount, 1);
     });
