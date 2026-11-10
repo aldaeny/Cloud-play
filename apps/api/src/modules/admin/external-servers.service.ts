@@ -178,7 +178,8 @@ export class ExternalServersService {
       else {
         const response = await pinnedProviderRequest(endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 1024 * 1024);
         details.dns = details.tcp = details.tls = 'passed'; details.httpStatus = response.status;
-        details.contentType = response.headers.get('content-type')?.split(';')[0] || 'unknown';
+        const contentType = response.headers.get('content-type')?.split(';')[0].trim().toLowerCase() || '';
+        details.contentType = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl', 'video/mp2t', 'video/mp4', 'application/dash+xml', 'audio/aac', 'audio/mp4', 'text/html', 'text/plain', 'application/octet-stream'].includes(contentType) ? contentType : 'unknown';
         details.reason = response.status >= 300 && response.status < 400 ? 'REDIRECT_REFUSED' : `HTTP_${response.status}`;
         if (response.status === 401 || response.status === 403) result = 'auth_required';
         else if (response.ok && ['hls', 'm3u'].includes(row.protocol)) {

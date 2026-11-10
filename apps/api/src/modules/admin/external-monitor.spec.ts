@@ -22,6 +22,12 @@ describe('external monitor fixture classification (HTTP200 is not playback)', ()
     expect((result.details as Record<string, unknown>).httpStatus).toBe(status); expect(JSON.stringify(result)).not.toContain('secret provider error');
     expect(spy).toHaveBeenCalledTimes(1);
   });
+  it('never persists an attacker-controlled MIME header echoing credentials', async () => {
+    jest.spyOn(transport, 'pinnedProviderRequest').mockResolvedValue(new Response('ignored', { headers: { 'content-type': 'private-token-reflection' } }));
+    const result = await service.check(serverId, serverId, serverId, { technicalAccessConfirmed: true });
+    expect(JSON.stringify(result)).not.toContain('private-token-reflection');
+    expect((result.details as Record<string, unknown>).contentType).toBe('unknown');
+  });
   it('does not call transport without a technical permission assertion', async () => {
     const spy = jest.spyOn(transport, 'pinnedProviderRequest');
     await expect(service.check(serverId, serverId, serverId, {})).rejects.toMatchObject({ status: 403 });
