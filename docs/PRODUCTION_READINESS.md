@@ -83,3 +83,7 @@ npm audit
 ```
 
 See existing web package scripts for the 13 unit/contract suites and Chromium browser/layout/search suites. Browser tests need a local built web server and browser executable/runtime libraries. Do not point mutation tests at production.
+
+## Follow-up blocker order
+
+Native Prisma now VERIFIED by actual successful Node22/24 workflow_dispatch run42854756387. Web playlist actual socket DNS pinning added; global outbound hardening remains incomplete. All35backend tables now have real isolated browser-role CRUD denial tests (ACL denial, not all-table RLS certification). Fresh API466/Web251+13/browser155checks passed within documented scopes. See `BLOCKER_CLOSURE_REPORT.md` for exact statuses and caveats. Overall remains NOT READY FOR PRODUCTION.
