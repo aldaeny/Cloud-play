@@ -106,14 +106,17 @@ export class ExternalPlaybackController {
       return res.status(response?.status===404?404:response?.status===429?429:502).json({ error:'UPSTREAM_MEDIA_UNAVAILABLE_REFRESH_MANIFEST' });
     }
     const mime = response.headers.get('content-type')?.split(';')[0].toLowerCase();
+    const addresses=new Map<string,string>();
     const reference = (value: string, representations = ticket.representations) => {
       // Tokens are encrypted/authenticated resource addresses, not identity tokens.
       // They are bound to the actual user, channel, source and short scope expiry.
       if (ticket.depth >= 3) throw new ForbiddenException('MANIFEST_DEPTH_EXCEEDED');
       const resolved = value.includes('$') ? new URL(value, url).href : mediaReference(value, url).href;
+      const cacheKey=JSON.stringify([resolved,representations]);
+      const cached=addresses.get(cacheKey);if(cached)return cached;
       const token = this.vault.encryptSecret(JSON.stringify({ ...ticket, url:resolved, base:ticket.base, depth:ticket.depth+1, representations }));
       const suffix = (value.includes('$RepresentationID$') ? '&representation=$RepresentationID$' : '') + (/\$Number(?:%0[1-9]d)?\$/.test(value) ? '&number=$Number$' : '') + (value.includes('$Time$') ? '&time=$Time$' : '');
-      return `/external-playback/${ticket.channelId}/resource?ticket=${encodeURIComponent(token)}${suffix}`;
+      const address=`/external-playback/${ticket.channelId}/resource?ticket=${encodeURIComponent(token)}${suffix}`;addresses.set(cacheKey,address);return address;
     };
     let body: string | Buffer;
     if (['application/vnd.apple.mpegurl','application/x-mpegurl','audio/mpegurl','audio/x-mpegurl'].includes(mime || '')) {

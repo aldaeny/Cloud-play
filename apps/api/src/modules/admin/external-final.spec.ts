@@ -38,10 +38,10 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
  function fixture(){
   const selected=jest.fn().mockResolvedValue({id:'source-fixture',server:{endpointEncrypted:'endpoint-fixture'}});
   // Test-only reversible address codec. Actual AES-GCM/DB isolation is separately tested.
-  const vault={decryptSecret:(value:string)=>value==='endpoint-fixture'?'https://fixture.example/manifest.m3u8':Buffer.from(value,'base64url').toString(),encryptSecret:(value:string)=>Buffer.from(value).toString('base64url')};
+  const vault={decryptSecret:(value:string)=>value==='endpoint-fixture'?'https://fixture.example/manifest.m3u8':Buffer.from(value,'base64url').toString(),encryptSecret:jest.fn((value:string)=>Buffer.from(value).toString('base64url'))};
   const controller=new ExternalPlaybackController({selected,channel:jest.fn().mockResolvedValue({failureThreshold:1}),playbackFailure:jest.fn()} as unknown as ExternalChannelsService,vault as unknown as XtreamServersService,{require:jest.fn().mockResolvedValue({id:'lease-fixture',country:'IQ',platform:'web',absoluteExpiresAt:new Date(Date.now()+300000)})} as unknown as ExternalPlaybackSessionService);
   const res={setHeader:jest.fn(),type:jest.fn(),send:jest.fn(),status:jest.fn(),json:jest.fn()};res.status.mockReturnValue(res);
-  return {controller,selected,res:res as unknown as Response,send:res.send};
+  return {controller,selected,encrypt:vault.encryptSecret,res:res as unknown as Response,send:res.send};
  }
  it('rejects missing, forged, expired, wrong-user or wrong-tenant country assertions',()=>{
   expect(()=>playbackScope(undefined,user,channel)).toThrow();
@@ -54,6 +54,16 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
   const body=f.send.mock.calls[0][0] as string;expect(body).not.toContain('https://fixture.example');expect(f.selected).toHaveBeenCalledTimes(3);
   const url=new URL(body.split('\n').pop()!,'https://api.fixture');
   await expect(f.controller.resource({...user,id:'different-user'},channel,url.searchParams.get('ticket')!,undefined,undefined,undefined,{headers:{}} as Request,f.res)).rejects.toThrow('INVALID_MEDIA_RESOURCE');
+ });
+ it('keeps repeated resource addresses identical for implicit HLS byte ranges',async()=>{
+  const f=fixture();jest.spyOn(transport,'pinnedProviderRequest').mockResolvedValue(new globalThis.Response('#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\n#EXT-X-BYTERANGE:10@0\nsegment.ts\n#EXTINF:1,\n#EXT-X-BYTERANGE:10\nsegment.ts',{headers:{'content-type':'application/vnd.apple.mpegurl'}}));
+  await f.controller.start(user,channel,{headers:{}} as Request,f.res);
+  const resources=(f.send.mock.calls[0][0] as string).split('\n').filter(line=>line.startsWith('/external-playback/'));expect(resources).toHaveLength(2);expect(resources[0]).toBe(resources[1]);expect(f.encrypt).toHaveBeenCalledTimes(1);
+ });
+ it('normalizes relative and absolute same-origin references to protected addresses',async()=>{
+  const f=fixture();jest.spyOn(transport,'pinnedProviderRequest').mockResolvedValue(new globalThis.Response('#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nsegment.ts\n#EXTINF:1,\nhttps://fixture.example/segment.ts',{headers:{'content-type':'application/vnd.apple.mpegurl'}}));
+  await f.controller.start(user,channel,{headers:{}} as Request,f.res);
+  const body=f.send.mock.calls[0][0] as string;expect(body).not.toContain('fixture.example');expect(f.encrypt).toHaveBeenCalledTimes(1);
  });
  it('does not echo provider origins or unexpected URI syntax hidden in manifest metadata',async()=>{
   for(const suffix of ['#provider https://fixture.example/private',"#EXT-X-MEDIA:TYPE=AUDIO,URI='https://fixture.example/audio.m3u8'"]){

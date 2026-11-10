@@ -23,7 +23,16 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
  const pass=label=>{checks++;console.log('PASS protected authenticated playback: '+label);};
  try{
   mediaServer=createServer(tlsOptions,async(req,res)=>{
-   try{const url=new URL(req.url,'https://fixture.example');if(url.pathname.endsWith('.ts')&&transientDrops===0){transientDrops++;res.destroy();return;}if(url.pathname.includes('..'))throw new Error();const file=path.join(media,url.pathname);if(!file.startsWith(path.resolve(media)+path.sep))throw new Error();const data=await readFile(file);const ext=path.extname(file);res.setHeader('content-type',({'.m3u8':'application/vnd.apple.mpegurl','.mpd':'application/dash+xml','.ts':'video/mp2t','.m4s':'video/mp4','.mp4':'video/mp4','.vtt':'text/vtt'})[ext]||'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}
+   try{const url=new URL(req.url,'https://fixture.example');if(url.pathname.endsWith('.ts')&&transientDrops===0){transientDrops++;res.destroy();return;}if(url.pathname.includes('..'))throw new Error();const file=path.join(media,url.pathname);if(!file.startsWith(path.resolve(media)+path.sep))throw new Error();let data;
+    if(url.pathname==='/hls/byterange.m3u8'){
+      const first=await readFile(path.join(media,'hls/low0.ts')),second=await readFile(path.join(media,'hls/low1.ts'));
+      data=Buffer.from(`#EXTM3U\n#EXT-X-TARGETDURATION:2\n#EXTINF:2,\n#EXT-X-BYTERANGE:${first.length}@0\nrange.ts\n#EXTINF:2,\n#EXT-X-BYTERANGE:${second.length}\nrange.ts\n#EXT-X-ENDLIST\n`);
+    }else if(url.pathname==='/hls/range.ts')data=Buffer.concat([await readFile(path.join(media,'hls/low0.ts')),await readFile(path.join(media,'hls/low1.ts'))]);
+    else data=await readFile(file);
+    const ext=path.extname(file);
+    if(url.pathname==='/hls/master.m3u8')data=Buffer.from(data.toString().replace('high.m3u8','https://fixture.example/hls/high.m3u8')+'#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=1000,URI="byterange.m3u8"\n');
+    if(ext==='.mpd')data=Buffer.from(data.toString().replace(/initialization="([^"]+)"/g,'initialization="https://fixture.example/$1"'));
+    res.setHeader('content-type',({'.m3u8':'application/vnd.apple.mpegurl','.mpd':'application/dash+xml','.ts':'video/mp2t','.m4s':'video/mp4','.mp4':'video/mp4','.vtt':'text/vtt'})[ext]||'application/octet-stream');res.end(data);}catch{res.writeHead(404);res.end();}
   });await new Promise(resolve=>mediaServer.listen(0,'127.0.0.1',resolve));
   const deps={lookup:async()=>[{address:'8.8.8.8',family:4}],request:(url,opts,done)=>httpsRequest(url,{...opts,port:mediaServer.address().port,ca:tlsOptions.cert,servername:undefined,checkServerIdentity:(_host,cert)=>require('node:tls').checkServerIdentity('127.0.0.1',cert),lookup:(_name,options,cb)=>options.all?cb(null,[{address:'127.0.0.1',family:4}]):cb(null,'127.0.0.1',4)},done)};
   transport.pinnedProviderRequest=(url,init,_deps,limit,allowHttp,trace)=>{assert.equal(url.hostname,'fixture.example','no external provider contact');return original(url,init,deps,limit,allowHttp,trace);};
@@ -100,6 +109,11 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
    const variantResponse=await context.request.get(rootPath+variant);assert.equal(variantResponse.status(),200);
    const variantText=await variantResponse.text(),segment=variantText.split('\n').find(line=>line.startsWith('/api/external/'));
    const range=await context.request.get(rootPath+segment,{headers:{Range:'bytes=0-9'}});assert.equal(range.status(),206);assert.equal((await range.body()).length,10);assert.match(range.headers()['content-range'],/^bytes 0-9\//);
+   const rangePlaylist=master.split('\n').find(line=>line.startsWith('#EXT-X-I-FRAME-STREAM-INF:')).match(/URI="([^"]+)"/)[1];
+   const rangePlaylistResponse=await context.request.get(rootPath+rangePlaylist);assert.equal(rangePlaylistResponse.status(),200);const rangeText=await rangePlaylistResponse.text();
+   const repeated=rangeText.split('\n').filter(line=>line.startsWith('/api/external/'));assert.equal(repeated.length,2);assert.equal(repeated[0],repeated[1],'implicit byte-range offsets retain identical resource addresses');
+   const firstLength=Number(rangeText.match(/#EXT-X-BYTERANGE:(\d+)@0/)[1]);const secondLength=Number(rangeText.match(/#EXT-X-BYTERANGE:(\d+)\n/)[1]);
+   for(const [start,length] of [[0,firstLength],[firstLength,secondLength]]){const part=await context.request.get(rootPath+repeated[0],{headers:{Range:`bytes=${start}-${start+length-1}`}});assert.equal(part.status(),206);assert.equal((await part.body()).length,length);}
    const subtitlePlaylist=master.split('\n').find(line=>line.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')).match(/URI="([^"]+)"/)[1];
    const subtitleResponse=await context.request.get(rootPath+subtitlePlaylist);assert.equal(subtitleResponse.status(),200);const subtitleSegment=(await subtitleResponse.text()).split('\n').find(line=>line.startsWith('/api/external/'));
    assert.equal((await context.request.get(rootPath+subtitleSegment)).status(),200);
