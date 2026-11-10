@@ -37,3 +37,17 @@ API+worker Nest migration11.2.9/config4.0.4/APIjwt11.0.2 fixes confirmed runtime
 ## Phase8 native outage regression diagnosis/fix (verification pending)
 
 Expanded native suite revealed P1017 in final post-restart query after multiple native pool sockets existed; prior smaller suite happened not to expose it. All preceding native/RLS/pull checks passed. Default WASM did not catch this native-specific stale pool behavior. Explicit pool disconnect/connect added to custom-client recovery test; production PrismaService now offers bounded readiness reconnection without replaying application writes, used by /health. New native-only test fills actual production pool, stops PG, verifies failure, restarts, checks actual readiness recovery. Unit tests cover healthy/no-reconnect, one reconnect, continuing-outage propagation. Fresh native CI is required before claiming regression fixed.
+
+## Native regression closure and phase9 real identity integration
+
+Run42868169946 on af30c0e and run42868976484 on39fc84f succeeded: native Node22/24 now26checks each, including expanded RLS, pull isolation, production readiness reconnect after real DB outage. P1017 regression fixed without WASM substitution or business-write replay. Actual annotations saved for39fc84f.
+
+Auth job in run42868976484 also passed expanded integration: actual GoTrue SMTP + native Nest Prisma app connected to isolated DB, fixture HTTPS identity bridge (CA only in isolated child process), no mocked guard/service/identity. Own profile create/read accepted; forged body owner/tenant/role ignored; cross-user/cross-tenant update/delete404, disabled403, expired/forged/malformed JWT401. Evidence9actual PASS annotations saved. This is representative profile-path integration, not every91route/staff authority/session cutover proof.
+
+## Phase10 actual decoding and image proxy hardening
+
+Generated original test-pattern/sine/VTT fixtures with explicit external ffmpeg executable under ignored cache (binary not committed). Two HLS qualities, two audio tracks and subtitles, DASH and MP4. Chromium against local production build with test-only licensed catalog/media interception:23tests passed, including actual HLS/DASH/MP4 decoding and controls, tracks, broken-stream retry and cleanup/keyboard behavior. No third-party footage or unauthorized provider media used. Not physical-device/Safari/TV certification. Removed unused wildcard Next remote image optimizer allowlist; all existing external artwork uses unoptimized client-side images. Actual requests to optimizer with loopback/metadata/public remote image URLs all400 without upstream access, while local images/navigation/media browser suite passed.
+
+## Backup/restore added
+
+Fresh isolated PostgreSQL25checks include cold physical copy only after clean cluster stop, restore on separate port, exact two-provider catalog/revision comparison, application user/foreign-key/role/RLS preservation and browser credential-table denial after restore. No production backup read or created. This is same-PG17 physical backup proof, not managed Supabase PITR/object-storage/cross-version recovery certification. Native rerun with backup check pending.

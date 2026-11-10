@@ -1,7 +1,7 @@
 // Real, disposable PostgreSQL integration. Never reads DATABASE_URL.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -307,6 +307,38 @@ try {
       await client.role.deleteMany({ where: { id: { in: [role.id, roleOther.id] } } });
       await client.tenant.delete({ where: { id: other.id } });
     }
+  });
+  await check('isolated cold physical backup restores catalog, relations, roles and RLS on a separate port', async () => {
+    const snapshotDir = path.join(temp, 'restored-backup');
+    const expected = await pool.query(`SELECT s.id,s.name,c.catalog,c.revision FROM "XtreamServer" s
+      JOIN "XtreamCatalogSnapshot" c ON c."serverId"=s.id ORDER BY s.id`);
+    assert.equal(expected.rows.length, 2);
+    await client.$disconnect();
+    await database.stop(); // physical copy is only valid with a cleanly stopped cluster
+    await cp(path.join(temp, 'data'), snapshotDir, { recursive: true });
+    await database.start(); await client.$connect();
+    const reserved = createServer();
+    await new Promise(resolve => reserved.listen(0, '127.0.0.1', resolve));
+    const restorePort = reserved.address().port;
+    await new Promise(resolve => reserved.close(resolve));
+    const restored = new EmbeddedPostgres({ databaseDir: snapshotDir, port: restorePort,
+      user: 'cloudplay_test', password, persistent: true, postgresFlags: ['-h','127.0.0.1'], onLog: () => {}, onError: () => {} });
+    let connection;
+    try {
+      await restored.start();
+      connection = new pg.Pool({ host: '127.0.0.1', port: restorePort, user: 'cloudplay_test', password, database: 'postgres', connectionTimeoutMillis: 3000 });
+      const actual = await connection.query(`SELECT s.id,s.name,c.catalog,c.revision FROM "XtreamServer" s
+        JOIN "XtreamCatalogSnapshot" c ON c."serverId"=s.id ORDER BY s.id`);
+      assert.deepEqual(actual.rows, expected.rows);
+      assert.equal((await connection.query(`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'
+        AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 35);
+      assert.equal((await connection.query("SELECT rolbypassrls FROM pg_roles WHERE rolname='authenticated'")).rows[0].rolbypassrls, false);
+      assert.equal((await connection.query('SELECT count(*)::int AS n FROM "AppUser" WHERE id=$1',[user.id])).rows[0].n, 1);
+      assert.ok((await connection.query("SELECT count(*)::int AS n FROM pg_constraint WHERE contype='f'")).rows[0].n > 30);
+      await connection.query('BEGIN'); await connection.query('SET LOCAL ROLE authenticated');
+      await assert.rejects(connection.query('SELECT * FROM "XtreamServer"'), { code: '42501' });
+      await connection.query('ROLLBACK');
+    } finally { await connection?.end(); await restored.stop(); }
   });
   await check('snapshot migration rollback/reapply preserves provider rows', async () => {
     const dir = path.join(api, 'prisma/migrations/20261108010000_xtream_catalog_snapshot');
