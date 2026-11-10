@@ -14,12 +14,12 @@
  *   5. redirects are followed by hand and re-checked against all of the above
  *   6. bytes and wall-clock time are capped
  *
- * Residual risk, documented rather than hidden: between the DNS check and the
- * socket connect there is a window a hostile resolver could use to rebind. This
- * is reachable only by an authenticated owner, is rate-limited, and never
- * returns internal response bodies to anyone but that owner.
+ * The socket lookup itself validates every answer and pins the connection.
  */
 import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+import type { LookupFunction } from 'node:net';
+import { pinnedGet } from './pinned-get';
 
 export type FetchCode =
   | 'BAD_URL'
@@ -73,7 +73,9 @@ export function isPrivateAddress(address: string): boolean {
   const mappedDotted = ip.match(/^::(?:ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/);
   if (mappedDotted) return isPrivateAddress(mappedDotted[1]);
 
+  if (!isIP(ip)) return true;
   if (ip.includes(':')) {
+    if (!/^[23][0-9a-f]{3}:/.test(ip) || ip.startsWith('2002:') || (ip.startsWith('2001:') && parseInt(ip.split(':')[1] || '0', 16) < 0x200)) return true;
     if (ip === '::' || ip === '::1') return true;
     const head = ip.split(':')[0];
     const first = parseInt(head || '0', 16);
@@ -96,6 +98,7 @@ export function isPrivateAddress(address: string): boolean {
   if (a === 0 || a === 10 || a === 127) return true;
   if (a === 169 && b === 254) return true; // link-local + cloud metadata
   if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 88 && octets[2] === 99) return true;
   if (a === 192 && b === 168) return true;
   if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
   if (a === 192 && b === 0) return true; // 192.0.0/24 + 192.0.2/24
@@ -224,11 +227,20 @@ export async function safeFetch(
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let response: Response;
     try {
-      response = await fetch(target, {
-        method,
-        signal: controller.signal,
-        redirect: 'manual',
-        cache: 'no-store',
+      const socketLookup: LookupFunction = (_hostname, lookupOptions, callback) => {
+        // This is the actual connection lookup, not a cached preflight verdict.
+        lookup(target.hostname.replace(/^\[|\]$/g, ''), { all: true, verbatim: true }).then(records => {
+          if (!records.length || records.some(record => !isIP(record.address) ||
+              record.family !== isIP(record.address) || isPrivateAddress(record.address))) {
+            callback(new Error('BLOCKED_ADDRESS'), '', 4); return;
+          }
+          const selected = records[0];
+          if (lookupOptions.all) callback(null, [selected]);
+          else callback(null, selected.address, selected.family);
+        }).catch(() => callback(new Error('DNS_FAILED'), '', 4));
+      };
+      response = await pinnedGet(target, {
+        method, signal: controller.signal, lookup: socketLookup, maxBytes,
         headers: { Accept: '*/*', 'User-Agent': 'CloudPlayPlaylist/1.0', ...headers },
       });
     } catch {
@@ -247,13 +259,15 @@ export async function safeFetch(
       } catch (error) {
         throw error instanceof SafeFetchError ? error : new SafeFetchError('UPSTREAM_ERROR');
       }
+      if (target.protocol === 'https:' && next.protocol !== 'https:') throw new SafeFetchError('BLOCKED_HOST');
       if (pinOrigin && next.origin !== startOrigin) throw new SafeFetchError('BLOCKED_HOST');
       await assertPublicHost(next); // re-check: a redirect is a fresh SSRF chance
       target = next;
       continue;
     }
 
-    clearTimeout(timer);
+    // Deadline remains active while the streaming body is being consumed.
+    timer.unref?.();
     if (response.status === 401 || response.status === 403) {
       await response.body?.cancel().catch(() => {});
       throw new SafeFetchError('UPSTREAM_ERROR');

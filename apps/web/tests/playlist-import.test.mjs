@@ -98,6 +98,12 @@ console.log('\nOwner-only playlist import\n');
 const out = compile();
 const req = createRequire(path.join(out, 'noop.js'));
 const guard = req('./src/server/safe-fetch.js');
+// Route behavior uses a fixture transport, not real sockets; pinned transport
+// security is exercised independently in pinned-fetch.test.mjs.
+req('./src/server/pinned-get.js').pinnedGet = async (url, options) => {
+  await new Promise((resolve, reject) => options.lookup(url.hostname, {}, error => error ? reject(error) : resolve()));
+  return globalThis.fetch(url, options);
+};
 const tokens = req('./src/server/playlist-token.js');
 const importer = req('./src/server/playlist-import.js');
 const xtreamTokens = req('./src/server/xtream-token.js');
