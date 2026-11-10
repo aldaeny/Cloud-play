@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
@@ -17,7 +18,9 @@ const root = path.resolve(api, '../..');
 const temp = await mkdtemp(path.join(tmpdir(), 'cloudplay-pg-'));
 const output = await mkdtemp(path.join(root, 'node_modules/.cloudplay-pg-client-'));
 const schemaPath = path.join(api, 'prisma/schema.prisma');
-const datamodel = (await readFile(schemaPath, 'utf8')).replace(
+const native = process.argv.includes('--native');
+const productionSchema = await readFile(schemaPath, 'utf8');
+const datamodel = productionSchema.replace(
   'provider = "prisma-client-js"', 'provider = "prisma-client-js"\n  previewFeatures = ["driverAdapters"]',
 );
 const { getDMMF } = require('@prisma/internals');
@@ -35,6 +38,16 @@ let database, pool, client;
 let passed = 0;
 async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}`); }
 try {
+  if (native) {
+    const nativeSchema = path.join(output, 'native.prisma');
+    await writeFile(nativeSchema, productionSchema.replace('provider = "prisma-client-js"',
+      `provider = "prisma-client-js"\n  output = "${output.replaceAll('\\', '/')}"`));
+    // No fallback, no adapter, no WASM. Native generation must actually succeed.
+    execFileSync(process.execPath, [path.join(root, 'node_modules/prisma/build/index.js'),
+      'generate', '--schema', nativeSchema], { timeout: 30000, stdio: 'inherit',
+      env: { ...process.env, DATABASE_URL: 'postgresql://isolated:isolated@127.0.0.1:1/isolated',
+        PRISMA_CLIENT_ENGINE_TYPE: 'library' } });
+  } else {
   await generator.init();
   await generator.generate({
     generator: { name: 'client', provider: { value: 'prisma-client-js' },
@@ -50,6 +63,7 @@ try {
     noHints: true, allowNoModels: false, copyEngine: false,
   });
   generator.stop();
+  }
   database = new EmbeddedPostgres({ databaseDir: path.join(temp, 'data'),
     port, user: 'cloudplay_test', password, persistent: true,
     postgresFlags: ['-h', '127.0.0.1'], onLog: () => {}, onError: message => console.error('[isolated postgres]', message) });
@@ -63,6 +77,7 @@ try {
     if (dir === 'migration_lock.toml') continue;
     await pool.query(await readFile(path.join(api, 'prisma/migrations', dir, 'migration.sql'), 'utf8'));
   }
+  if (!native) {
   const wasmPath = path.join(output, 'wasm.js');
   // Prisma 5's bundler WASM loader assumes a default module export. Node 22
   // imports instantiated WASM instead; compile the unchanged engine bytes here.
@@ -75,6 +90,10 @@ try {
     wasmSource.slice(loaderEnd));
   const { PrismaClient } = require(wasmPath);
   client = new PrismaClient({ adapter: new PrismaPg(pool) });
+  } else {
+    const { PrismaClient } = require(path.join(output, 'index.js'));
+    client = new PrismaClient({ datasources: { db: { url: `postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres` } } });
+  }
   await client.$connect();
   await check('PostgreSQL 17 and real Prisma query', async () => {
     const [row] = await client.$queryRaw`SELECT current_setting('server_version') AS version`;
@@ -172,7 +191,7 @@ try {
     await database.start();
     assert.equal(await client.tenant.count(), 0);
   });
-  console.log(`REAL POSTGRESQL: ${passed} checks passed. No production connection used.`);
+  console.log(`${native ? 'NATIVE' : 'WASM'} REAL POSTGRESQL: ${passed} checks passed. No production connection used.`);
 } finally {
   generator.stop();
   await client?.$disconnect();

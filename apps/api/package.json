@@ -19,7 +19,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "test:postgres": "node scripts/test-postgres.mjs",
-    "pretest:postgres": "npm run build"
+    "pretest:postgres": "npm run build",
+    "pretest:postgres:native": "npm run build",
+    "test:postgres:native": "node scripts/test-postgres.mjs --native"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1161.0",
