@@ -1,13 +1,13 @@
 # Final project status — current execution checkpoint
 
-**NOT IMPLEMENTED: full project completion. NOT production-ready.** Latest source501c263 contains implemented candidate/rights/monitoring slices of the external-server request. This is not a claim that all requested functions were completed. Comprehensive current scope, API/migration list, evidence boundaries and missing functionality: EXTERNAL_SERVER_MANAGER.md.
+**NOT IMPLEMENTED: full project completion. NOT production-ready.** Latest runtime sourcec30ed04 contains implemented candidate/rights/monitoring slices of the external-server request. This is not a claim that all requested functions were completed. Comprehensive current scope, API/migration list, evidence boundaries and missing functionality: EXTERNAL_SERVER_MANAGER.md.
 
 ## VERIFIED
 
 - Existing architecture/design preserved; same branch, additive isolated changes, no production migrations/data/provider/settings, no merge or deployment.
-- Local API38suites544tests, API/Admin lint and typechecks; Web lint3preexisting warnings (0errors). Local actual PostgreSQL17/WASM30checks with40Prisma models and42backend tables. Actual Nest/DB admin RBAC and candidate/rights/evidence/schedule tests.
+- Local API38suites545tests, API/Admin lint and typechecks; Web lint3preexisting warnings (0errors). Local actual PostgreSQL17/WASM30checks with40Prisma models and42backend tables. Actual Nest/DB admin RBAC and candidate/rights/evidence/schedule tests.
 - Local production Admin build and Chromium API-fixture interaction with current candidate UI, cancellation/authorization, empty/retry and390/820/1280widths. Not live browser-to-production/backend identity integration.
-- Previous full trusted CI42875661926 at36a34c7 SUCCESS, including native Prisma Node22/24 and Auth/SMTP plus regression. Newer source must have its own passing run before equivalent claim. Latest501c263 workflow42877270418 was running when this document was written; final results are appended to external CI evidence separately.
+- Previous full trusted CI42875661926 at36a34c7 SUCCESS, including native Prisma Node22/24 and Auth/SMTP plus regression. Newer source must have its own passing run before equivalent claim. Final runtime c30ed04 workflow42878242033 completed SUCCESS. Both native Node22/24 passed32checks each; Auth/SMTP passed; application API/Web/Admin/type/lint/build/real TLS/worker/browser/media/audit steps all passed. Actual metadata/annotations are saved under docs/evidence/external-final-*.json. Final documentation/evidence-only commit is not a separately tested runtime change.
 - Earlier local original media HLS/DASH/MP4 browser23, responsive120, search/CSP19, popup18 passed against prior production Web build. Not external authorized provider playback or physical-device certification.
 
 ## IMPLEMENTED BUT UNVERIFIED

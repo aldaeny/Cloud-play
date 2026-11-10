@@ -1,6 +1,6 @@
 # Current execution status — External Server Manager
 
-Branch `arena/d4593efb-cloud-play`; runtime source `501c263`. This section supersedes historical branch/status claims below; the older inventory is retained, not deleted. No deployment or merge authorized/performed.
+Branch `arena/d4593efb-cloud-play`; runtime source `c30ed04`. This section supersedes historical branch/status claims below; the older inventory is retained, not deleted. No deployment or merge authorized/performed.
 
 |Area|Status|Evidence / limitation|
 |---|---|---|
