@@ -214,7 +214,7 @@ try {
   await check('a redirect to an internal host is refused', async () => {
     guard.resetHostVerdicts();
     lookupImpl = async host => [{ address: String(host).includes('internal') ? '127.0.0.1' : PUBLIC_IP, family: 4 }];
-    fetchImpl = async () => new Response(null, { status: 302, headers: { location: 'http://internal.example.com/x' } });
+    fetchImpl = async () => new Response(null, { status: 302, headers: { location: 'https://internal.example.com/x' } });
     await assert.rejects(() => guard.safeFetch('https://ok.example.com/list.m3u'), /BLOCKED_ADDRESS/);
     lookupImpl = async () => [{ address: PUBLIC_IP, family: 4 }];
   });

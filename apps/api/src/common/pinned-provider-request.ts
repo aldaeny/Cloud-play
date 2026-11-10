@@ -33,7 +33,7 @@ export async function pinnedProviderRequest(url: URL, init: RequestInit,
     ]);
   } catch { throw new ProviderTransportError('ORIGIN_UNREACHABLE'); }
   finally { clearTimeout(timer); }
-  if (!records.length || records.some(row => !publicProviderAddress(row.address))) throw new ProviderTransportError('INVALID_URL');
+  if (!records.length || records.some(row => !publicProviderAddress(row.address) || row.family !== isIP(row.address))) throw new ProviderTransportError('INVALID_URL');
   if (signal.aborted) throw new ProviderTransportError('ORIGIN_UNREACHABLE');
   const selected = records[0];
   return new Promise<Response>((resolve, reject) => {

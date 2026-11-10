@@ -65,4 +65,25 @@ export async function testRls(pool, root, check) {
       for (const table of tables) assert.equal((await conn.query(`DELETE FROM ${table}`)).rowCount, 1);
     });
   });
+  await check('all application tables: browser roles denied SELECT INSERT UPDATE DELETE', async () => {
+    const result = await pool.query(`SELECT tablename, rowsecurity FROM pg_tables
+      WHERE schemaname = 'public' AND tablename NOT LIKE 'cloudplay_%' ORDER BY tablename`);
+    assert.equal(result.rows.length, 35, 'all33 models plus two implicit relationship tables inventoried');
+    let assertions = 0;
+    for (const { tablename } of result.rows) {
+      const table = '"' + tablename.replaceAll('"', '""') + '"';
+      const columns = await pool.query(`SELECT column_name FROM information_schema.columns
+        WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position LIMIT 1`, [tablename]);
+      const column = '"' + columns.rows[0].column_name.replaceAll('"', '""') + '"';
+      for (const role of ['anon', 'authenticated']) {
+        for (const sql of [`SELECT * FROM ${table}`, `INSERT INTO ${table} DEFAULT VALUES`,
+          `UPDATE ${table} SET ${column}=${column} WHERE false`, `DELETE FROM ${table} WHERE false`]) {
+          await assert.rejects(asRole(role, stranger, conn => conn.query(sql)), { code: '42501' });
+          assertions++;
+        }
+      }
+    }
+    console.log(`  ${assertions} real SQL denials across35 backend tables; browser roles have no table privileges`);
+  });
+
 }
