@@ -39,9 +39,8 @@ jobs:
           # Only our fixed PASS labels/counts, never raw URLs, environment or errors.
           # Annotations remain readable via GitHub API when artifact hosts are blocked.
           if [ -f native-postgres.log ]; then
-            while IFS= read -r line; do
-              printf '::notice title=Native PostgreSQL assertion::%s\n' "$line"
-            done < <(grep -E '^(PASS |NATIVE REAL POSTGRESQL:)' native-postgres.log || true)
+            evidence=$(grep -E '^(PASS |FAIL |NATIVE REAL POSTGRESQL:)' native-postgres.log | paste -sd '|' - || true)
+            printf '::notice title=Native PostgreSQL assertions::%s\n' "$evidence"
           fi
       - uses: actions/upload-artifact@v4
         if: always()

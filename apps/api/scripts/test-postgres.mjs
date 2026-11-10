@@ -37,7 +37,15 @@ await new Promise((resolve, reject) => reservation.close(error => error ? reject
 const password = randomUUID();
 let database, pool, client;
 let passed = 0;
-async function check(name, fn) { await fn(); passed++; console.log(`PASS ${name}`); }
+async function check(name, fn) {
+  try { await fn(); passed++; console.log(`PASS ${name}`); }
+  catch (error) {
+    const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code) ? error.code : 'CHECK_FAILED';
+    const scalar = value => ['number','boolean'].includes(typeof value) ? String(value) : 'redacted';
+    console.log(`FAIL ${name} code=${code} actual=${scalar(error?.actual)} expected=${scalar(error?.expected)}`);
+    throw error;
+  }
+}
 try {
   if (native) {
     const nativeSchema = path.join(output, 'native.prisma');
