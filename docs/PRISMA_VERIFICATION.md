@@ -1,3 +1,5 @@
+> **Current External Manager checkpoint:** see [EXTERNAL_SERVER_FINAL_ACCEPTANCE.md](EXTERNAL_SERVER_FINAL_ACCEPTANCE.md). Runtime `955e4e2` adds actual multi-provider groups/channels, rights-gated failover/playback, durable report outbox and evidence quarantine/scanning. Current schema46models/48backend tables and126declared Nest routes. Local39suites584tests and36isolated PostgreSQL checks pass. Historical missing-feature statements/counts below retain their original evidence context; they do not supersede the new acceptance report. Production acceptance remains blocked, not granted.
+
 > Historical evidence subset. Current routes108/models40/backend tables42. See EXTERNAL_SERVER_MANAGER.md for added routes, tests and scope. Earlier counts are retained with their run context.
 
 # Prisma and database verification

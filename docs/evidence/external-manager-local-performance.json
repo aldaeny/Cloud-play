@@ -1,0 +1,16 @@
+{
+  "scope": "Disposable PostgreSQL17 WASM, synthetic two-source functional suite, sequential requests/concurrent evaluation test; not production/concurrent streaming load",
+  "evaluate": {
+    "n": 20,
+    "meanMs": 18.326341000000184,
+    "p95Ms": 26.327957999999853,
+    "maxMs": 29.802233000000342
+  },
+  "selected": {
+    "n": 14,
+    "meanMs": 21.009185571428652,
+    "p95Ms": 33.17354200000045,
+    "maxMs": 33.17354200000045
+  },
+  "measuredRuntime": "1536b16 (before final switch-FK/reflection changes; not a final-production load result)"
+}

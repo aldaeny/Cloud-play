@@ -1,3 +1,5 @@
+> **Current External Manager checkpoint:** see [EXTERNAL_SERVER_FINAL_ACCEPTANCE.md](EXTERNAL_SERVER_FINAL_ACCEPTANCE.md). Runtime `955e4e2` adds actual multi-provider groups/channels, rights-gated failover/playback, durable report outbox and evidence quarantine/scanning. Current schema46models/48backend tables and126declared Nest routes. Local39suites584tests and36isolated PostgreSQL checks pass. Historical missing-feature statements/counts below retain their original evidence context; they do not supersede the new acceptance report. Production acceptance remains blocked, not granted.
+
 # External Servers and Content Rights — implemented scope
 
 ## Release decision
