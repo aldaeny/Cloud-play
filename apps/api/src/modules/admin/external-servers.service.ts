@@ -152,7 +152,7 @@ export class ExternalServersService {
     const license = row.licenseId ? await this.prisma.contentLicense.findFirst({ where: { id: row.licenseId, tenantId } }) : null;
     const rights = mayRedistribute(license, row.providerName, platform, country);
     // Advisory only. No publication/failover mutation endpoint exists until full scope checks are implemented.
-    return { rightsEligible: rights, operationallyEligible: !!row.lastSuccessfulCheck && Date.now() - row.lastSuccessfulCheck.getTime() < 900000,
+    return { rightsEligible: rights, operationallyEligible: !!row.lastSuccessfulCheck && !!row.lastCheckedAt && row.lastSuccessfulCheck >= row.lastCheckedAt && Date.now() - row.lastSuccessfulCheck.getTime() < 900000,
       productionEnabled: false, licensingStatus: license && license.expiryDate <= new Date() ? 'expired' : license?.status || 'licensing_unverified' };
   }
   async history(tenantId: string, serverId: string) {
@@ -174,7 +174,7 @@ export class ExternalServersService {
     const lease = await this.prisma.externalServer.updateMany({ where: { id: row.id, tenantId, deletedAt: null, OR: [{ lastCheckedAt: null }, { lastCheckedAt: { lt: new Date(Date.now() - 60000) } }] }, data: { lastCheckedAt: startedAt } });
     if (!lease.count) throw new BadRequestException('CHECK_ALREADY_RUNNING');
     try {
-      if (row.protocol === 'xtream') { details.reason = 'USE_EXISTING_XTREAM_HEALTH_ENDPOINT'; }
+      if (row.protocol === 'xtream') { result = 'not_checked'; details.reason = 'USE_EXISTING_XTREAM_HEALTH_ENDPOINT'; }
       else {
         const response = await pinnedProviderRequest(endpoint, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 1024 * 1024);
         details.dns = details.tcp = details.tls = 'passed'; details.httpStatus = response.status;
@@ -190,14 +190,14 @@ export class ExternalServersService {
             const mime = segment.headers.get('content-type')?.split(';')[0] || '';
             details.segmentStatus = segment.ok && ['video/mp2t', 'video/mp4', 'audio/aac', 'audio/mp4'].includes(mime) ? 'fetched_mime_valid' : 'failed_or_invalid_mime';
           } else if (parsed.kind === 'variant') details.segmentStatus = 'variant_not_fetched';
-        } else if (response.ok) { details.reason = 'REACHABLE_NOT_PLAYBACK_VERIFIED'; }
+        } else if (response.ok) { result = 'reachable_not_playback_verified'; details.reason = 'REACHABLE_NOT_PLAYBACK_VERIFIED'; }
       }
     } catch { details.reason = 'TRANSPORT_FAILED_OR_POLICY_DENIED'; }
     details.responseTimeMs = Date.now() - startedAt.getTime();
     const finishedAt = new Date();
     return this.prisma.$transaction(async tx => {
       const check = await tx.serverHealthCheck.create({ data: { tenantId, serverId, startedAt, finishedAt, result, details } });
-      if (result === 'reachable_and_hls_valid') await tx.externalServer.updateMany({ where: { tenantId, id: serverId, lastCheckedAt: startedAt, endpointEncrypted: row.endpointEncrypted }, data: { lastSuccessfulCheck: finishedAt } });
+      if (result === 'reachable_and_hls_valid' && details.segmentStatus !== 'failed_or_invalid_mime') await tx.externalServer.updateMany({ where: { tenantId, id: serverId, lastCheckedAt: startedAt, endpointEncrypted: row.endpointEncrypted }, data: { lastSuccessfulCheck: finishedAt } });
       await this.audit(tx, tenantId, actorId, serverId, 'TECHNICAL_CHECK_COMPLETED'); return check;
     });
   }
