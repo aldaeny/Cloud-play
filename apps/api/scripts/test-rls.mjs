@@ -70,7 +70,8 @@ export async function testRls(pool, root, check) {
       WHERE schemaname = 'public' AND tablename NOT LIKE 'cloudplay_%' ORDER BY tablename`);
     assert.equal(result.rows.length, 35, 'all33 models plus two implicit relationship tables inventoried');
     let assertions = 0;
-    for (const { tablename } of result.rows) {
+    for (const { tablename, rowsecurity } of result.rows) {
+      assert.equal(rowsecurity, true, `${tablename} must enable RLS`);
       const table = '"' + tablename.replaceAll('"', '""') + '"';
       const columns = await pool.query(`SELECT column_name FROM information_schema.columns
         WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position LIMIT 1`, [tablename]);
@@ -84,6 +85,54 @@ export async function testRls(pool, root, check) {
       }
     }
     console.log(`  ${assertions} real SQL denials across35 backend tables; browser roles have no table privileges`);
+  });
+
+  await check('all backend tables: default-deny RLS survives accidental browser CRUD grants', async () => {
+    const tables = (await pool.query(`SELECT t.tablename, (SELECT a.attname FROM pg_attribute a
+      WHERE a.attrelid = format('%I.%I',t.schemaname,t.tablename)::regclass
+      AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum LIMIT 1) AS first_column
+      FROM pg_tables t WHERE t.schemaname='public'
+      AND t.tablename NOT LIKE 'cloudplay_%' ORDER BY t.tablename`)).rows;
+    const conn = await pool.connect();
+    try {
+      await conn.query('BEGIN');
+      // Owned fixture data makes SELECT denial meaningful, not an empty-table pass.
+      const tenant = randomUUID();
+      await conn.query('INSERT INTO "Tenant" (id) VALUES ($1)', [tenant]);
+      for (const { tablename } of tables) {
+        const name = '"' + tablename.replaceAll('"', '""') + '"';
+        await conn.query(`GRANT SELECT,INSERT,UPDATE,DELETE ON ${name} TO anon,authenticated`);
+      }
+      for (const role of ['anon','authenticated']) {
+        await conn.query(`SET LOCAL ROLE ${role}`);
+        await conn.query("SELECT set_config('request.jwt.claim.sub', $1, true)", [stranger]);
+        for (const { tablename, first_column } of tables) {
+          const name = '"' + tablename.replaceAll('"', '""') + '"';
+          assert.equal((await conn.query(`SELECT * FROM ${name}`)).rowCount, 0);
+          assert.equal((await conn.query(`DELETE FROM ${name}`)).rowCount, 0);
+          const column = '"' + first_column.replaceAll('"', '""') + '"';
+          assert.equal((await conn.query(`UPDATE ${name} SET ${column}=${column}`)).rowCount, 0);
+          // A harmless self-assignment still must not see any rows.
+          await conn.query('SAVEPOINT denied_insert');
+          await assert.rejects(conn.query(`INSERT INTO ${name} DEFAULT VALUES`), { code: '42501' });
+          await conn.query('ROLLBACK TO SAVEPOINT denied_insert');
+        }
+        await conn.query('RESET ROLE');
+      }
+      assert.equal((await conn.query('SELECT * FROM "Tenant" WHERE id=$1', [tenant])).rowCount, 1,
+        'backend owner retains access; never browser-role context');
+    } finally { await conn.query('ROLLBACK'); conn.release(); }
+  });
+
+  await check('backend RLS migration isolated rollback and reapply restores all flags', async () => {
+    const migration = path.join(root, 'apps/api/prisma/migrations/20261110010000_backend_rls_default_deny');
+    await pool.query(await readFile(path.join(migration, 'rollback.sql'), 'utf8'));
+    const flags = await pool.query(`SELECT tablename,rowsecurity FROM pg_tables WHERE schemaname='public'
+      AND tablename NOT LIKE 'cloudplay_%'`);
+    for (const row of flags.rows) assert.equal(row.rowsecurity, row.tablename === 'XtreamCatalogSnapshot');
+    await pool.query(await readFile(path.join(migration, 'migration.sql'), 'utf8'));
+    assert.equal((await pool.query(`SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'
+      AND tablename NOT LIKE 'cloudplay_%' AND rowsecurity`)).rows[0].n, 35);
   });
 
 }

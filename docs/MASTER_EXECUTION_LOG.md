@@ -17,3 +17,7 @@ This record is incremental, not project completion; all acceptance gaps in previ
 ## Phase3 bounded authorization/resource fixes
 
 Verified latent defect: ProfilesService.verifyPin treated nonexistent profiles as no-PIN and queried only by profile ID. No production caller currently uses this utility (controller already performs owner filtering). Utility now requires owner ID, scopes lookup to owner and fails404 for missing/cross-user profiles; contract tests assert query scope and rejection. Analytics service accepted negative/NaN/unbounded query limits/windows; now enforces integers limit1–100/days1–365 before DB work. Full API33suites481tests and lint passed. This is bounded remediation, not proof all90routes or Supabase-only cutover are complete; legacy identity endpoints/compatibility are intentionally not removed without verified replacement lifecycle.
+
+## Phase4 backend default-deny RLS
+
+Added reversible isolated-tested migration enabling all34remaining backend tables (35total already including snapshot). No browser policies/grants added; Nest owner connections retain existing behavior. Fresh real PostgreSQL23checks include280ACL denials, all-table RLS behavior even after temporary CRUD grants, privileged owner sentinel visibility, existing browser-owned RLS and new migration rollback/reapply. No production DB access. See RLS_VERIFICATION.md for exact evidence and unverified managed service-role/tenant lifecycle scope.
