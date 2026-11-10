@@ -19,7 +19,7 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
  const vault=app.get(require('../dist/modules/admin/xtream-servers.service.js').XtreamServersService);
  const channels=app.get(require('../dist/modules/admin/external-channels.service.js').ExternalChannelsService);
  const request=require('supertest');const key='isolated-request-geo-key-at-least-32-characters';process.env.EXTERNAL_GEO_SIGNING_KEY=key;
- let mediaServer,apiServer,edge,next,browser;const fixtures=[];let checks=0;
+ let mediaServer,apiServer,edge,next,browser;const fixtures=[];let checks=0;let secondUserId;
  const pass=label=>{checks++;console.log('PASS protected authenticated playback: '+label);};
  try{
   mediaServer=createServer(tlsOptions,async(req,res)=>{
@@ -40,6 +40,13 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   }
   const token=session.access_token;
   const geo=(channelId,bearer=token,patch={})=>{const issuedAt=Date.now(),value=Buffer.from(JSON.stringify({channelId,tokenHash:createHash('sha256').update(bearer).digest('hex'),country:'IQ',platform:'web',issuedAt,expiresAt:issuedAt+30000,nonce:randomUUID(),...patch})).toString('base64url');return value+'.'+createHmac('sha256',key).update(value).digest('base64url');};
+  // A second independently authenticated GoTrue user (not a mocked principal).
+  const adminPart=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')+'.'+Buffer.from(JSON.stringify({role:'service_role',aud:'authenticated',exp:Math.floor(Date.now()/1000)+300})).toString('base64url');
+  const adminToken=adminPart+'.'+createHmac('sha256','isolated-fixture-signing-key-not-for-any-production-use').update(adminPart).digest('base64url');
+  const secondEmail='playback-'+randomUUID()+'@example.invalid',secondPassword=randomUUID()+'Aa1!';
+  const adminCreated=await fetch('http://127.0.0.1:9999/admin/users',{method:'POST',headers:{Authorization:`Bearer ${adminToken}`,'Content-Type':'application/json'},body:JSON.stringify({email:secondEmail,password:secondPassword,email_confirm:true})});assert.equal(adminCreated.status,200);
+  secondUserId=(await adminCreated.json()).id;await prisma.appUser.create({data:{id:secondUserId,tenantId:tenant,status:'active'}});
+  const secondLogin=await fetch('http://127.0.0.1:9999/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:secondEmail,password:secondPassword})});assert.equal(secondLogin.status,200);const secondToken=(await secondLogin.json()).access_token;
   const base='/external-playback/'+fixtures[0].channel.id;
   const create=(assertion)=>request(app.getHttpServer()).post(base+'/session').set('Authorization',`Bearer ${token}`).set('x-external-geo',assertion);
   await create('unsigned').expect(403);await create(geo(fixtures[0].channel.id,token,{expiresAt:1})).expect(403);
@@ -47,7 +54,7 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   await create(assertion).expect(403);
   const races=await Promise.all([1,2,3,4].map(()=>create(geo(fixtures[0].channel.id))));assert.equal(races.filter(r=>r.status===201).length,1);assert.equal(races.filter(r=>r.status===429).length,3);
   const get=(url,id=lease.body.id,bearer=token)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${bearer}`).set('x-playback-session',id);
-  await get(base+'/manifest').expect(200);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
+  await get(base+'/manifest').expect(200);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id)).expect(200);
   await prisma.externalPlaybackLease.update({where:{id:lease.body.id},data:{expiresAt:new Date(0)}});
   await get(base+'/manifest').expect(403);
@@ -80,11 +87,22 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
    // Force network interruption and restore before lease TTL expires.
    await context.setOffline(true);await wait(300);await context.setOffline(false);
    const before=await video.evaluate(v=>v.currentTime);await page.waitForFunction(value=>document.querySelector('video')?.currentTime>value+0.1,before,{timeout:20000});
+   // Exercise every HLS resource class independently via the real bridge.
+   const rootPath='https://127.0.0.1:9445';
+   const masterResponse=await context.request.get(rootPath+'/api/external/'+name+'/manifest');assert.equal(masterResponse.status(),200);
+   const master=await masterResponse.text();const variant=master.split('\n').find(line=>line.startsWith('/api/external/'));
+   const variantResponse=await context.request.get(rootPath+variant);assert.equal(variantResponse.status(),200);
+   const variantText=await variantResponse.text(),segment=variantText.split('\n').find(line=>line.startsWith('/api/external/'));
+   const range=await context.request.get(rootPath+segment,{headers:{Range:'bytes=0-9'}});assert.equal(range.status(),206);assert.equal((await range.body()).length,10);assert.match(range.headers()['content-range'],/^bytes 0-9\//);
+   const subtitlePlaylist=master.split('\n').find(line=>line.startsWith('#EXT-X-MEDIA:TYPE=SUBTITLES')).match(/URI="([^"]+)"/)[1];
+   const subtitleResponse=await context.request.get(rootPath+subtitlePlaylist);assert.equal(subtitleResponse.status(),200);const subtitleSegment=(await subtitleResponse.text()).split('\n').find(line=>line.startsWith('/api/external/'));
+   assert.equal((await context.request.get(rootPath+subtitleSegment)).status(),200);
    // Revoke the stored lease without clearing its cookies; next request denies.
    const currentCookie=(await context.cookies()).find(c=>c.name==='__Host-cloudplay-lease');
    await prisma.externalPlaybackLease.update({where:{id:currentCookie.value},data:{revokedAt:new Date()}});
    assert.equal((await context.request.get('https://127.0.0.1:9445/api/external/'+name+(name==='alsharqiya'?'/manifest':'/manifest.mpd'))).status(),403);
    pass('browser brief network interruption recovers; independently revoked DB lease denies subsequent manifest with cookies retained');
+   for(const resource of [variant,segment,subtitlePlaylist,subtitleSegment])assert.equal((await context.request.get(rootPath+resource)).status(),403);
    await page.close();
    // New page/context session is needed for the other synthetic channel.
    if(name==='alsharqiya'){await context.close();break;}
@@ -113,6 +131,7 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   for(const server of [edge,apiServer,mediaServer])if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
   transport.pinnedProviderRequest=original;
   await prisma.externalPlaybackLease.deleteMany({where:{userId}});
+  if(secondUserId)await prisma.appUser.delete({where:{id:secondUserId}});
   for(const f of fixtures){await prisma.externalChannel.update({where:{id:f.channel.id},data:{activeSourceId:null}});await prisma.externalFailoverEvent.deleteMany({where:{channelId:f.channel.id}});await prisma.channelSource.deleteMany({where:{channelId:f.channel.id}});await prisma.externalChannel.delete({where:{id:f.channel.id}});await prisma.providerGroup.delete({where:{id:f.group.id}});await prisma.serverHealthCheck.deleteMany({where:{serverId:f.server.id}});await prisma.externalServer.delete({where:{id:f.server.id}});await prisma.licenseReview.deleteMany({where:{licenseId:f.license.id}});await prisma.contentLicense.delete({where:{id:f.license.id}});}
  }
 }

@@ -1,6 +1,6 @@
+'use client';
 import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
 import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
-'use client';
 
 import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, RotateCcw } from 'lucide-react';
@@ -168,7 +168,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
               if (cancelled || !hls) return;
               if (data.details === HlsEngine.ErrorDetails.BUFFER_STALLED_ERROR) { setStatus('buffering'); return; }
               if (!data.fatal) return;
-              if (data.type === HlsEngine.ErrorTypes.NETWORK_ERROR) recoverNetwork(() => hls?.startLoad());
+              if (data.type === HlsEngine.ErrorTypes.NETWORK_ERROR) recoverNetwork(() => { if(src.startsWith('/api/external/'))void prepareMediaSession(src).then(()=>hls?.loadSource(src),()=>fail('انتهت جلسة التشغيل أو لم تعد القناة متاحة.'));else hls?.startLoad(); });
               else if (data.type === HlsEngine.ErrorTypes.MEDIA_ERROR && mediaRetries++ < 1) hls.recoverMediaError();
               else fail(data.type === HlsEngine.ErrorTypes.KEY_SYSTEM_ERROR ? 'هذا المصدر محمي بحقوق DRM ولم يُفعّل تشغيله الآمن في المتصفح.' : 'تعذر تشغيل البث. المصدر قد يكون متوقفاً أو بترميز غير مدعوم.');
             });

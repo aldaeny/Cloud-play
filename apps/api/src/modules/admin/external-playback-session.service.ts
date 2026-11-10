@@ -1,3 +1,4 @@
+import {playbackMetric} from './external-playback-metrics';
 import { ForbiddenException, HttpException, Injectable } from '@nestjs/common';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
@@ -23,7 +24,7 @@ function binding(req:Request):{token:string;binding:string;sessionId:string}{
   try{
     const token=req.headers.authorization?.match(/^Bearer (\S+)$/i)?.[1];if(!token)throw new Error();
     const claims=JSON.parse(Buffer.from(token.split('.')[1],'base64url').toString());
-    if(typeof claims.session_id!=='string'||!/^[a-f0-9-]{36}$/i.test(claims.session_id))throw new Error();
+    if(typeof claims.session_id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(claims.session_id))throw new Error();
     return {token,sessionId:claims.session_id as string,binding:createHash('sha256').update(claims.session_id).digest('hex')};
   }catch{throw new ForbiddenException('SUPABASE_SESSION_REQUIRED');}
 }
@@ -54,10 +55,11 @@ export class ExternalPlaybackSessionService {
   });
  }
  async require(user:UserRequest,channelId:string,id:unknown,req:Request){
-  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/i.test(id))throw new ForbiddenException('PLAYBACK_SESSION_REQUIRED');
-  const auth=binding(req),lease=await this.prisma.externalPlaybackLease.findFirst({where:{id,userId:user.id,tenantId:user.tenantId,channelId,authBinding:auth.binding,revokedAt:null,expiresAt:{gt:new Date()},absoluteExpiresAt:{gt:new Date()}}});
+  if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))throw new ForbiddenException('PLAYBACK_SESSION_REQUIRED');
+  const auth=binding(req),lease=await this.prisma.externalPlaybackLease.findFirst({where:{id,userId:user.id,tenantId:user.tenantId,channelId,authBinding:auth.binding}});
   await this.assertSupabaseSession(user,auth.sessionId);
-  if(!lease)throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');
+  if(!lease||lease.revokedAt)throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');
+  if(lease.expiresAt.getTime()<=Date.now()||lease.absoluteExpiresAt.getTime()<=Date.now()){playbackMetric('session_expiration',1);throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');}
   return lease;
  }
  async renew(user:UserRequest,channelId:string,id:unknown,req:Request){
@@ -72,7 +74,7 @@ export class ExternalPlaybackSessionService {
   });
  }
  async revoke(user:UserRequest,id:unknown){
-  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/i.test(id))throw new ForbiddenException('PLAYBACK_SESSION_REQUIRED');
+  if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))throw new ForbiddenException('PLAYBACK_SESSION_REQUIRED');
   await this.prisma.externalPlaybackLease.updateMany({where:{id,userId:user.id,tenantId:user.tenantId,revokedAt:null},data:{revokedAt:new Date()}});
  }
 }

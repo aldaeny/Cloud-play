@@ -24,7 +24,7 @@
  * Additive by design: `JwtAuthGuard` is untouched, so nothing that works today
  * changes behaviour until a controller opts in to this guard.
  */
-import { CanActivate, ExecutionContext, Injectable, HttpException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, HttpException } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma.service';
 import { UserRequest } from './permissions.decorator';
@@ -50,8 +50,12 @@ export class SupabaseAuthGuard implements CanActivate {
       Request & { user?: UserRequest; supabase?: SupabasePrincipal }
     >();
 
+    const deny=(code:string,status:number)=>{
+      if(request.path?.startsWith('/external-playback/'))new Logger('ProtectedPlayback').warn(JSON.stringify({event:'authorization_failure',value:1,status}));
+      return new HttpException(code,status);
+    };
     const token = SupabaseAuthService.bearer(request.headers['authorization']);
-    if (!token) throw new HttpException('SIGN_IN_REQUIRED', 401);
+    if (!token) throw deny('SIGN_IN_REQUIRED', 401);
 
     let identity;
     try {
@@ -59,9 +63,9 @@ export class SupabaseAuthGuard implements CanActivate {
     } catch (error) {
       if (error instanceof SupabaseAuthError) {
         // 401 for a bad session, 503 when we cannot tell — never a false "allowed".
-        throw new HttpException(error.code, supabaseAuthStatus(error.code));
+        throw deny(error.code, supabaseAuthStatus(error.code));
       }
-      throw new HttpException('AUTH_UNAVAILABLE', 503);
+      throw deny('AUTH_UNAVAILABLE', 503);
     }
 
     // The verified Supabase id IS the business primary key.

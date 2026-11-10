@@ -87,6 +87,13 @@ try {
     timeout: 300000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
       AUTH_PLAYBACK_SESSION:JSON.stringify(playbackLogin.data),
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
+  }).catch(error=>{
+    const safeLines=String(error.stdout||'').split('\n').filter(line=>/^PASS protected authenticated playback:/.test(line));
+    for(const line of safeLines)console.log('::notice title=Protected playback completed stage::'+line);
+    const details=String(error.stderr||'');
+    const expected=details.match(/(NEXT_FIXTURE_EXITED|Next fixture ready|TimeoutError|AssertionError|SUPABASE_SESSION_REVOKED|AUTH_SESSION_CHECK_UNAVAILABLE|no external provider contact)/)?.[1]||'CHILD_INTEGRATION_FAILED';
+    console.log('::error title=Protected playback isolated failure::'+expected);
+    throw new Error('ISOLATED_NEST_PLAYBACK_FAILED');
   });
   for(const line of nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')))await passed(line.slice(5));
   assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,5);

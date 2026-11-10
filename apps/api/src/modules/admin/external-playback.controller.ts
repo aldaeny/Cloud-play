@@ -59,7 +59,7 @@ export class ExternalPlaybackController {
   @Get(':id/manifest') @Header('Cache-Control','no-store')
   async start(@CurrentUser() user: UserRequest, @Param('id') id: string, @Req() req: Request, @Res() res: Response) {
     const lease=await this.sessions.require(user,id,req.headers['x-playback-session'],req);
-    const scope:Scope={userId:user.id,tenantId:user.tenantId,channelId:id,country:lease.country,platform:lease.platform,expiresAt:Math.min(Date.now()+300000,lease.absoluteExpiresAt.getTime())};
+    const scope:Scope={userId:user.id,tenantId:user.tenantId,channelId:id,country:lease.country,platform:lease.platform,expiresAt:lease.absoluteExpiresAt.getTime()};
     const source = await this.channels.selected(user.tenantId, id, scope.country, scope.platform);
     const url = this.vault.decryptSecret(source.server.endpointEncrypted);
     return this.send(user, { ...scope, sessionId:lease.id, sourceId: source.id, url, base: url, depth: 0, representations: [] }, res,req);
@@ -70,7 +70,7 @@ export class ExternalPlaybackController {
     try {
       if (typeof token !== 'string' || token.length > 16000) throw new Error();
       ticket = JSON.parse(this.vault.decryptSecret(token));
-      if (ticket.channelId !== id || ticket.userId !== user.id || ticket.tenantId !== user.tenantId || ticket.expiresAt <= Date.now() || ticket.expiresAt > Date.now()+300000 || !Number.isInteger(ticket.depth) || ticket.depth > 3) throw new Error();
+      if (ticket.channelId !== id || ticket.userId !== user.id || ticket.tenantId !== user.tenantId || ticket.expiresAt <= Date.now() || ticket.expiresAt > Date.now()+4*3600000 || !Number.isInteger(ticket.depth) || ticket.depth > 3) throw new Error();
       if (ticket.url.includes('$')) {
         const rep = representation || ticket.representations[0];
         if (!ticket.representations.includes(rep)) throw new Error();
@@ -78,7 +78,7 @@ export class ExternalPlaybackController {
       }
     } catch { throw new ForbiddenException('INVALID_MEDIA_RESOURCE'); }
     const lease=await this.sessions.require(user,id,req.headers['x-playback-session'],req);
-    if(lease.id!==ticket.sessionId)throw new ForbiddenException('MEDIA_SESSION_MISMATCH');
+    if(ticket.expiresAt>lease.absoluteExpiresAt.getTime()||lease.id!==ticket.sessionId)throw new ForbiddenException('MEDIA_SESSION_MISMATCH');
     return this.send(user, ticket, res,req);
   }
   private async send(user: UserRequest, ticket: Ticket, res: Response,req:Request) {
@@ -102,7 +102,8 @@ export class ExternalPlaybackController {
     }
     if (!response?.ok) {
       await this.channels.playbackFailure(user.tenantId,ticket.channelId,ticket.sourceId,Math.min(maxAttempts,attempts+1));
-      return res.status(502).json({ error:'UPSTREAM_MEDIA_UNAVAILABLE_REFRESH_MANIFEST' });
+      if(response?.status===429)res.setHeader('Retry-After','5');
+      return res.status(response?.status===404?404:response?.status===429?429:502).json({ error:'UPSTREAM_MEDIA_UNAVAILABLE_REFRESH_MANIFEST' });
     }
     const mime = response.headers.get('content-type')?.split(';')[0].toLowerCase();
     const reference = (value: string, representations = ticket.representations) => {

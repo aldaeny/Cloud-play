@@ -1,3 +1,4 @@
+import {playbackMetric} from './external-playback-metrics';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, ExternalChannel } from '@prisma/client';
 import { isUUID } from 'class-validator';
@@ -117,7 +118,7 @@ export class ExternalChannelsService {
     return body.enabled ? this.evaluate(tenantId, channelId, true) : { activeSourceId: null };
   }
   async evaluate(tenantId: string, channelId: string, force = false, now = new Date()) {
-    return this.prisma.$transaction(async tx => {
+    const result=await this.prisma.$transaction(async tx => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${channelId}, 0))`;
       const channel = await tx.externalChannel.findFirst({ where: { id: externalId(channelId), tenantId } });
       if (!channel) throw new NotFoundException('CHANNEL_NOT_FOUND');
@@ -159,6 +160,7 @@ export class ExternalChannelsService {
       await tx.externalChannel.update({ where: { id: channelId, tenantId }, data: { activeSourceId: nextId, outageStartedAt, ...(retryDue ? { lastEvaluationAt: now } : {}), ...(changed && channel.activeSourceId ? { lastSwitchAt: now } : {}) } });
       return { activeSourceId: nextId, reason, changed };
     }, { timeout: 10000 });
+    if(result.changed)playbackMetric('failover',1);return result;
   }
   async selected(tenantId: string, channelId: string, country: string, platform: string) {
     const channel = await this.channel(tenantId, channelId);
@@ -169,6 +171,7 @@ export class ExternalChannelsService {
     return row.activeSource;
   }
   async playbackFailure(tenantId: string, channelId: string, sourceId: string, attempts: number) {
+    playbackMetric('provider_failure',1);
     const source=await this.prisma.channelSource.findFirst({where:{id:sourceId,tenantId,channelId}});
     if(!source)return;
     const count=Math.max(1,Math.min(3,attempts)),now=new Date();
