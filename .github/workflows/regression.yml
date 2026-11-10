@@ -60,6 +60,18 @@ jobs:
           npm run test:layout --workspace aether-web
           npm run test:search:browser --workspace aether-web
           npm run test:popup --workspace aether-web
+      - name: Actual Admin browser provider and sync states (API fixtures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start --workspace aether-admin -- --hostname 0.0.0.0 > admin-fixture.log 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for n in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3002 >/dev/null; then break; fi
+            sleep 1
+          done
+          BASE_URL=http://127.0.0.1:3002 node apps/web/tests/admin-providers-browser.mjs
       - name: Audit report (tooling findings remain visible)
         if: always()
         shell: bash
@@ -76,4 +88,5 @@ jobs:
             audit-full.json
             audit-production.json
             web-fixture.log
+            admin-fixture.log
           retention-days: 14
