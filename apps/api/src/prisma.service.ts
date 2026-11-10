@@ -11,6 +11,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
     await this.$disconnect();
   }
 
+  /** Health/readiness only: reconnect a stale pool after an outage. Never replay
+   * application writes or transactions whose commit result may be ambiguous. */
+  async checkConnection(): Promise<void> {
+    try { await this.$queryRaw`SELECT 1`; }
+    catch {
+      await this.$disconnect();
+      await this.$connect();
+      await this.$queryRaw`SELECT 1`;
+    }
+  }
+
   async enableShutdownHooks(app: INestApplication) {
     const shutdown = async (signal: string) => {
       console.log(`Received ${signal}, closing database connections`);

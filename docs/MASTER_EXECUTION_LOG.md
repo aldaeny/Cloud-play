@@ -25,3 +25,15 @@ Added reversible isolated-tested migration enabling all34remaining backend table
 ## Phase5 authorized Xtream pull/scheduler/Admin increment
 
 Added server-only six-list adapter, manual protected pull endpoint, opt-in bounded scheduler, per-provider cross-process advisory lock, retries/backoff, durable sanitized failure history/last-good preservation and Admin controls/history. Actual isolated PostgreSQL test proves separate-connection lock denial plus provider-isolated failure/success with fixture retrieval. New local Admin HTTP bridge suite executes actual sockets and checks auth-header/path/method/no-store forwarding boundaries. API35suites496tests, isolatedPG24checks, Admin type/lint/build/bridge passed. Inventory now91routes. Full external sync/playlist adapter/episode expansion/durable cancellation are not complete; limitations explicitly documented in IPTV_OPERATIONS.md. No provider contacts or production schedule configured.
+
+## Phase6 actual isolated Auth/SMTP execution
+
+Reusable GitHub Actions fixture provisions disposable GoTrue2.197.0/PostgreSQL17/Mailpit1.33.1, no production secrets. Auth job in run42866805476 succeeded: actual SMTP signup/confirmation and recovery, nonenumeration response equality, token single-use/expiration/forgery, actual password replacement/old rejection/new login, DB token cleanup, refresh rotation/global refresh-session revocation. Captured actual8PASSannotations in docs/evidence/auth-smtp-975e354.json. This establishes Auth server lifecycle, not browser UI/Nest staff cutover, immediate JWT revocation or every account feature.
+
+## Phase7 controlled runtime dependency remediation
+
+API+worker Nest migration11.2.9/config4.0.4/APIjwt11.0.2 fixes confirmed runtime advisory. Express5 type/HTTP compatibility covered by allAPI499tests, all-workspace builds, cleaninstall. Full audit18(8low10moderate), production-only0. Remaining tooling findings not hidden. See DEPENDENCY_BLOCKER_REVIEW.md for deliberate major-migration rationale and limits.
+
+## Phase8 native outage regression diagnosis/fix (verification pending)
+
+Expanded native suite revealed P1017 in final post-restart query after multiple native pool sockets existed; prior smaller suite happened not to expose it. All preceding native/RLS/pull checks passed. Default WASM did not catch this native-specific stale pool behavior. Explicit pool disconnect/connect added to custom-client recovery test; production PrismaService now offers bounded readiness reconnection without replaying application writes, used by /health. New native-only test fills actual production pool, stops PG, verifies failure, restarts, checks actual readiness recovery. Unit tests cover healthy/no-reconnect, one reconnect, continuing-outage propagation. Fresh native CI is required before claiming regression fixed.

@@ -48,7 +48,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.get('/health', async (req: Request, res: Response) => {
     try {
-      await prisma.$queryRaw`SELECT 1`;
+      await prisma.checkConnection();
       res.status(200).json({
         status: 'healthy',
         database: 'connected',

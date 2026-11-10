@@ -326,7 +326,24 @@ try {
     await database.stop();
     await assert.rejects(client.tenant.count());
     await database.start();
+    // Multiple native pooled sockets can all be stale after restart. Explicit
+    // lifecycle recovery is honest; do not silently retry non-idempotent writes.
+    await client.$disconnect();
+    await client.$connect();
     assert.equal(await client.tenant.count(), 0);
+  });
+  if (native) await check('production PrismaService readiness reconnects a stale native pool after outage', async () => {
+    const { PrismaService } = require(path.join(api, 'dist/prisma.service.js'));
+    const service = new PrismaService({ datasources: { db: { url: `postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres` } } });
+    try {
+      await service.$connect();
+      await Promise.all(Array.from({ length: 10 }, () => service.$queryRaw`SELECT 1`));
+      await database.stop();
+      await assert.rejects(service.checkConnection());
+      await database.start();
+      await service.checkConnection();
+      assert.equal(await service.tenant.count(), 0);
+    } finally { await service.$disconnect(); }
   });
   console.log(`${native ? 'NATIVE' : 'WASM'} REAL POSTGRESQL: ${passed} checks passed. No production connection used.`);
 } finally {
