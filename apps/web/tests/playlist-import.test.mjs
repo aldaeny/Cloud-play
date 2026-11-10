@@ -429,12 +429,12 @@ try {
     try {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-test-key';
-      process.env.XTREAM_OWNER_EMAILS = 'owner@example.com';
+      process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111';
       const res = await invoke(importRoute, { method: 'POST', body: { url: 'https://list.example.com/a.m3u' } });
       assert.equal(res.statusCode, 401);
       assert.equal(JSON.parse(res.body()).error, 'SIGN_IN_REQUIRED');
     } finally {
-      for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'XTREAM_OWNER_EMAILS']) {
+      for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'XTREAM_OWNER_USER_IDS']) {
         if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
       }
     }

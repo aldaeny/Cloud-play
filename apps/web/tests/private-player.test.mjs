@@ -163,6 +163,7 @@ async function main() {
   process.env.XTREAM_PASSWORD = PASSWORD;
   process.env.XTREAM_PROXY_SECRET = 'test-proxy-secret';
   delete process.env.XTREAM_OWNER_EMAILS;
+  delete process.env.XTREAM_OWNER_USER_IDS;
 
   const tokenMod = await import(pathToFileURL(path.join(out, 'src/server/xtream-token.js')).href);
   const accessMod = await import(pathToFileURL(path.join(out, 'src/server/xtream-access.js')).href);
@@ -221,16 +222,20 @@ async function main() {
   await check('owner allow-list parses, normalises and de-duplicates', () => {
     process.env.XTREAM_OWNER_EMAILS = ' Me@Example.com , me@example.com , bad@@x , second@example.com ';
     assert.deepEqual(accessMod.ownerEmails(), ['me@example.com', 'second@example.com']);
+    assert.equal(accessMod.ownerConfigured(), false, 'legacy email alone must never authorize');
+    process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111, BAD,11111111-1111-4111-8111-111111111111';
+    assert.deepEqual(accessMod.ownerUserIds(), ['11111111-1111-4111-8111-111111111111']);
     assert.equal(accessMod.ownerConfigured(), true);
+    delete process.env.XTREAM_OWNER_USER_IDS;
     delete process.env.XTREAM_OWNER_EMAILS;
   });
 
   await check('owner gate denies without a bearer token', async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
-    process.env.XTREAM_OWNER_EMAILS = 'me@example.com';
+    process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111';
     await assert.rejects(() => accessMod.requireOwner({ headers: {} }), error => error.code === 'SIGN_IN_REQUIRED');
-    delete process.env.XTREAM_OWNER_EMAILS;
+    delete process.env.XTREAM_OWNER_USER_IDS;
   });
 
   await check('owner gate reports OWNER_NOT_SET before checking the session', async () => {

@@ -4,7 +4,8 @@
  * The public Cloud Play site allows anyone to create a free account, so
  * "signed in" is NOT enough to reach a personal IPTV subscription — that would
  * just be the public site with an extra step. Access is therefore restricted to
- * an explicit allow-list of account emails (`XTREAM_OWNER_EMAILS`).
+ * an explicit allow-list of immutable Auth IDs (`XTREAM_OWNER_USER_IDS`).
+ * Legacy owner email strings are labels only and never authorize access.
  *
  * Fail-closed: with no allow-list configured, nobody gets in.
  */
@@ -34,8 +35,14 @@ export function ownerEmails(): string[] {
   return Array.from(new Set(list));
 }
 
+/** Immutable verified Auth IDs, never email addresses, grant private access.
+ * Autoconfirmed email is not ownership proof and cannot be an ACL principal. */
+export function ownerUserIds(): string[] {
+  return Array.from(new Set((process.env.XTREAM_OWNER_USER_IDS || '').split(',').map(value => value.trim().toLowerCase())
+    .filter(value => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))));
+}
 export function ownerConfigured(): boolean {
-  return ownerEmails().length > 0;
+  return ownerUserIds().length > 0;
 }
 
 function bearer(req: NextApiRequest): string | null {
@@ -49,8 +56,8 @@ function bearer(req: NextApiRequest): string | null {
 }
 
 /**
- * Verify the caller's Supabase session server-side and confirm the account is
- * an owner. The JWT is validated by Supabase Auth, never trusted from the
+ * Verify the caller's Supabase session server-side and confirm its immutable user ID is
+ * explicitly authorized. The JWT is validated by Supabase Auth, never trusted from the
  * client payload alone.
  */
 export async function requireOwner(req: NextApiRequest): Promise<{ email: string; userId: string }> {
@@ -58,17 +65,29 @@ export async function requireOwner(req: NextApiRequest): Promise<{ email: string
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) throw new AccessError('ACCOUNTS_OFF');
 
-  const owners = ownerEmails();
+  const owners = ownerUserIds();
   if (owners.length === 0) throw new AccessError('OWNER_NOT_SET');
 
   const token = bearer(req);
   if (!token) throw new AccessError('SIGN_IN_REQUIRED');
+
+  let origin: string;
+  try {
+    const target = new URL(url);
+    if (target.protocol !== 'https:' || target.username || target.password || target.pathname !== '/' || target.search || target.hash) throw new Error();
+    origin = target.origin;
+  } catch { throw new AccessError('ACCOUNTS_OFF'); }
 
   let email: string | null = null;
   let userId = '';
   try {
     const supabase = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: (input, init) => {
+        if (new URL(String(input)).origin !== origin) throw new AccessError('AUTH_UNAVAILABLE');
+        return fetch(input, { ...init, redirect: 'error', signal: init?.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(5000)]) : AbortSignal.timeout(5000) });
+      } },
     });
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) throw new AccessError('SIGN_IN_REQUIRED');
@@ -79,8 +98,8 @@ export async function requireOwner(req: NextApiRequest): Promise<{ email: string
     throw new AccessError('AUTH_UNAVAILABLE');
   }
 
-  if (!email || !owners.includes(email)) throw new AccessError('NOT_AUTHORIZED');
-  return { email, userId };
+  if (!userId || !owners.includes(userId.toLowerCase())) throw new AccessError('NOT_AUTHORIZED');
+  return { email: email || '', userId };
 }
 
 /** Map an access failure to an HTTP status without leaking which emails exist. */

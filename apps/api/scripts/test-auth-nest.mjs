@@ -1,7 +1,7 @@
 // Native Nest/Prisma against disposable GoTrue via fixture TLS bridge.
 // Executed only by test-auth-recovery.mjs; no mocked identity/DB/guards.
 import { createServer } from 'node:https';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -72,6 +72,22 @@ try {
     await request(server).get('/profiles').set('Authorization', `Bearer ${token}`).expect(401);
   }
   assert.equal((await pool.query('SELECT name FROM "Profile" WHERE id=$1', [otherProfile])).rows[0].name, 'Foreign');
+  const ts = require('typescript');
+  const ownerSource = path.resolve(api, '../web/src/server/xtream-access.ts');
+  const compiledOwner = path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'owner.cjs');
+  await writeFile(compiledOwner, ts.transpileModule(await readFile(ownerSource, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText);
+  const owner = require(compiledOwner);
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://127.0.0.1:9443';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'isolated-gateway-fixture';
+  process.env.XTREAM_OWNER_EMAILS = user.email;
+  delete process.env.XTREAM_OWNER_USER_IDS;
+  await assert.rejects(owner.requireOwner({ headers: { authorization: bearer } }), error => error.code === 'OWNER_NOT_SET');
+  process.env.XTREAM_OWNER_USER_IDS = user.id;
+  assert.equal((await owner.requireOwner({ headers: { authorization: bearer } })).userId, user.id);
+  process.env.XTREAM_OWNER_USER_IDS = otherUser;
+  await assert.rejects(owner.requireOwner({ headers: { authorization: bearer } }), error => error.code === 'NOT_AUTHORIZED');
   console.log('PASS actual Nest native Prisma Supabase identity: own create/read, forged body ignored, cross-user/cross-tenant update/delete denied, disabled/expired/forged/malformed rejected');
 } finally {
   await app?.close(); tls.closeAllConnections(); await new Promise(resolve => tls.close(resolve)); await pool.end();

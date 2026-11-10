@@ -85,7 +85,7 @@ try {
     timeout: 60000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
   });
-  await passed('actual Nest native Prisma and Supabase identity integrate; owner tenant disabled and invalid-token checks pass');
+  await passed('actual Nest native Prisma and Web owner-ID ACL integrate with Supabase identity; tenant disabled and invalid-token checks pass');
 
   const row = (await pool.query('SELECT recovery_token FROM auth.users WHERE email=$1', [email])).rows[0];
   assert.ok(row && !row.recovery_token);
