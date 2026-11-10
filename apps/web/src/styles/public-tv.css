@@ -13,7 +13,7 @@
   transition: transform .2s ease, border-color .2s ease;
 }
 .ptv-tab:hover { transform: translateY(-1px); }
-.ptv-tab.selected { background: linear-gradient(90deg, var(--purple), var(--pink)); border-color: transparent; color: #fff; }
+.ptv-tab.selected { background: var(--cp-accent); border-color: transparent; color: #fff; }
 .ptv-search {
   flex: 1; min-width: 170px; padding: 10px 15px; border-radius: 999px; font-size: 13px;
   color: inherit; background: var(--liquid-surface); border: 1px solid var(--liquid-border); outline: none;
@@ -94,7 +94,7 @@
 .owner-link:hover { transform: translateY(-3px); border-color: #9b80ff; box-shadow: var(--glass-hover); }
 .owner-link-mark {
   width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 12px;
-  color: #fff; font-size: 15px; background: linear-gradient(135deg, var(--purple), var(--pink));
+  color: #fff; font-size: 15px; background: var(--cp-accent);
 }
 .owner-link-text { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .owner-link-text strong { font-size: 14.5px; font-weight: 700; }
@@ -137,7 +137,7 @@
 .home-live-go {
   margin-top: 4px; font-size: 12px; font-weight: 800; color: #fff;
   padding: 9px 18px; border-radius: 999px;
-  background: linear-gradient(90deg, var(--purple), var(--pink));
+  background: var(--cp-accent);
 }
 @media (max-width: 700px) {
   .home-live-band { padding-top: 18px; }
@@ -156,7 +156,7 @@
 .live-mode-tab strong { font-size: 14.5px; font-weight: 750; }
 .live-mode-tab small { font-size: 11px; color: #98a1ba; line-height: 1.5; }
 .site.theme-light .live-mode-tab small { color: #5b6580; }
-.live-mode-tab.selected { border-color: transparent; background: linear-gradient(120deg, var(--purple), var(--pink)); color: #fff; }
+.live-mode-tab.selected { border-color: transparent; background: var(--cp-accent); color: #fff; }
 .live-mode-tab.selected small { color: rgba(255, 255, 255, .82); }
 
 /* Community directory */
@@ -225,9 +225,9 @@
 .fta-link {
   align-self: flex-start; margin-top: 2px; padding: 7px 13px; border-radius: 10px;
   font-size: .82rem; font-weight: 600; text-decoration: none; color: #fff;
-  background: linear-gradient(135deg, var(--purple), var(--pink));
+  background: var(--cp-accent);
 }
-.fta-link:hover { filter: brightness(1.1); }
+.fta-link:hover { background: var(--cp-accent-hover); }
 .fta-foot { margin: 13px 0 0; font-size: .76rem; color: #8f88ab; line-height: 1.7; }
 .fta-foot span { display: inline-block; margin-inline-start: 6px; color: #736c92; }
 @media (max-width: 560px) {

@@ -21,7 +21,7 @@
 }
 .pp-tab:hover { transform: translateY(-1px); }
 .pp-tab.selected {
-  background: linear-gradient(90deg, var(--purple), var(--pink));
+  background: var(--cp-accent);
   border-color: transparent; color: #fff;
 }
 
@@ -98,7 +98,7 @@
 .site.theme-light .pp-gate p { color: #5b6580; }
 .pp-primary {
   padding: 11px 20px; border-radius: 12px; font-size: 13px; font-weight: 700; color: #fff;
-  background: linear-gradient(90deg, var(--purple), var(--pink)); text-decoration: none;
+  background: var(--cp-accent); text-decoration: none;
 }
 
 .pp-modal { position: fixed; inset: 0; z-index: 120; background: rgba(0, 0, 0, .82); display: grid; place-items: center; padding: 18px; }

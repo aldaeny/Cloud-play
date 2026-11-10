@@ -96,7 +96,7 @@ function ChannelRowCompactBase({ channel, favorite, language, active, onPlay, on
           onClick={() => channel.playable && onPlay(channel)}
           disabled={!channel.playable}
           aria-label={playLabel}
-          className="tw-pointer-events-auto tw-flex tw-h-8 tw-shrink-0 tw-items-center tw-gap-1 tw-rounded-full tw-bg-gradient-to-r tw-from-violet tw-to-accent tw-px-3 tw-text-xs tw-font-bold tw-text-white tw-transition-opacity hover:tw-opacity-90 focus-visible:tw-outline focus-visible:tw-outline-2 focus-visible:tw-outline-violet disabled:tw-opacity-40"
+          className="tw-pointer-events-auto tw-flex tw-h-8 tw-shrink-0 tw-items-center tw-gap-1 tw-rounded-full tw-bg-accent tw-px-3 tw-text-xs tw-font-bold tw-text-white tw-transition-opacity hover:tw-bg-accentHover focus-visible:tw-outline focus-visible:tw-outline-2 focus-visible:tw-outline-violet disabled:tw-opacity-40"
         >
           <Play size={13} aria-hidden="true" />
           <span className="tw-hidden sm:tw-inline">{ar ? 'تشغيل' : 'Play'}</span>
