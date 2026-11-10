@@ -1,4 +1,5 @@
-import { parseDash } from './external-manifests';
+import { scanEvidence, validateEvidence } from './external-evidence';
+import { parseDash, parseM3u } from './external-manifests';
 import type { ProviderDiagnostics } from '../../common/pinned-provider-request';
 import { createHash } from 'node:crypto';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
@@ -125,29 +126,49 @@ export class ExternalServersService {
     if (!['application/pdf', 'image/png', 'image/jpeg', 'message/rfc822', 'text/plain'].includes(mimeType) || !/^[A-Za-z0-9+/]+={0,2}$/.test(content)) throw new BadRequestException('INVALID_DOCUMENT');
     const bytes = Buffer.from(content, 'base64');
     if (!bytes.length || bytes.length > 49152 || bytes.toString('base64') !== content) throw new BadRequestException('DOCUMENT_TOO_LARGE_OR_INVALID');
-    if ((mimeType === 'application/pdf' && bytes.subarray(0, 5).toString() !== '%PDF-') ||
-      (mimeType === 'image/png' && bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a') ||
-      (mimeType === 'image/jpeg' && bytes.subarray(0, 3).toString('hex') !== 'ffd8ff')) throw new BadRequestException('DOCUMENT_TYPE_MISMATCH');
+    validateEvidence(bytes,mimeType);
+    if (!await this.prisma.contentLicense.findFirst({ where: { tenantId, id: id(licenseId) } })) throw new NotFoundException('LICENSE_NOT_FOUND');
+    const scanStatus = await scanEvidence(bytes);
     return this.prisma.$transaction(async tx => {
       const license = await tx.contentLicense.findFirst({ where: { tenantId, id: id(licenseId) } });
       if (!license) throw new NotFoundException('LICENSE_NOT_FOUND');
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${licenseId}, 0))`;
       if (await tx.licenseDocument.count({ where: { tenantId, licenseId } }) >= 20) throw new BadRequestException('DOCUMENT_LIMIT');
-      const row = await tx.licenseDocument.create({ data: { tenantId, licenseId, uploadedBy: actorId, mimeType, byteLength: bytes.length,
+      const row = await tx.licenseDocument.create({ data: { tenantId, licenseId, uploadedBy: actorId, mimeType, scanStatus, scannedAt: new Date(), byteLength: bytes.length,
         sha256: createHash('sha256').update(bytes).digest('hex'), contentEncrypted: this.vault.encryptSecret(content) } });
       await this.audit(tx, tenantId, actorId, row.id, 'RIGHTS_DOCUMENT_ATTACHED_NOT_APPROVED');
-      return { id: row.id, mimeType, byteLength: row.byteLength, sha256: row.sha256, createdAt: row.createdAt };
+      return { id: row.id, mimeType, scanStatus, byteLength: row.byteLength, sha256: row.sha256, createdAt: row.createdAt };
     });
   }
   async documents(tenantId: string, licenseId: string) {
-    return this.prisma.licenseDocument.findMany({ where: { tenantId, licenseId: id(licenseId) }, select: { id: true, licenseId: true, mimeType: true, byteLength: true, sha256: true, createdAt: true }, take: 20 });
+    return this.prisma.licenseDocument.findMany({ where: { tenantId, licenseId: id(licenseId), deletedAt: null }, select: { scanStatus: true, scannedAt: true, id: true, licenseId: true, mimeType: true, byteLength: true, sha256: true, createdAt: true }, take: 20 });
   }
   async readDocument(tenantId: string, actorId: string, documentId: string) {
-    const row = await this.prisma.licenseDocument.findFirst({ where: { tenantId, id: id(documentId) } });
+    const row = await this.prisma.licenseDocument.findFirst({ where: { tenantId, id: id(documentId), deletedAt: null } });
     if (!row) throw new NotFoundException('DOCUMENT_NOT_FOUND');
+    if (row.scanStatus !== 'clean') throw new ForbiddenException('DOCUMENT_QUARANTINED_OR_INFECTED');
     const contentBase64 = this.vault.decryptSecret(row.contentEncrypted);
     await this.prisma.$transaction(tx => this.audit(tx, tenantId, actorId, documentId, 'RIGHTS_DOCUMENT_READ'));
     return { id: row.id, mimeType: row.mimeType, contentBase64 };
+  }
+  async rescanDocument(tenantId: string, actorId: string, documentId: string) {
+    const row = await this.prisma.licenseDocument.findFirst({ where: { tenantId, id: id(documentId), deletedAt: null } });
+    if (!row) throw new NotFoundException('DOCUMENT_NOT_FOUND');
+    const bytes = Buffer.from(this.vault.decryptSecret(row.contentEncrypted),'base64');
+    validateEvidence(bytes,row.mimeType); const scanStatus = await scanEvidence(bytes);
+    return this.prisma.$transaction(async tx=>{
+      const result = await tx.licenseDocument.updateMany({ where:{id:documentId,tenantId,deletedAt:null,sha256:row.sha256}, data:{scanStatus,scannedAt:new Date()} });
+      if (!result.count) throw new NotFoundException('DOCUMENT_NOT_FOUND');
+      await this.audit(tx,tenantId,actorId,documentId,'RIGHTS_DOCUMENT_SCANNED'); return {scanStatus};
+    });
+  }
+  async deleteDocument(tenantId: string, actorId: string, documentId: string) {
+    return this.prisma.$transaction(async tx=>{
+      const row=await tx.licenseDocument.findFirst({where:{id:id(documentId),tenantId,deletedAt:null}});
+      if(!row)throw new NotFoundException('DOCUMENT_NOT_FOUND');
+      await tx.licenseDocument.update({where:{id:documentId,tenantId},data:{deletedAt:new Date(),scanStatus:'deleted',contentEncrypted:''}});
+      await this.audit(tx,tenantId,actorId,documentId,'RIGHTS_DOCUMENT_DELETED_CONTENT_REMOVED');return {deleted:true};
+    });
   }
   async eligibility(tenantId: string, serverId: string, platform: string, country: string) {
     const row = await this.server(tenantId, serverId);
@@ -188,8 +209,12 @@ export class ExternalServersService {
         else if (response.status === 429) { result = 'rate_limited'; details.reason = 'RATE_LIMITED'; }
         else if (response.ok && ['hls', 'm3u'].includes(row.protocol)) {
           const mimeValid = ['application/vnd.apple.mpegurl', 'application/x-mpegurl', 'audio/mpegurl', 'audio/x-mpegurl'].includes(String(details.contentType).toLowerCase());
-          const parsed = mimeValid ? parseHls(await response.text(), endpoint) : { result: 'malformed_playlist', reference: undefined, kind: undefined };
+          const manifestText=await response.text();
+          const parsed = mimeValid ? parseHls(manifestText, endpoint) : { result: 'malformed_playlist', reference: undefined, kind: undefined };
           if (!mimeValid) details.reason = 'HLS_MIME_INVALID'; result = parsed.result; details.hlsStatus = parsed.result; if (mimeValid) details.reason = parsed.result;
+          if (row.protocol==='m3u' && parsed.result==='malformed_playlist' && mimeValid) {
+            try { const playlist=parseM3u(manifestText,endpoint); result='playlist_valid_not_playback_ready'; details.playlistEntryCount=playlist.references.length; details.reason='CHANNEL_ENDPOINT_SELECTION_AND_RIGHTS_REQUIRED'; } catch { details.reason='INVALID_PLAYLIST'; }
+          }
           if (parsed.reference && body.segmentAccessConfirmed === true && parsed.kind === 'segment') {
             const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true');
             const mime = segment.headers.get('content-type')?.split(';')[0] || '';
@@ -199,7 +224,7 @@ export class ExternalServersService {
           try {
             if (details.contentType !== 'application/dash+xml') throw new Error();
             const parsed = parseDash(await response.text(), endpoint); result = parsed.result; details.manifestStatus = parsed.result;
-            if (parsed.reference && body.segmentAccessConfirmed === true) {
+          if (parsed.reference && body.segmentAccessConfirmed === true) {
               const segment = await pinnedProviderRequest(parsed.reference, { method: 'GET', signal: AbortSignal.timeout(8000) }, undefined, 2 * 1024 * 1024, process.env.EXTERNAL_ALLOW_CLEARTEXT_MEDIA === 'true');
               details.segmentStatus = segment.ok && ['video/mp4','audio/mp4','application/octet-stream'].includes(segment.headers.get('content-type')?.split(';')[0] || '') ? 'fetched_mime_valid' : 'failed_or_invalid_mime';
             }

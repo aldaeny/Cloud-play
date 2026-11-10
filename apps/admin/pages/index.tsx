@@ -1,3 +1,4 @@
+import ExternalChannelsPanel from '../components/external-channels-panel';
 import ExternalServersPanel from '../components/external-servers-panel';
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
@@ -71,6 +72,7 @@ export default function AdminDashboard() {
           )}
           <XtreamServersPanel token={token} />
           <ExternalServersPanel token={token} />
+          <ExternalChannelsPanel token={token} />
         </main>
       )}
     </div>

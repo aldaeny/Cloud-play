@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 type Server = { id: string; name: string; providerName: string; protocol: string; country: string; category: string; status: string; lastCheckedAt: string | null; lastSuccessfulCheck: string | null; licenseId: string | null };
-type Document = { id: string; mimeType: string; byteLength: number; sha256: string };
+type Document = { scanStatus: string; id: string; mimeType: string; byteLength: number; sha256: string };
 type License = { id: string; provider: string; contentOwner: string; status: string; expiryDate: string };
 const cls = 'block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15';
 const statuses = ['verified_authorized', 'provider_authorized', 'public_access_only', 'permission_pending', 'licensing_unverified', 'restricted', 'expired', 'revoked'];
@@ -104,15 +104,24 @@ export default function ExternalServersPanel({ token }: { token: string }) {
         </form>
       </article>)}
     </details>
-    {documents.map(d => <div key={d.id} className="text-xs break-all p-2 border border-white/10"><p>{d.id} · {d.mimeType} · {d.byteLength} bytes · SHA256: {d.sha256}</p>
-      <button disabled={busy} onClick={() => void action(async () => {
+    {documents.map(d => <div key={d.id} className="text-xs break-all p-2 border border-white/10"><p>{d.id} · {d.mimeType} · {d.byteLength} bytes · {d.scanStatus} · SHA256: {d.sha256}</p>
+      <button disabled={busy || d.scanStatus !== 'clean'} onClick={() => void action(async () => {
         const result = await call(`/documents/${d.id}`);
         const bytes = Uint8Array.from(atob(result.contentBase64), ch => ch.charCodeAt(0));
         // Download only. Never inline-render untrusted evidence or create an HTML data URL.
         const url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
         const link = document.createElement('a'); link.href = url; link.download = `${d.id}.evidence`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
       })}>تنزيل الدليل للمراجعة (يتطلب rights:manage)</button>
+      <button disabled={busy} onClick={() => void action(async () => setHistory(await call(`/documents/${d.id}/scan`, 'POST', {})))}>إعادة الفحص الأمني (لا تنزيل قبل clean)</button>
+      <button disabled={busy} onClick={() => { if(confirm('حذف محتوى المرفق مع حفظ بصمته وسجل التدقيق؟')) void action(async () => { await call(`/documents/${d.id}`, 'DELETE'); setDocuments(previous => previous.filter(item => item.id !== d.id)); }); }}>حذف المرفق</button>
     </div>)}
+    <details><summary>جدولة وإرسال التقارير (يتطلب external:reports)</summary><form className="space-y-2 p-3" onSubmit={e => {
+      e.preventDefault(); const data = new FormData(e.currentTarget);
+      const deliveryApproved = data.has('deliveryApproved');
+      if(deliveryApproved && !confirm('الموافقة على إرسال التقارير إلى وسيلة الإرسال التي يضبطها المشغل؟ لن يتم إرسال شيء دون إعداد وسيلة صالحة.')) return;
+      void action(async () => setHistory(await call('/report-schedule','POST',{period:data.get('period'),enabled:data.has('enabled'),deliveryApproved})));
+    }}><label>الفترة<select name="period" className={cls}><option value="weekly">أسبوعي حتى دون تغييرات</option><option value="daily">يومي اختياري</option></select></label><label className="block"><input type="checkbox" name="enabled"/> توليد التقرير الدوري</label><label className="block"><input type="checkbox" name="deliveryApproved"/> أوافق على الإرسال بعد إعداد وسيلة الإرسال</label><button disabled={busy}>حفظ جدولة التقارير والموافقة</button></form>
+    <button disabled={busy} onClick={() => void action(async () => setHistory(await call('/report-deliveries')))}>سجل إرسال التقارير والمحاولات</button></details>
     <div className="flex gap-3"><button disabled={busy} onClick={() => void action(async () => setHistory(await call('/reports/daily')))}>التقرير اليومي</button><button disabled={busy} onClick={() => void action(async () => setHistory(await call('/reports/weekly')))}>التقرير الأسبوعي عند الطلب (ليس إرسالاً تلقائياً)</button></div>
     <button disabled={busy} onClick={() => void action(async () => setHistory(await call('/audit')))}>سجل التدقيق</button>
     {history !== null && <pre dir="ltr" className="text-xs overflow-auto max-h-80 p-3 bg-black rounded" aria-label="نتيجة العملية">{JSON.stringify(history, null, 2)}</pre>}

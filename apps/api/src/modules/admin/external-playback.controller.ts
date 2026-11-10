@@ -18,7 +18,8 @@ export function playbackScope(assertion: string | undefined, user: UserRequest, 
   const key = process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY;
   if (!key || key.length < 32 || !assertion || assertion.length > 2000) throw new ForbiddenException('TRUSTED_PLAYBACK_CONTEXT_REQUIRED');
   try {
-    const [payload, signature] = assertion.split('.');
+    const parts=assertion.split('.'); if(parts.length!==2)throw new Error();
+    const [payload, signature] = parts;
     const expected = createHmac('sha256', key).update(payload).digest();
     const provided = Buffer.from(signature, 'base64url');
     if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) throw new Error();
@@ -68,7 +69,7 @@ export class ExternalPlaybackController {
       if (ticket.depth >= 3) throw new ForbiddenException('MANIFEST_DEPTH_EXCEEDED');
       const resolved = value.includes('$') ? new URL(value, url).href : mediaReference(value, url).href;
       const token = this.vault.encryptSecret(JSON.stringify({ ...ticket, url:resolved, base:ticket.base, depth:ticket.depth+1, representations }));
-      const suffix = value.includes('$') ? '&representation=$RepresentationID$&number=$Number$&time=$Time$' : '';
+      const suffix = (value.includes('$RepresentationID$') ? '&representation=$RepresentationID$' : '') + (/\$Number(?:%0[1-9]d)?\$/.test(value) ? '&number=$Number$' : '') + (value.includes('$Time$') ? '&time=$Time$' : '');
       return `/external-playback/${ticket.channelId}/resource?ticket=${encodeURIComponent(token)}${suffix}`;
     };
     let body: string | Buffer;

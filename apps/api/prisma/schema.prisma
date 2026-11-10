@@ -602,6 +602,9 @@ model ServerAuditLog {
 
 /// Small confidential rights evidence; not rendered inline, not automatic approval.
 model LicenseDocument {
+  scanStatus String @default("quarantine")
+  scannedAt DateTime? @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
   id String @id @default(uuid()) @db.Uuid
   tenantId String @db.Uuid
   licenseId String @db.Uuid

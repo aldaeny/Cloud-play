@@ -1,3 +1,6 @@
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { testExternalFailover } from './test-external-failover.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -7,6 +10,12 @@ export async function testExternalCandidates(client, tenant, check) {
   const { ExternalServersService } = require('../dist/modules/admin/external-servers.service.js');
   const { XtreamServersService } = require('../dist/modules/admin/xtream-servers.service.js');
   const previous = process.env.XTREAM_ENCRYPTION_KEY;
+  const previousScanner = process.env.EXTERNAL_DOCUMENT_SCANNER_PATH;
+  const scannerTemp=await mkdtemp(path.join(tmpdir(),'fixture-scanner-'));
+  const scanner=path.join(scannerTemp,'fixture-clamscan');
+  // Synthetic scanner integration fixture, NOT an actual antivirus certification.
+  await writeFile(scanner, '#!/bin/sh\nif grep -q EICAR "$2"; then exit 1; fi\nexit 0\n', {mode:0o700});
+  delete process.env.EXTERNAL_DOCUMENT_SCANNER_PATH;
   process.env.XTREAM_ENCRYPTION_KEY = 'b'.repeat(64); // disposable test key only
   const vault = new XtreamServersService(client, {});
   const service = new ExternalServersService(client, vault);
@@ -91,11 +100,18 @@ export async function testExternalCandidates(client, tenant, check) {
     await testExternalFailover(client,tenant,check,vault);
     await check('external rights: review scope, revocation, tenant-FK isolation and provider change demotion', async () => {
       license = await service.createLicense(tenant.id, actor, { provider: input.providerName, contentOwner: 'Fixture Rights Holder', authorizedContact: 'fixture@example.invalid', authorizationType: 'fixture-contract', allowedPlatforms: ['web'], allowedCountries: ['IQ'], commercialUse: true, redistributionPermission: true, territoryRestrictions: 'IQ only', startDate: '2020-01-01', expiryDate: '2099-01-01' });
-      const evidence = Buffer.from('%PDF-1.4\nIsolated synthetic rights document, not a real authorization.').toString('base64');
+      const evidence = Buffer.from('%PDF-1.4\nIsolated synthetic rights document, not a real authorization.\n%%EOF').toString('base64');
       const document = await service.uploadDocument(tenant.id, actor, license.id, { mimeType: 'application/pdf', contentBase64: evidence });
       assert.ok(!JSON.stringify(document).includes(evidence));
       assert.equal((await service.documents(tenant.id, license.id)).length, 1);
+      await assert.rejects(service.readDocument(tenant.id,actor,document.id),{status:403});
+      process.env.EXTERNAL_DOCUMENT_SCANNER_PATH=scanner;
+      assert.equal((await service.rescanDocument(tenant.id,actor,document.id)).scanStatus,'clean');
       assert.equal((await service.readDocument(tenant.id, actor, document.id)).contentBase64, evidence);
+      const infected=await service.uploadDocument(tenant.id,actor,license.id,{mimeType:'text/plain',contentBase64:Buffer.from('EICAR synthetic fixture').toString('base64')});
+      assert.equal(infected.scanStatus,'infected');await assert.rejects(service.readDocument(tenant.id,actor,infected.id),{status:403});
+      await service.deleteDocument(tenant.id,actor,infected.id);await assert.rejects(service.readDocument(tenant.id,actor,infected.id),{status:404});
+      assert.equal((await client.licenseDocument.findUnique({where:{id:infected.id}})).contentEncrypted,'');
       await assert.rejects(service.readDocument(randomUUID(), actor, document.id), { status: 404 });
       await assert.rejects(service.uploadDocument(tenant.id, actor, license.id, { mimeType: 'application/pdf', contentBase64: Buffer.from('not pdf').toString('base64') }), { status: 400 });
       assert.equal((await client.contentLicense.findUnique({ where: { id: license.id } })).status, 'licensing_unverified');
@@ -124,6 +140,8 @@ export async function testExternalCandidates(client, tenant, check) {
     await client.licenseDocument.deleteMany({ where: { tenantId: tenant.id } });
     await client.contentLicense.deleteMany({ where: { tenantId: tenant.id } });
     await client.serverAuditLog.deleteMany({ where: { tenantId: tenant.id } });
+    if(previousScanner===undefined)delete process.env.EXTERNAL_DOCUMENT_SCANNER_PATH;else process.env.EXTERNAL_DOCUMENT_SCANNER_PATH=previousScanner;
+    await rm(scannerTemp,{recursive:true,force:true});
     if (previous === undefined) delete process.env.XTREAM_ENCRYPTION_KEY; else process.env.XTREAM_ENCRYPTION_KEY = previous;
   }
 }

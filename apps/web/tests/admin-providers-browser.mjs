@@ -14,6 +14,7 @@ await page.route('**/api/admin/**', async route => {
   const req = route.request(), url = new URL(req.url());
   if (url.pathname.endsWith('/login')) return route.fulfill({ status: denied ? 401 : 200, json: denied ? { error: 'denied' } : { accessToken: 'isolated-browser-fixture-token' } });
   assert.equal(req.headers().authorization, 'Bearer isolated-browser-fixture-token');
+  if (url.pathname.startsWith('/api/admin/external-channels')) return route.fulfill({json:[]});
   if (url.pathname.startsWith('/api/admin/external-servers')) {
     if (url.pathname.endsWith('/licenses')) return route.fulfill({ json: [] });
     if (url.pathname.endsWith('/schedule')) { scheduled = true; return route.fulfill({ json: { workerEnabled: false } }); }

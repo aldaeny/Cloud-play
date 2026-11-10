@@ -27,6 +27,10 @@ export class ExternalServersController {
   documents(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.documents(a.tenantId, id); }
   @Get('documents/:id') @RequirePermissions('xtream:manage', 'rights:manage')
   readDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.readDocument(a.tenantId, a.id, id); }
+  @Post('documents/:id/scan') @RequirePermissions('xtream:manage','rights:manage')
+  scanDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.rescanDocument(a.tenantId,a.id,id); }
+  @Delete('documents/:id') @RequirePermissions('xtream:manage','rights:manage')
+  deleteDocument(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string) { return this.servers.deleteDocument(a.tenantId,a.id,id); }
   @Post(':id/schedule') schedule(@CurrentAdmin() a: AdminPrincipal, @Param('id') id: string, @Body() body: unknown) { return this.monitor.configure(a.tenantId, a.id, id, body); }
   @Get('reports/:period') report(@CurrentAdmin() a: AdminPrincipal, @Param('period') period: string) { return this.monitor.report(a.tenantId, period); }
   @Get('report-deliveries') deliveries(@CurrentAdmin() a: AdminPrincipal) { return this.reports.list(a.tenantId); }
