@@ -27,3 +27,9 @@
 | typescript-eslint | moderate | Development/build/test | Transitive tooling finding; fix underlying deepmerge/minimatch or coordinated upstream tooling release. No blind major downgrade suggested by audit. |
 
 Exposure assessment is source/package-path review, not an exploit proof. Nest runtime finding remains a release risk; no claim of non-exploitability. Existing guards do not remediate framework injection. All21findings remain open; safe same-major patched versions for underlying advisory packages were not found in registry checks (`npm view deepmerge version`, `glob@10`, `minimatch@9`).
+
+## Superseding runtime remediation (master execution)
+
+Controlled security-driven migration: API and worker Nest core/common11.2.9, API platform-express/testing11.2.9, config4.0.4, jwt11.0.2, Express5types. Removed obsolete platform body-parser1override (Nest11usesExpress5); preserved other scoped security overrides. This is an explicit coordinated major migration to fix GHSA-36xv-jgw5-4q75, not audit --force. Both workspace runtime versions were migrated; leaving worker Nest10 initially retained the advisory, which was detected and corrected.
+
+Fresh clean npmci, API36suites499tests, all-workspace production builds and API lint passed. Worker build passed; actual Redis/S3/transcoding job runtime is not newly verified. Audit21 ->18(8low10moderate,0high0critical); `npm audit --omit=dev --json` reports ZERO production findings. Remaining18are development/build/test dependency paths; original Nest core/platform/testing rows above are historical, now resolved. Remaining glob/minimatch/deepmerge tooling remediation still requires supported upstream changes; no suppressed findings or arbitrary downgrade.
