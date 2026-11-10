@@ -8,7 +8,9 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
  res.setHeader('Cache-Control','private, no-store');
  if(!['POST','PUT','DELETE'].includes(req.method||'')){res.setHeader('Allow','POST, PUT, DELETE');return res.status(405).end();}
  // Explicit server configuration, not a client-controlled Host/Forwarded value.
- if(!process.env.EXTERNAL_PUBLIC_ORIGIN||req.headers.origin!==process.env.EXTERNAL_PUBLIC_ORIGIN)return res.status(403).end();
+ const publicOrigin=process.env.EXTERNAL_PUBLIC_ORIGIN;
+ try{const configured=new URL(publicOrigin||'');if(configured.protocol!=='https:'||configured.origin!==publicOrigin)throw new Error();}catch{return res.status(503).end();}
+ if(req.headers.origin!==publicOrigin)return res.status(403).end();
  if(!enforceRateLimit(req,res,{bucket:'catalog'}))return;
  const token=(req.headers.authorization||'').match(/^Bearer ([A-Za-z0-9_.-]{20,4096})$/)?.[1] || (req.method==='DELETE'?req.cookies[COOKIE]:undefined);
  if(!token||token.split('.').length!==3)return res.status(401).end();
