@@ -1,0 +1,79 @@
+name: Isolated application regression
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: API behavioral suites
+        run: npm run test --workspace aether-api -- --runInBand
+      - name: Web and Admin contract/socket tests
+        run: |
+          node scripts/test-web-contracts.mjs
+          node apps/web/tests/pinned-fetch.test.mjs
+          npm run test:bridge --workspace aether-admin
+      - name: TypeScript and lint
+        run: |
+          npm exec --workspace aether-api -- tsc --noEmit
+          npm exec --workspace aether-web -- tsc --noEmit
+          npm exec --workspace aether-admin -- tsc --noEmit
+          npm run lint --workspace aether-api
+          npm run lint --workspace aether-web
+          npm run lint --workspace aether-admin
+      - name: Production builds
+        run: npm run build --workspaces
+      - name: Install isolated browser and original media fixture tooling
+        run: |
+          node node_modules/playwright-core/cli.js install --with-deps chromium
+          if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          FFMPEG="$(command -v ffmpeg)" node scripts/generate-media-fixtures.mjs .cache/media-fixtures
+      - name: Worker rejects uploaded network playlists without connecting
+        run: FFMPEG="$(command -v ffmpeg)" MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/worker-media/tests/local-media-input.mjs
+      - name: Actual browser decoding, navigation, responsive and CSP regression
+        shell: bash
+        env:
+          BASE_URL: http://127.0.0.1:3001
+        run: |
+          set -euo pipefail
+          npm run start --workspace aether-web -- --hostname 0.0.0.0 > web-fixture.log 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for n in {1..30}; do
+            if curl --fail --silent "$BASE_URL" >/dev/null; then break; fi
+            sleep 1
+          done
+          export MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures"
+          npm run test:browser --workspace aether-web
+          npm run test:layout --workspace aether-web
+          npm run test:search:browser --workspace aether-web
+          npm run test:popup --workspace aether-web
+      - name: Audit report (tooling findings remain visible)
+        if: always()
+        shell: bash
+        run: |
+          npm audit --json > audit-full.json || result=$?
+          if [ "${result:-0}" -gt 1 ]; then exit "$result"; fi
+          # Production is a strict gate. Full tooling report is retained, not hidden.
+          npm audit --omit=dev --json > audit-production.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: application-regression-evidence
+          path: |
+            audit-full.json
+            audit-production.json
+            web-fixture.log
+          retention-days: 14

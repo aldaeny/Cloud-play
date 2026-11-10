@@ -11,7 +11,7 @@ export class StorageService {
     const accessKeyId = process.env.STORAGE_ACCESS_KEY;
     const secretAccessKey = process.env.STORAGE_SECRET_KEY;
     if (!accessKeyId || !secretAccessKey) throw new Error('Storage credentials are not configured');
-    return new S3Client({ endpoint, region: process.env.STORAGE_REGION || 'us-east-1', forcePathStyle: true,
+    return new S3Client({ endpoint, region: process.env.STORAGE_REGION || 'us-east-1', forcePathStyle: true, maxAttempts: 3, requestHandler: { connectionTimeout: 5000, requestTimeout: 120000 },
       credentials: { accessKeyId, secretAccessKey } });
   }
   private get bucket(): string { return process.env.STORAGE_BUCKET || 'cloudplay-video'; }

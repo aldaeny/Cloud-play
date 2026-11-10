@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
 jobs:
+  application-regression:
+    uses: ./.github/workflows/regression.yml
   isolated-auth-smtp:
     uses: ./.github/workflows/auth-recovery.yml
   native-postgres:
