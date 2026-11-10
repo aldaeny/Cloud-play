@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 type Group={id:string;name:string};
-type Source={id:string;serverId:string;priority:number;role:string;enabled:boolean;consecutiveFailures:number;healthySince:string|null};
+type Source={server?:{name:string;providerName:string;license:{status:string;expiryDate:string}|null;checks:{result:string;finishedAt:string;details:unknown}[]};id:string;serverId:string;priority:number;role:string;enabled:boolean;consecutiveFailures:number;healthySince:string|null};
 type Channel={id:string;name:string;groupId:string;country:string;platform:string;enabled:boolean;autoFailover:boolean;failureThreshold:number;retrySeconds:number;holdDownSeconds:number;stabilitySeconds:number;freshnessSeconds:number;activeSourceId:string|null;sources:Source[]};
 const input='block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15';
 export default function ExternalChannelsPanel({token}:{token:string}){
@@ -24,7 +24,7 @@ export default function ExternalChannelsPanel({token}:{token:string}){
  <h3 className="font-bold break-words">{channel.name} · {channel.country} / {channel.platform} · {channel.enabled?'مفعلة بإقرار صريح':'معطلة'}</h3>
  <p className="text-xs text-gray-400 break-all">المصدر المختار: {channel.activeSourceId||'لا يوجد'} — الاختيار لا يضمن اجتياز الحقوق عند الطلب.</p>
  <form onSubmit={e=>form(e,`/${channel.id}/sources`,'POST',body=>({...body,priority:Number(body.priority)}))} className="grid grid-cols-1 md:grid-cols-3 gap-2"><label>معرّف السيرفر المرشح<input className={input} name="serverId" required/></label><label>ترتيب المصدر (1 أساسي)<input className={input} name="priority" type="number" min={1} max={1000} required/></label><button disabled={busy}>ربط مصدر معطل</button></form>
- <div className="space-y-2">{channel.sources.map((s,i)=><div className="p-3 bg-[#171820] rounded min-w-0" key={s.id}><p className="text-xs break-all">{s.role} #{s.priority} · {s.serverId} · {s.enabled?'معتمد صراحةً':'غير معتمد'} · إخفاقات: {s.consecutiveFailures}</p><div className="flex flex-wrap gap-3">
+ <div className="space-y-2">{channel.sources.map((s,i)=><div className="p-3 bg-[#171820] rounded min-w-0" key={s.id}><p className="text-xs break-all">{s.role} #{s.priority} · {s.serverId} · {s.enabled?'معتمد صراحةً':'غير معتمد'} · إخفاقات: {s.consecutiveFailures}</p><p className="text-sm text-gray-400">الحقوق: {s.server?.license?.status||'licensing_unverified'} · الانتهاء: {s.server?.license?.expiryDate||'غير محدد'} · الاتصال: {s.server?.checks?.[0]?.result||'لم يفحص'}</p><details><summary>تفاصيل التشخيص</summary><pre dir="ltr" className="text-xs max-h-60 overflow-auto">{JSON.stringify(s.server?.checks?.[0]?.details||{status:'not_verified'},null,2)}</pre></details><div className="flex flex-wrap gap-3">
  <button disabled={busy||i===0} onClick={()=>void action(()=>{const ids=channel.sources.map(s=>s.id);[ids[i-1],ids[i]]=[ids[i],ids[i-1]];return api(`/${channel.id}/order`,'PUT',{sourceIds:ids});})}>رفع أولوية المصدر</button>
  <button disabled={busy} onClick={()=>{if(confirm('اعتماد مصدر للنشر؟ يجب مراجعة الحقوق واجتياز فحص المقطع أولاً. هذه ليست موافقة قانونية تلقائية.'))void action(()=>api(`/${channel.id}/sources/${s.id}/approve`,'POST',{publicationApproved:true}));}}>اعتماد المصدر صراحةً</button>
  </div></div>)}</div>

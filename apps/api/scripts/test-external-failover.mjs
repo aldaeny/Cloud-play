@@ -1,3 +1,4 @@
+import { testExternalPlayback } from './test-external-playback.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -36,6 +37,8 @@ export async function testExternalFailover(client,tenant,check,vault){
       await service.policy(tenant.id,actor,channel.id,{autoFailover:true,failureThreshold:2,retrySeconds:5,holdDownSeconds:10,stabilitySeconds:30,freshnessSeconds:900});
       const selected=await service.activate(tenant.id,actor,channel.id,{enabled:true,publicationApproved:true});assert.equal(selected.activeSourceId,sources[0].id);
     });
+    await testExternalPlayback(client,tenant,channel,licenses,check);
+    await client.externalChannel.update({where:{id:channel.id},data:{activeSourceId:sources[0].id,lastEvaluationAt:null,lastSwitchAt:null,outageStartedAt:null}});
     await check('actual DB failover: threshold, concurrent switch deduplication, stable failback, no rights bypass and scope denial',async()=>{
       await observation(servers[0],'unreachable');
       await service.evaluate(tenant.id,channel.id,true);
@@ -66,6 +69,20 @@ export async function testExternalFailover(client,tenant,check,vault){
         const rows=await client.externalReportDelivery.findMany({where:{tenantId:tenant.id}});assert.equal(rows.length,2);assert.ok(rows.every(r=>r.attempts===0&&r.status==='pending'));
         assert.ok(rows[0].payload.measurement.includes('not continuous'));
       }finally{if(saved!==undefined)process.env.EXTERNAL_REPORT_WEBHOOK_URL=saved;}
+    });
+    await check('report outbox retry/fencing with fixture transport: failed send recorded then idempotent retry succeeds',async()=>{
+      const transport=require('../dist/common/pinned-provider-request.js'),original=transport.pinnedProviderRequest;
+      const saved=process.env.EXTERNAL_REPORT_WEBHOOK_URL;process.env.EXTERNAL_REPORT_WEBHOOK_URL='https://delivery.fixture/report';
+      const seen=[];let attempt=0;
+      transport.pinnedProviderRequest=async(url,init)=>{assert.equal(url.hostname,'delivery.fixture');const form=new URLSearchParams(init.body);seen.push(form.get('idempotencyKey'));return new Response(null,{status:attempt++===0?500:200});};
+      try{
+        await reports.configure(tenant.id,actor,{period:'weekly',enabled:true,deliveryApproved:true});
+        await reports.tick();
+        assert.equal(await client.externalReportDelivery.count({where:{tenantId:tenant.id,status:'retry'}}),1);
+        await reports.tick(new Date(Date.now()+7*86400000+61000));
+        assert.equal(await client.externalReportDelivery.count({where:{tenantId:tenant.id,status:'delivered'}}),2);
+        assert.equal(seen.filter(id=>id===seen[0]).length,2,'same stable recipient idempotency key on retry');
+      }finally{transport.pinnedProviderRequest=original;if(saved===undefined)delete process.env.EXTERNAL_REPORT_WEBHOOK_URL;else process.env.EXTERNAL_REPORT_WEBHOOK_URL=saved;}
     });
   }finally{
     await client.externalReportDelivery.deleteMany({where:{tenantId:tenant.id}});await client.externalReportSchedule.deleteMany({where:{tenantId:tenant.id}});

@@ -53,12 +53,14 @@ export async function testExternalCandidates(client, tenant, check) {
         app = mod.createNestApplication({ logger: false }); await app.init();
         const url = '/admin/external-servers';
         await request(app.getHttpServer()).get(url).expect(401);
+        await request(app.getHttpServer()).get(`/external-playback/${server.id}/manifest`).expect(401);
         await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(403);
         await client.role.update({ where: { id: role.id }, data: { permissions: '["xtream:manage"]' } });
         const response = await request(app.getHttpServer()).get(url).set('Authorization', `Bearer ${sign(staff.id)}`).expect(200);
         assert.equal(response.body.items[0].id, server.id);
         assert.ok(!JSON.stringify(response.body).includes('secret-fixture'));
         await request(app.getHttpServer()).delete(`${url}/${server.id}`).set('Authorization', `Bearer ${sign(stranger.id)}`).expect(404);
+        await request(app.getHttpServer()).post(`/admin/external-channels/${server.id}/sources/${randomUUID()}/approve`).set('Authorization', `Bearer ${sign(staff.id)}`).send({publicationApproved:true}).expect(403);
         await request(app.getHttpServer()).post(`${url}/licenses/${randomUUID()}/review`).set('Authorization', `Bearer ${sign(staff.id)}`).send({ status: 'verified_authorized', notes: 'forged permission' }).expect(403);
       } finally {
         await app?.close();

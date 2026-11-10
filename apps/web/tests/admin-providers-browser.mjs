@@ -7,6 +7,7 @@ const browser = await chromium.launch({ executablePath, headless: true, env: pro
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 let denied = true, pulls = 0, failPull = false, empty = false;
 let external = []; let scheduled = false;
+let groups = [], channels = [], orderChanges = 0;
 const id = '11111111-1111-4111-8111-111111111111';
 const provider = { id, name: 'Authorized Fixture', baseUrl: 'https://provider.fixture', username: 'fixture-user', enabled: true, priority: 100, isDefault: true, connectionStatus: 'unknown', lastCheckedAt: null };
 const errors = []; page.on('pageerror', error => errors.push(error.message));
@@ -14,7 +15,14 @@ await page.route('**/api/admin/**', async route => {
   const req = route.request(), url = new URL(req.url());
   if (url.pathname.endsWith('/login')) return route.fulfill({ status: denied ? 401 : 200, json: denied ? { error: 'denied' } : { accessToken: 'isolated-browser-fixture-token' } });
   assert.equal(req.headers().authorization, 'Bearer isolated-browser-fixture-token');
-  if (url.pathname.startsWith('/api/admin/external-channels')) return route.fulfill({json:[]});
+  if (url.pathname.startsWith('/api/admin/external-channels')) {
+    if(url.pathname.endsWith('/groups')) { if(req.method()==='POST')groups=[{id,...req.postDataJSON()}];return route.fulfill({json:groups}); }
+    if(req.method()==='POST'&&url.pathname.endsWith('/sources')) { const body=req.postDataJSON();channels[0].sources.push({id:body.serverId,serverId:body.serverId,priority:body.priority,role:body.priority===1?'primary':'secondary',enabled:false,consecutiveFailures:0,healthySince:null});return route.fulfill({json:channels[0].sources.at(-1)}); }
+    if(req.method()==='PUT'&&url.pathname.endsWith('/order')) { const ids=req.postDataJSON().sourceIds;channels[0].sources=ids.map((id,i)=>({...channels[0].sources.find(s=>s.id===id),priority:i+1,role:i===0?'primary':'secondary'}));orderChanges++;return route.fulfill({json:{ordered:ids}}); }
+    if(req.method()==='PUT'&&url.pathname.endsWith('/policy')) { Object.assign(channels[0],req.postDataJSON());return route.fulfill({json:channels[0]}); }
+    if(req.method()==='POST')channels=[{id,...req.postDataJSON(),enabled:false,autoFailover:false,failureThreshold:2,retrySeconds:60,holdDownSeconds:120,stabilitySeconds:180,freshnessSeconds:900,activeSourceId:null,sources:[]}];
+    return route.fulfill({json:channels});
+  }
   if (url.pathname.startsWith('/api/admin/external-servers')) {
     if (url.pathname.endsWith('/licenses')) return route.fulfill({ json: [] });
     if (url.pathname.endsWith('/schedule')) { scheduled = true; return route.fulfill({ json: { workerEnabled: false } }); }
@@ -71,6 +79,25 @@ try {
   page.once('dialog', dialog => dialog.accept());
   await manager.getByRole('button', { name: 'حذف آمن', exact: true }).click();
   await manager.getByText('لا توجد مصادر مرشحة.', { exact: true }).waitFor();
+  const groupPanel=page.getByRole('region',{name:'Provider Groups and Channels',exact:true});
+  await groupPanel.getByLabel('اسم مجموعة المزودين',{exact:true}).fill('Synthetic Provider Group');
+  await groupPanel.getByRole('button',{name:'إنشاء مجموعة',exact:true}).click();
+  await groupPanel.getByRole('option',{name:'Synthetic Provider Group',exact:true}).waitFor({state:'attached'});
+  await groupPanel.getByLabel('اسم القناة',{exact:true}).fill('Synthetic Channel');
+  await groupPanel.getByRole('button',{name:'إنشاء قناة معطلة',exact:true}).click();
+  await groupPanel.getByRole('heading',{name:'Synthetic Channel',exact:false}).waitFor();
+  for(const [i,serverId] of [id,'55555555-5555-4555-8555-555555555555'].entries()) {
+    await groupPanel.getByLabel('معرّف السيرفر المرشح',{exact:true}).fill(serverId);
+    await groupPanel.getByLabel('ترتيب المصدر (1 أساسي)',{exact:true}).fill(String(i+1));
+    await groupPanel.getByRole('button',{name:'ربط مصدر معطل',exact:true}).click();
+    await groupPanel.getByText(`${i===0?'primary':'secondary'} #${i+1}`,{exact:false}).waitFor();
+  }
+  await groupPanel.getByRole('button',{name:'رفع أولوية المصدر',exact:true}).nth(1).click();
+  await groupPanel.getByText('primary #1 · 55555555-5555-4555-8555-555555555555',{exact:false}).waitFor();
+  assert.equal(orderChanges,1);
+  page.once('dialog',dialog=>dialog.dismiss());
+  await groupPanel.getByRole('button',{name:'تفعيل القناة صراحةً',exact:true}).click();
+  assert.equal(channels[0].enabled,false,'cancelled publication must never enable channel');
   for (const width of [390, 820, 1280]) {
     await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(100);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Admin overflows at${width}: ${await page.evaluate(() => document.documentElement.scrollWidth)}`);

@@ -36,7 +36,7 @@ export class ExternalChannelsService {
     if (!row) throw new NotFoundException('CHANNEL_NOT_FOUND'); return row;
   }
   async channels(tenantId: string) {
-    const rows = await this.prisma.externalChannel.findMany({ where: { tenantId }, include: { sources: { orderBy: { priority: 'asc' }, select: { id: true, serverId: true, priority: true, role: true, enabled: true, consecutiveFailures: true, healthySince: true, lastObservedAt: true } } }, take: 100, orderBy: { name: 'asc' } });
+    const rows = await this.prisma.externalChannel.findMany({ where: { tenantId }, include: { sources: { orderBy: { priority: 'asc' }, select: { id: true, serverId: true, priority: true, role: true, enabled: true, consecutiveFailures: true, healthySince: true, lastObservedAt: true, server: { select: { name: true, providerName: true, status: true, license: { select: { status: true, expiryDate: true } }, checks: { take:1, orderBy:{startedAt:'desc'}, select:{result:true,finishedAt:true,details:true} } } } } } }, take: 100, orderBy: { name: 'asc' } });
     return rows;
   }
   async createChannel(tenantId: string, actorId: string, input: unknown) {
@@ -113,7 +113,7 @@ export class ExternalChannelsService {
       for (const source of rows) {
         const last = source.server.checks[0], healthy = healthySource(source, channel, now);
         if (last && (!source.lastObservedAt || last.startedAt > source.lastObservedAt)) {
-          const data = { lastObservedAt: last.startedAt, consecutiveFailures: healthy ? 0 : source.consecutiveFailures + 1, healthySince: healthy ? source.healthySince || last.finishedAt : null };
+          const data = { lastObservedAt: last.startedAt, consecutiveFailures: healthy ? 0 : source.consecutiveFailures + 1, healthySince: healthy ? (source.healthySince && source.lastObservedAt && last.startedAt.getTime()-source.lastObservedAt.getTime()<=channel.freshnessSeconds*1000 ? source.healthySince : last.finishedAt) : null };
           await tx.channelSource.update({ where: { id: source.id }, data }); Object.assign(source, data);
         }
         states.push(source);

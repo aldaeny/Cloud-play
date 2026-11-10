@@ -51,6 +51,9 @@ try {
   await app.init();
   const server = app.getHttpServer(), bearer = `Bearer ${access}`;
   await request(server).get('/profiles').expect(401);
+  await request(server).get(`/external-playback/${randomUUID()}/manifest`).expect(401);
+  await request(server).get(`/external-playback/${randomUUID()}/manifest`).set('Authorization', bearer).expect(403);
+  await request(server).get(`/external-playback/${randomUUID()}/resource?ticket=invalid`).set('Authorization', bearer).expect(403);
   const own = await request(server).post('/profiles').set('Authorization', bearer)
     .send({ name: 'Actual Auth Fixture', userId: otherUser, tenantId: otherTenant, roles: ['admin'] }).expect(201);
   assert.equal(own.body.userId, user.id);
