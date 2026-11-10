@@ -212,6 +212,10 @@ export type SafeFetchOptions = {
   /** When true a redirect may not change the origin (used by the media proxy). */
   pinOrigin?: boolean;
   method?: 'GET' | 'HEAD';
+  signal?: AbortSignal;
+  redirect?: RequestRedirect;
+  /** Preserve status for adapters that distinguish revoked credentials/outages. */
+  acceptStatus?: boolean;
 };
 
 /**
@@ -229,6 +233,7 @@ export async function safeFetch(
     maxRedirects = 3,
     pinOrigin = false,
     method = 'GET',
+    signal, redirect = 'follow', acceptStatus = false,
   } = options;
 
   let target = parsePublicUrl(raw);
@@ -253,7 +258,8 @@ export async function safeFetch(
         }).catch(() => callback(new Error('DNS_FAILED'), '', 4));
       };
       response = await pinnedGet(target, {
-        method, signal: controller.signal, lookup: socketLookup, maxBytes,
+        onComplete: () => clearTimeout(timer),
+        method, signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal, lookup: socketLookup, maxBytes,
         headers: { Accept: '*/*', 'User-Agent': 'CloudPlayPlaylist/1.0', ...headers },
       });
     } catch {
@@ -262,6 +268,11 @@ export async function safeFetch(
     }
 
     if (response.status >= 300 && response.status < 400) {
+      if (redirect === 'manual') { timer.unref?.(); return { response, url: target }; }
+      if (redirect === 'error') {
+        clearTimeout(timer); await response.body?.cancel().catch(() => {});
+        throw new SafeFetchError('UPSTREAM_ERROR');
+      }
       const location = response.headers.get('location');
       await response.body?.cancel().catch(() => {});
       clearTimeout(timer);
@@ -281,11 +292,11 @@ export async function safeFetch(
 
     // Deadline remains active while the streaming body is being consumed.
     timer.unref?.();
-    if (response.status === 401 || response.status === 403) {
+    if (!acceptStatus && (response.status === 401 || response.status === 403)) {
       await response.body?.cancel().catch(() => {});
       throw new SafeFetchError('UPSTREAM_ERROR');
     }
-    if (!response.ok && response.status !== 206) {
+    if (!acceptStatus && !response.ok && response.status !== 206) {
       await response.body?.cancel().catch(() => {});
       throw new SafeFetchError('UPSTREAM_ERROR');
     }

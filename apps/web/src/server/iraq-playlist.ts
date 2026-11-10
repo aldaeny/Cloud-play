@@ -1,3 +1,4 @@
+import { publicFetch } from './public-fetch';
 /** Fixed public source. No stream is fetched by the server. Source and stream providers are third parties. */
 import { isIP } from 'node:net';
 const IRAQ_SOURCE = 'https://iptv-org.github.io/iptv/countries/iq.m3u';
@@ -37,7 +38,7 @@ function createReader(source:string,maxBytes=MAX_BYTES,maxEntries=1000) {
  const now=Date.now();if(now-windowStart>60_000){windowStart=now;hits=0}if(++hits>60)throw new Error('RATE_LIMIT');
  if(cached&&cached.until>now)return cached.data;if(pending)return pending;
  pending=(async()=>{const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),8000);
-  try{const r=await fetch(source,{signal:controller.signal,redirect:'error',cache:'no-store',headers:{Accept:'audio/x-mpegurl, text/plain'}});
+  try{const r=await publicFetch(source,{signal:controller.signal,redirect:'error',cache:'no-store',headers:{Accept:'audio/x-mpegurl, text/plain'}});
    if(!r.ok||!r.body||Number(r.headers.get('content-length'))>maxBytes)throw new Error('SOURCE_UNAVAILABLE');
    const reader=r.body.getReader();const chunks:Uint8Array[]=[];let total=0;
    for(;;){const p=await reader.read();if(p.done)break;total+=p.value.byteLength;if(total>maxBytes){await reader.cancel();throw new Error('SOURCE_UNAVAILABLE')}chunks.push(p.value)}

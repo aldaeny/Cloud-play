@@ -1,3 +1,4 @@
+import { publicFetch } from './public-fetch';
 /** Server-only, read-only Xtream catalog adapter. Never return provider URLs or credentials. */
 export type Entry = { id: string; name: string };
 export class CatalogError extends Error {
@@ -49,7 +50,7 @@ async function fetchEntries(action: 'get_live_categories' | 'get_live_streams', 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
-    const response = await fetch(url, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
+    const response = await publicFetch(url, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
     if (response.status === 403) throw new CatalogError('UPSTREAM_BLOCKED');
     if (!response.ok || !response.body) throw new CatalogError('UPSTREAM_ERROR');
     if (Number(response.headers.get('content-length')) > MAX_BYTES) throw new CatalogError('UPSTREAM_ERROR');

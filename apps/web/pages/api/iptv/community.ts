@@ -1,3 +1,4 @@
+import { publicFetch } from '../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   COMMUNITY_PROJECT_URL,
@@ -35,7 +36,7 @@ async function loadIndex(): Promise<CommunityIndex> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20_000);
     try {
-      const response = await fetch(COMMUNITY_SOURCE_URL, {
+      const response = await publicFetch(COMMUNITY_SOURCE_URL, {
         signal: controller.signal,
         redirect: 'follow',
         headers: { Accept: '*/*' },

@@ -9,6 +9,7 @@
  * Run: npm run test:community --workspace aether-web
  */
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
@@ -102,6 +103,11 @@ const SAMPLE = [
 
 async function main() {
   const out = compile();
+  // Adapter contract fixtures. Socket pinning is tested independently using
+  // actual native HTTP/TLS, not this mocked upstream response boundary.
+  const fixtureRequire = createRequire(path.join(out, 'fixture.cjs'));
+  fixtureRequire('./src/server/public-fetch.js').publicFetch = (input, init) => globalThis.fetch(input, init);
+
   const mod = await import(pathToFileURL(path.join(out, 'src/server/community-tv.js')).href);
   const routeMod = await import(pathToFileURL(path.join(out, 'pages/api/iptv/community.js')).href);
   const handler = routeMod.default?.default ?? routeMod.default;

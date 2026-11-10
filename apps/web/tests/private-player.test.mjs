@@ -14,6 +14,7 @@
  * Run: npm run test:private --workspace aether-web
  */
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { Writable } from 'node:stream';
 import { execFileSync } from 'node:child_process';
@@ -148,6 +149,13 @@ async function main() {
   const { server, port } = await startProvider();
   const base = `http://127.0.0.1:${port}`;
 
+  // Fixture transport only: exercise real local provider HTTP, never permit
+  // production networking to bypass public-IP rejection for loopback fixtures.
+  const fixtureRequire = createRequire(path.join(out, 'fixture.cjs'));
+  fixtureRequire('./src/server/public-fetch.js').publicFetch = (input, init) => {
+    assert.equal(new URL(input).origin, base);
+    return fetch(input, init);
+  };
   process.env.XTREAM_CATALOG_ENABLED = 'true';
   process.env.XTREAM_BASE_URL = base;
   process.env.XTREAM_ALLOW_HTTP = 'true';
@@ -333,7 +341,14 @@ async function main() {
     const res = await invoke(streamHandler, { t: token });
     assert.equal(res.statusCode, 503);
     assert.ok(!leaks(res.payload()));
-    process.env.XTREAM_CATALOG_ENABLED = 'true';
+    // Fixture transport only: exercise real local provider HTTP, never permit
+  // production networking to bypass public-IP rejection for loopback fixtures.
+  const fixtureRequire = createRequire(path.join(out, 'fixture.cjs'));
+  fixtureRequire('./src/server/public-fetch.js').publicFetch = (input, init) => {
+    assert.equal(new URL(input).origin, base);
+    return fetch(input, init);
+  };
+  process.env.XTREAM_CATALOG_ENABLED = 'true';
   });
 
   server.close();

@@ -7,16 +7,19 @@ import { execFileSync } from 'node:child_process';
 const out = mkdtempSync(path.join(tmpdir(), 'cloudplay-pinned-'));
 const root = process.cwd();
 execFileSync(process.execPath, [path.join(root, 'node_modules/typescript/bin/tsc'),
-  'apps/web/src/server/safe-fetch.ts', '--outDir', out, '--module', 'commonjs',
+  'apps/web/src/server/safe-fetch.ts', 'apps/web/src/server/public-fetch.ts', '--outDir', out, '--module', 'commonjs',
   '--target', 'es2022', '--esModuleInterop', '--skipLibCheck', '--strict']);
 const require = createRequire(path.join(out, 'test.cjs'));
 const dns = require('node:dns/promises'), http = require('node:http');
 const originalLookup = dns.lookup, originalRequest = http.request;
+const { publicFetch } = require('./public-fetch.js');
 const { safeFetch, resetHostVerdicts, isPrivateAddress } = require('./safe-fetch.js');
 let answers, sockets = 0, seenPinned, requests = 0;
 const server = http.createServer((req, res) => {
   requests++;
   if (req.url === '/redirect') { res.writeHead(302, { location: 'http://127.0.0.1/private' }); res.end(); }
+  else if (req.url === '/denied') { res.writeHead(401); res.end('denied'); }
+  else if (req.url === '/public-redirect') { res.writeHead(302, { location: '/final' }); res.end(); }
   else if (req.url === '/oversize') res.end(Buffer.alloc(100));
   else if (req.url === '/slow') { /* deadline */ }
   else res.end('fixture');
@@ -72,6 +75,24 @@ try {
   await test('IPv6 global addresses permitted; reserved and transition denied', async () => {
     assert.equal(isPrivateAddress('2606:4700:4700::1111'), false);
     for (const ip of ['::', 'fc00::1', 'fe80::1', '64:ff9b::7f00:1', '2001::1', '2002::1', 'bad::ip']) assert.equal(isPrivateAddress(ip), true, ip);
+  });
+  await test('public adapter preserves HTTP denial status, never masks invalid credentials as success', async () => {
+    assert.equal((await publicFetch(`http://fixture.example:${port}/denied`)).status, 401);
+  });
+  await test('public adapter denies redirects by default', async () => {
+    await assert.rejects(publicFetch(`http://fixture.example:${port}/public-redirect`));
+  });
+  await test('public adapter returns manual redirect for the origin-pinned stream loop', async () => {
+    assert.equal((await publicFetch(`http://fixture.example:${port}/public-redirect`, { redirect: 'manual' })).status, 302);
+  });
+  await test('public adapter follows same-origin redirect through a fresh validated socket', async () => {
+    assert.equal(await (await publicFetch(`http://fixture.example:${port}/public-redirect`, { redirect: 'follow' })).text(), 'fixture');
+  });
+  await test('public adapter propagates caller abort to the actual stalled socket', async () => {
+    await assert.rejects(publicFetch(`http://fixture.example:${port}/slow`, { signal: AbortSignal.timeout(50) }));
+  });
+  await test('public adapter rejects non-read-only methods', async () => {
+    await assert.rejects(publicFetch(`http://fixture.example:${port}/`, { method: 'POST', body: 'no' }));
   });
   console.log(`${passed} passed; actual local HTTP, fixture DNS routing, no external origin`);
 } finally {

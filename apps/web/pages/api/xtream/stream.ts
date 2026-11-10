@@ -1,3 +1,4 @@
+import { publicFetch } from '../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
@@ -72,7 +73,7 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
     try {
       const headers: Record<string, string> = { Accept: '*/*', 'User-Agent': 'CloudPlayPrivate/1.0' };
       if (range) headers.Range = range;
-      response = await fetch(target, { signal: controller.signal, redirect: 'manual', cache: 'no-store', headers });
+      response = await publicFetch(target, { signal: controller.signal, redirect: 'manual', cache: 'no-store', headers });
     } catch {
       clearTimeout(timer);
       throw new Error('UPSTREAM_UNREACHABLE');

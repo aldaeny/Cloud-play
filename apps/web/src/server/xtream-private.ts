@@ -1,3 +1,4 @@
+import { publicFetch } from './public-fetch';
 /**
  * Server-only Xtream adapter for the PRIVATE, owner-only player.
  *
@@ -126,7 +127,7 @@ async function apiJson(action: string, params: Record<string, string> = {}): Pro
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
+    const response = await publicFetch(url, {
       signal: controller.signal,
       redirect: 'error',
       cache: 'no-store',

@@ -7,7 +7,7 @@ import { Readable } from 'node:stream';
 
 export function pinnedGet(url: URL, options: {
   method: 'GET' | 'HEAD'; headers: Record<string, string>; signal: AbortSignal;
-  lookup: LookupFunction; maxBytes?: number;
+  lookup: LookupFunction; maxBytes?: number; onComplete?: () => void;
 }): Promise<Response> {
   return new Promise((resolve, reject) => {
     const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
@@ -17,6 +17,7 @@ export function pinnedGet(url: URL, options: {
       // Keep the URL hostname for TLS certificate checking and SNI.
       headers: { ...options.headers, 'Accept-Encoding': 'identity' },
     }, upstream => {
+      upstream.once('close', () => options.onComplete?.());
       const headers = new Headers();
       for (const [key, value] of Object.entries(upstream.headers)) {
         if (value !== undefined) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
@@ -39,7 +40,10 @@ export function pinnedGet(url: URL, options: {
       resolve(new Response(body, { status, headers }));
     });
     // Return only a stable error; raw errors can contain sensitive upstream data.
-    req.on('error', () => reject(new Error('UPSTREAM_UNREACHABLE')));
+    req.on('error', () => { options.onComplete?.(); reject(new Error('UPSTREAM_UNREACHABLE')); });
+    req.on('upgrade', (_response, socket) => {
+      socket.destroy(); options.onComplete?.(); reject(new Error('UPSTREAM_UNREACHABLE'));
+    });
     req.end();
   });
 }
