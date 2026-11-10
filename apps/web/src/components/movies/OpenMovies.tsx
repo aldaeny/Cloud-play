@@ -26,7 +26,7 @@ const T = {
   ar: {
     eyebrow: 'مشاهدة مجانية · بدون تسجيل دخول',
     heading: 'مكتبة الأفلام',
-    intro: 'أفلام كاملة من الملك العام وأعمال مرخّصة بحرية. شغّل أي فيلم مباشرة — لا حساب ولا اشتراك ولا دفع.',
+    intro: 'أفلام كاملة من الملك العام وأعمال مرخّصة بحرية. شغّل أي فيلم مباشرة. لا حساب ولا اشتراك ولا دفع.',
     all: 'الكل', continue: 'متابعة المشاهدة', favorites: 'المفضلة',
     search: 'ابحث عن فيلم…', count: 'فيلم', empty: 'لا توجد أفلام مطابقة.',
     watch: '▶ شاهد الفيلم', resume: '▶ استكمال المشاهدة', details: 'التفاصيل',
@@ -34,13 +34,13 @@ const T = {
     source: 'المصدر', license: 'الترخيص', back: 'كل الأفلام',
     note: 'يُحفظ التقدم والمفضلة على هذا الجهاز، وتُزامَن مع حسابك المجاني عند تسجيل الدخول.',
     attribution: 'الأفلام من مجموعة الملك العام في Internet Archive ومن أفلام Blender المفتوحة. التشغيل يتصل بالمصدر مباشرة ويعتمد على توفره.',
-    playbackHelp: 'إذا لم يبدأ الفيلم فوراً فالمصدر بطيء أو غير متاح حالياً — جرّب مرة أخرى أو افتح صفحة المصدر.',
+    playbackHelp: 'إذا لم يبدأ الفيلم فوراً فالمصدر بطيء أو غير متاح حالياً. جرّب مرة أخرى أو افتح صفحة المصدر.',
     clear: 'مسح',
   },
   en: {
     eyebrow: 'FREE TO WATCH · NO SIGN-IN',
     heading: 'Film library',
-    intro: 'Full public-domain features and openly licensed films. Play any title instantly — no account, no subscription, no payment.',
+    intro: 'Full public-domain features and openly licensed films. Play any title instantly. No account, no subscription, no payment.',
     all: 'All', continue: 'Continue watching', favorites: 'Favorites',
     search: 'Search films…', count: 'films', empty: 'No matching films.',
     watch: '▶ Watch film', resume: '▶ Resume watching', details: 'Details',
@@ -48,7 +48,7 @@ const T = {
     source: 'Source', license: 'License', back: 'All films',
     note: 'Progress and favorites are saved on this device and synced to your free account when you sign in.',
     attribution: 'Films come from the Internet Archive public-domain collection and the Blender open movies. Playback connects directly to the source and depends on its availability.',
-    playbackHelp: 'If a film does not start right away the source is slow or temporarily unavailable — retry, or open its source page.',
+    playbackHelp: 'If a film does not start right away the source is slow or temporarily unavailable. Retry, or open its source page.',
     clear: 'Clear',
   },
 };
@@ -118,15 +118,17 @@ export default function OpenMovies({
       <div className="film-poster">
         {broken
           ? <span className="film-poster-fallback" aria-hidden="true">{film.title.slice(0, 1)}</span>
-          : <Image
+          : <>
+            <Image
               src={filmPoster(film)}
               alt=""
               fill
               unoptimized
               sizes="(max-width: 700px) 45vw, (max-width: 1100px) 22vw, 200px"
               onError={() => setBrokenPosters(prev => prev.includes(film.id) ? prev : [...prev, film.id])}
-            />}
-        <span className="film-poster-shade" aria-hidden="true" />
+            />
+            <span className="film-poster-shade" aria-hidden="true" />
+          </>}
         <span className="film-year">{film.year}</span>
         {progress[film.id] && <span className="film-resume-dot" aria-hidden="true" />}
       </div>

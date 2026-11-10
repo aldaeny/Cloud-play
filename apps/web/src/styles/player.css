@@ -16,7 +16,8 @@
 .cp-player-spacer { flex:1; }
 .cp-player-status { position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; text-align:center; padding:24px; background:#000b; }
 .cp-player-status p { max-width:55ch; line-height:1.8; margin:0; font-size:14px; }
-.cp-player-status button { background:linear-gradient(120deg,#a855f7,#ec4899); padding:8px 20px; }
+.cp-player-status button { background:var(--cp-accent); padding:8px 20px; }
+.cp-player-status button:hover { background:var(--cp-accent-hover); }
 .cp-player-spinner { width:34px; height:34px; border:3px solid #ffffff30; border-top-color:#c084fc; border-radius:50%; animation:cp-spin 1s linear infinite; }
 @keyframes cp-spin { to{transform:rotate(360deg)} }
 .cp-player-settings { position:absolute; z-index:5; inset-inline-end:14px; bottom:82px; width:min(300px,calc(100% - 28px)); max-height:calc(100% - 110px); overflow:auto; padding:16px; border:1px solid #ffffff30; border-radius:14px; background:#14161ef5; box-shadow:0 12px 35px #0009; }
