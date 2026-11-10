@@ -244,7 +244,7 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
 - **Implemented + tested successfully:** Arabic-aware search across all four surfaces; CSP/HSTS/Permissions-Policy
   with zero browser violations; plus every pre-existing web feature listed ✅ above.
   **Updated 2026-11-08:** the NestJS API now also builds and tests green — `tsc` 0 errors (was 18),
-  **25/25 jest suites / 238/238 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
+  **26/26 jest suites / 253/253 tests** (was 8/19, 46/55), `eslint` 0 errors, `nest build` exit 0.
   The 18 errors were missing generated Prisma types, not logic defects; see
   `apps/api/scripts/generate-client.cjs`.
   Also newly implemented and unit-verified: Supabase-backed auth guard (50 cases), server-side
@@ -267,3 +267,5 @@ sandbox), native mobile builds, webOS on a real device, and the NestJS API (see 
   provider for end-to-end verification.)*
 - **Awaiting your decision:** deployment approval. **D1 is resolved: Option C — Hybrid** (Supabase Auth +
   Supabase PostgreSQL as sources of truth, NestJS as the business/API layer, Next.js calling NestJS).
+
+Hybrid cutover limitations and current runtime evidence: see `docs/HYBRID_IMPLEMENTATION_REPORT.md`. The 13-module smoke test replaces Prisma only; it is not live database verification.
