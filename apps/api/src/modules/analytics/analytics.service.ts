@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
 @Injectable()
@@ -24,6 +24,7 @@ export class AnalyticsService {
   }
 
   async getTitlesStats(tenantId: string, limit = 20) {
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new BadRequestException('limit must be an integer between 1 and 100');
     return this.prisma.title.findMany({
       where: { tenantId, state: 'PUBLISHED' },
       select: {
@@ -40,6 +41,7 @@ export class AnalyticsService {
   }
 
   async getPlaybackStats(tenantId: string, days = 7) {
+    if (!Number.isInteger(days) || days < 1 || days > 365) throw new BadRequestException('days must be an integer between 1 and 365');
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
     const [sessionCount, avgDuration, topTitles] = await Promise.all([
