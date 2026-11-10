@@ -54,6 +54,12 @@ describe('per-request playback rights boundary and source/user-bound opaque addr
   const url=new URL(body.split('\n').pop()!,'https://api.fixture');
   await expect(f.controller.resource({...user,id:'different-user'},channel,url.searchParams.get('ticket')!,undefined,undefined,undefined,f.res)).rejects.toThrow('INVALID_MEDIA_RESOURCE');
  });
+ it('does not echo provider origins or unexpected URI syntax hidden in manifest metadata',async()=>{
+  for(const suffix of ['#provider https://fixture.example/private',"#EXT-X-MEDIA:TYPE=AUDIO,URI='https://fixture.example/audio.m3u8'"]){
+   const f=fixture();jest.spyOn(transport,'pinnedProviderRequest').mockResolvedValue(new globalThis.Response('#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXTINF:1,\nsegment.ts\n'+suffix,{headers:{'content-type':'application/vnd.apple.mpegurl'}}));
+   await expect(f.controller.start(user,channel,{headers:{'x-external-context':assertion()}} as unknown as Request,f.res)).rejects.toThrow();expect(f.send).not.toHaveBeenCalled();jest.restoreAllMocks();
+  }
+ });
  it('a revoke/source denial while bytes are fetching prevents the response',async()=>{
   const f=fixture();f.selected.mockResolvedValueOnce({id:'source-fixture',server:{endpointEncrypted:'endpoint-fixture'}}).mockResolvedValueOnce({id:'source-fixture',server:{endpointEncrypted:'endpoint-fixture'}}).mockRejectedValueOnce(new Error('RIGHTS_REVOKED'));
   jest.spyOn(transport,'pinnedProviderRequest').mockResolvedValue(new globalThis.Response(Buffer.alloc(188),{headers:{'content-type':'video/mp2t'}}));

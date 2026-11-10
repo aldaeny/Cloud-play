@@ -89,6 +89,7 @@ export class ExternalPlaybackController {
     let body: string | Buffer;
     if (['application/vnd.apple.mpegurl','application/x-mpegurl','audio/mpegurl','audio/x-mpegurl'].includes(mime || '')) {
       const text = await response.text(), parsed = parseHls(text,url);
+      if(/URI=(?!")/.test(text))throw new ForbiddenException('UNSUPPORTED_MANIFEST_URI');
       if (parsed.result !== 'reachable_and_hls_valid') throw new ForbiddenException('UNSUPPORTED_OR_PROTECTED_MANIFEST');
       body = text.split(/\r?\n/).map(line => !line.trim() ? line : line.startsWith('#') ? line.replace(/URI="([^"]+)"/g, (_match, value) => `URI="${reference(value)}"`) : reference(line.trim())).join('\n');
     } else if (mime === 'application/dash+xml') {
@@ -98,6 +99,10 @@ export class ExternalPlaybackController {
     } else {
       if (!['video/mp2t','video/mp4','audio/mp4','audio/aac','text/vtt'].includes(mime || '')) throw new ForbiddenException('UNSUPPORTED_MEDIA_MIME');
       body = Buffer.from(await response.arrayBuffer());
+    }
+    if(typeof body==='string'){
+      const secrets=[...base.searchParams.values(),...url.searchParams.values()].filter(value=>value.length>=4);
+      if(body.includes(base.origin)||secrets.some(secret=>body.includes(secret)||body.includes(encodeURIComponent(secret))))throw new ForbiddenException('PROVIDER_SECRET_REFLECTION_DENIED');
     }
     // A rights revocation/source switch while bytes were fetching must fail closed.
     if(ticket.expiresAt<=Date.now())throw new ForbiddenException('MEDIA_CONTEXT_EXPIRED');
