@@ -26,3 +26,9 @@ Native generation exited **1** before database operations. Exact failure: TLS co
 Therefore **native runtime verification remains BLOCKED**. To complete: run the command on a trusted CI/staging host that can download the official Prisma engine (or provision the matching verified native library/schema engine through supported Prisma environment variables). Repeat using the exact approved backend Node/OS/container image. A successful types-only build is not sufficient.
 
 The existing `test:postgres` command separately passed all 20 current checks using the real WASM query engine against real PostgreSQL. That evidence is preserved and clearly labeled WASM, not substituted for the blocked native gate.
+
+## Follow-up: trusted CI gate (execution still blocked)
+
+Commit92f9cff adds `.github/workflows/native-prisma.yml`: Ubuntu24.04, Node22/24, clean npm ci, native-only runner, fail-propagating pipe and uploaded logs, no production secrets/URL. Native runner additionally instantiates the actual production PrismaService through AppModule without overriding that service and checks lifecycle/query before teardown. This additional native-only check has NOT executed locally.
+
+GitHub API attempts from this session: workflow dispatch returned404 (new workflow is not registered on the default branch); Actions permissions endpoint returned403 `Resource not accessible by integration`; branch run list returned[]. No run or native pass is claimed. An authorized repository operator must enable/approve PR workflow execution as required by repository policy, then inspect the native-postgres jobs/logs for this PR SHA. Do not merge just to register workflow and do not accept the default WASM runner as a replacement. No repository Actions settings were modified.
