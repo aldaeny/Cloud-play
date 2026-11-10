@@ -19,6 +19,9 @@
  * are never placed in the URL, and redirects are refused so a provider cannot
  * bounce the probe (and its credentials) to an internal address.
  */
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
+import { publicProviderAddress } from '../../common/provider-address';
 import { Injectable, Logger } from '@nestjs/common';
 import { normalizeStatus, statusFromProbe, type ConnectionStatus } from './xtream-selection';
 
@@ -63,11 +66,11 @@ export function probeUrlAllowed(baseUrl: string, allowHttp: boolean): URL | null
   if (!['http:', 'https:'].includes(url.protocol)) return null;
   if (url.username || url.password || url.search || url.hash) return null;
   if (url.pathname !== '/' && url.pathname !== '') return null;
-  const host = url.hostname;
-  if (!host || host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return null;
-  if (host === '::1' || host === '[::1]' || /^127\./.test(host) || /^10\./.test(host) ||
-      /^192\.168\./.test(host) || /^169\.254\./.test(host) || /^0\./.test(host) ||
-      /^172\.(1[6-9]|2\d|3[01])\./.test(host)) return null;
+  const host = url.hostname.replace(/^\[|\]$/g, '').replace(/\.$/, '');
+  if (!host || ['localhost', 'metadata', 'instance-data'].includes(host) ||
+      /\.(localhost|local|internal|lan|home|corp|intranet|localdomain)$/.test(host) ||
+      (!host.includes('.') && !host.includes(':'))) return null;
+  if (isIP(host) && !publicProviderAddress(host)) return null;
   if (url.protocol === 'http:' && !allowHttp) return null;
   return url;
 }
@@ -97,6 +100,25 @@ export class XtreamHealthService {
       return { status: 'unhealthy', reason, latencyMs: null, httpStatus: null, checkedAt };
     }
 
+    // Check every DNS answer before transmitting credentials. Residual DNS
+    // rebinding window exists because fetch resolves again: egress restrictions
+    // or a pinned transport are still required before hostile-provider use.
+    const hostname = base.hostname.replace(/^\[|\]$/g, '');
+    if (!isIP(hostname)) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const addresses = await Promise.race([
+          lookup(hostname, { all: true, verbatim: true }),
+          new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('DNS_TIMEOUT')), 2000); }),
+        ]);
+        if (!addresses.length || addresses.some(row => !publicProviderAddress(row.address))) {
+          return { status: 'unhealthy', reason: 'INVALID_URL', latencyMs: null, httpStatus: null, checkedAt };
+        }
+      } catch {
+        return { status: 'unhealthy', reason: 'ORIGIN_UNREACHABLE', latencyMs: null, httpStatus: null, checkedAt };
+      } finally { clearTimeout(timer); }
+    }
+
     // Credentials go in the POST body, never the query string, so they cannot
     // land in a proxy access log or a Referer header.
     const endpoint = new URL('/player_api.php', base);
@@ -120,6 +142,8 @@ export class XtreamHealthService {
 
     const latencyMs = Date.now() - started;
 
+    if (!response.ok) await response.body?.cancel().catch(() => {});
+
     if (response.status === 401 || response.status === 403) {
       return { status: 'unhealthy', reason: 'AUTH_REJECTED', latencyMs, httpStatus: response.status, checkedAt };
     }
@@ -129,10 +153,23 @@ export class XtreamHealthService {
 
     let payload: unknown;
     try {
-      const text = await response.text();
-      if (text.length > MAX_RESPONSE_BYTES) {
-        return { status: 'unhealthy', reason: 'UNEXPECTED_RESPONSE', latencyMs, httpStatus: response.status, checkedAt };
+      const size = Number(response.headers.get('content-length'));
+      if (size > MAX_RESPONSE_BYTES) { await response.body?.cancel(); throw new Error('TOO_LARGE'); }
+      const reader = response.body?.getReader();
+      const chunks: Uint8Array[] = [];
+      let bytes = 0;
+      if (reader) {
+        try {
+          for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            bytes += value.byteLength;
+            if (bytes > MAX_RESPONSE_BYTES) { await reader.cancel(); throw new Error('TOO_LARGE'); }
+            chunks.push(value);
+          }
+        } finally { reader.releaseLock(); }
       }
+      const text = Buffer.concat(chunks).toString('utf8');
       payload = JSON.parse(text);
     } catch {
       return { status: 'unhealthy', reason: 'UNEXPECTED_RESPONSE', latencyMs, httpStatus: response.status, checkedAt };

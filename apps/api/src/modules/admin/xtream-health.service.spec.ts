@@ -1,3 +1,4 @@
+import dns = require('node:dns/promises');
 import { XtreamHealthService, probeUrlAllowed, MAX_SERVERS_PER_SWEEP, MIN_RECHECK_INTERVAL_MS } from './xtream-health.service';
 
 const target = { baseUrl: 'https://provider.example:2053', username: 'operator', password: 'secret-value' };
@@ -6,8 +7,11 @@ describe('XtreamHealthService', () => {
   const realFetch = global.fetch;
   let service: XtreamHealthService;
   let fetchMock: jest.Mock;
+  let dnsMock: jest.SpyInstance;
 
   beforeEach(() => {
+    dnsMock = jest.spyOn(dns, 'lookup');
+    dnsMock.mockResolvedValue([{ address: '8.8.8.8', family: 4 }]);
     service = new XtreamHealthService();
     fetchMock = jest.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
@@ -20,7 +24,7 @@ describe('XtreamHealthService', () => {
   });
 
   function replies(status: number, body: string) {
-    fetchMock.mockResolvedValue({ ok: status >= 200 && status < 300, status, text: async () => body } as Response);
+    fetchMock.mockResolvedValue(new Response(body, { status }));
   }
 
   describe('URL re-validation at probe time', () => {
@@ -65,6 +69,20 @@ describe('XtreamHealthService', () => {
       expect(result).toMatchObject({ status: 'unhealthy', reason: 'INVALID_URL' });
       expect(fetchMock).not.toHaveBeenCalled();
     });
+  });
+
+  it.each(['https://[fc00::1]', 'https://[::ffff:127.0.0.1]', 'https://[fe80::1]', 'https://100.64.0.1', 'https://224.0.0.1'])('blocks reserved addresses: %s', url => {
+    expect(probeUrlAllowed(url, false)).toBeNull();
+  });
+  it('blocks a DNS result containing even one private address before fetch', async () => {
+    dnsMock.mockResolvedValue([{ address: '8.8.8.8', family: 4 }, { address: '127.0.0.1', family: 4 }]);
+    expect(await service.probe(target)).toMatchObject({ reason: 'INVALID_URL' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it('reports DNS failure without sending credentials', async () => {
+    dnsMock.mockRejectedValue(new Error('dns failed'));
+    expect(await service.probe(target)).toMatchObject({ reason: 'ORIGIN_UNREACHABLE' });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   describe('probe request shape', () => {

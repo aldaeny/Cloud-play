@@ -6,7 +6,7 @@ Fresh npm audit on the starting lockfile: **31 findings: 11 low, 16 moderate, 4 
 
 Scoped overrides: CLI glob 10.4.5 → 10.5.0 (fixes command injection, not all cancellation/minimatch advisories); inquirer 8.2.6 → 8.2.7 and schematics CLI inquirer 9.2.15 → 9.3.8 (remove old external-editor/tmp path); Angular core picomatch 4.0.1 → 4.0.7 and ajv 8.12.0 → 8.20.0; CLI webpack 5.97.1 → 5.112.2. No arbitrary major versions forced. Root overrides intentionally scope pinned upstream tool dependencies.
 
-Verification after updates: API build/lint/Jest; real PostgreSQL test runner; Web/Admin lint/build succeeded. A clean npm ci and final regression run are still required for the final snapshot. Remaining moderate runtime Nest core/platform advisories require a separately reviewed upgrade; do NOT declare zero runtime vulnerabilities.
+Verification after updates: API build/lint/Jest; real PostgreSQL test runner; Web/Admin lint/build succeeded. A clean npm ci and final regression run are recorded in PRODUCTION_READINESS.md. Remaining moderate runtime Nest core/platform advisories require a separately reviewed upgrade; do NOT declare zero runtime vulnerabilities.
 
 ## Starting findings and disposition
 
@@ -48,11 +48,11 @@ Installed versions below refer to the starting lockfile. Runtime/dev derives fro
 
 ## Application security findings
 
-- Legacy JWT systems remain; only hybrid profiles uses Supabase. Matrix lists all 88 declared controller routes. This is not full D1 completion.
+- Legacy JWT systems remain; only hybrid profiles uses Supabase. Matrix lists all 90 declared controller routes. This is not full D1 completion.
 - New legacy guard tests use real JWT signature/expiry with fixture database records. Invalid subject shapes are now rejected before database lookups; forged token tenant/permissions do not override database context.
 - RLS checked-in SQL is exercised on real isolated PostgreSQL with local auth.uid/users/roles fixtures. This is not hosted Supabase verification.
 - Native Prisma remains blocked by official engine download network restriction.
-- IPTV health URL validation has incomplete DNS/private IPv6/rebinding coverage; no claim of a complete SSRF audit. Existing response-size checking buffers before checking; should be bounded at transport level.
+- IPTV health now preflights DNS answers, rejects reserved IPv4/private and transition IPv6, and bounds bytes while streaming. A DNS-rebinding window remains because fetch resolves again: pinned transport or reviewed egress isolation is still a production gate. No claim of a complete SSRF audit.
 - Existing IPTV HTTP opt-in remains for compatibility; it is NOT a secure transport substitute or approval to transmit credentials. No new HTTP path or provider probe was introduced.
 - Bearer bridges reject redirects, bound bodies/timeouts, use no-store and fixed targets. Existing CSP/HSTS tests remain required in regression.
 - Legacy cookie fallback needs explicit CSRF review before browser cookie-based business operations are adopted; new hybrid endpoint is bearer-only.
