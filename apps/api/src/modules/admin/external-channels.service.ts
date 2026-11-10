@@ -89,8 +89,11 @@ export class ExternalChannelsService {
       const channel = await tx.externalChannel.findFirst({ where: { id: externalId(channelId), tenantId } });
       const source = await tx.channelSource.findFirst({ where: { id: externalId(sourceId), channelId, tenantId }, include: sourceInclude });
       if (!channel || !source) throw new NotFoundException('SOURCE_NOT_FOUND');
-      if (!mayRedistribute(source.server.license, source.server.providerName, channel.platform, channel.country) || !healthySource(source, channel, new Date()) || (source.server.checks[0].details as Record<string, unknown>)?.segmentStatus !== 'fetched_mime_valid') throw new ForbiddenException('RIGHTS_OR_SEGMENT_READINESS_NOT_VERIFIED');
-      await tx.externalServer.update({ where: { id: source.serverId, tenantId }, data: { enabled: true, status: 'production_enabled' } });
+      if(source.server.licenseId)await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${source.server.licenseId}, 0))`;
+      const freshLicense=source.server.licenseId ? await tx.contentLicense.findFirst({where:{id:source.server.licenseId,tenantId}}) : null;
+      if (!mayRedistribute(freshLicense, source.server.providerName, channel.platform, channel.country) || !healthySource(source, channel, new Date()) || (source.server.checks[0].details as Record<string, unknown>)?.segmentStatus !== 'fetched_mime_valid') throw new ForbiddenException('RIGHTS_OR_SEGMENT_READINESS_NOT_VERIFIED');
+      const approved=await tx.externalServer.updateMany({ where: { id: source.serverId, tenantId, deletedAt:null, endpointEncrypted:source.server.endpointEncrypted, licenseId:source.server.licenseId, lastCheckedAt:source.server.lastCheckedAt }, data: { enabled: true, status: 'production_enabled' } });
+      if(!approved.count)throw new ForbiddenException('SOURCE_CHANGED_RECHECK_REQUIRED');
       // Server updatedAt changes on approval; preserve health version provenance by
       // using lastCheckedAt (reset by edits), rather than treating approval as URL edit.
       await tx.channelSource.update({ where: { id: sourceId, tenantId }, data: { enabled: true } });

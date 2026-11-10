@@ -56,6 +56,8 @@ export class ExternalReportsService {
       const leaseUntil=new Date(now.getTime()+60000);
       const claim=await this.prisma.externalReportDelivery.updateMany({where:{id:item.id,status:{in:['pending','retry','delivering']},attempts:{lt:5},OR:[{leaseUntil:null},{leaseUntil:{lt:now}}]},data:{status:'delivering',leaseUntil,attempts:{increment:1}}});
       if(!claim.count)continue;
+      const approval=await this.prisma.externalReportSchedule.findUnique({where:{id:item.scheduleId}});
+      if(!approval?.enabled || !approval.deliveryApproved){await this.prisma.externalReportDelivery.updateMany({where:{id:item.id,leaseUntil},data:{status:'pending',leaseUntil:null,attempts:{decrement:1}}});continue;}
       let success=false;
       try{
         // Idempotency key must be honoured by the approved recipient: delivery is
