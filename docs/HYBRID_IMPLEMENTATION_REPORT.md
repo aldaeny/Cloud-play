@@ -56,3 +56,15 @@ The previously observed database has two public application tables, no Prisma ta
 5. SMTP and compatible account-hardening configuration with approval.
 6. Rights-cleared Series catalog and authorized provider synchronization fixtures/specification.
 7. Verified staging deployment and explicit production approval; PR #23 remains unmerged.
+
+## Real isolated PostgreSQL verification (follow-up)
+
+`npm run test:postgres --workspace aether-api` now provisions a fresh **real PostgreSQL 17.11** cluster from the pinned-major embedded-postgres development dependency. It never reads DATABASE_URL, binds only loopback on a dynamically selected port, applies all five checked-in SQL migrations in order, and removes its cluster and generated test client afterward.
+
+**11 real checks passed:** Prisma query/version, all 32 model delegates, all model column presence and scalar nullability, foreign-key counts and declared unique indexes, nested create/relationship/defaults, update/read, unique violation P2002, foreign-key violation P2003, interactive transaction rollback, disposable deletes, actual server stop/query failure/restart/recovery.
+
+This client uses Prisma **5.22.0's real npm-shipped WASM query engine**, matching `@prisma/adapter-pg` and node-postgres, not a database mock. A test-only schema enables the driverAdapters preview feature. Node 22 needs a loader adaptation in the temporary generated client to compile the unchanged WASM bytes; no tracked generated engine or production schema is patched. The production native PrismaService path remains unverified in this network and still requires native generation before deployment. This closes real model/query/migration verification, not production bootstrap verification.
+
+Observed schema caveat: Prisma's generated migration declares scalar array columns (e.g. Title.genres) nullable at the PostgreSQL level even though Prisma lists are required. The test checks those columns exist but explicitly excludes list nullability equivalence. No production schema was changed to hide this distinction. Explicit non-unique index performance and exhaustive writes of all possible model combinations are not proven by these checks.
+
+API regression re-run: **26/26 suites, 253/253 tests**, lint exit 0, build exit 0. These are separate from the 11 real database checks. No live Supabase query, provider access, SMTP delivery, merge or deployment was performed.
