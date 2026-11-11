@@ -12,7 +12,7 @@ const archiveDescriptors=[];
 const openArchive=file=>{const fd=openSync(file,'r');archiveDescriptors.push(fd);return fd;};
 const toFile=(file,args)=>{const fd=openSync(file,'wx',0o600);try{docker(args,{stdio:['pipe',fd,'pipe']});}finally{closeSync(fd);}};
 const sha = file => { const fd=openSync(file,'r'), hash=createHash('sha256'), buffer=Buffer.alloc(1024*1024);try{let n;while((n=readSync(fd,buffer,0,buffer.length,null)))hash.update(buffer.subarray(0,n));return hash.digest('hex');}finally{closeSync(fd);} };
-let diagnosticSecrets={...process.env}, lastStep='preflight';
+let diagnosticSecrets={...process.env}, lastStep='preflight', diagnoseServices;
 const writers = ['web','admin','worker-media','api','auth-gateway','auth'];
 try {
   const project = projectName(projectArg), release = releaseName(releaseArg);
@@ -27,6 +27,7 @@ try {
   const compose = args => { lastStep=args[0]+':'+args.filter(v=>['api','worker-media','web','admin','tools','postgres','redis','minio','minio-init','bootstrap','migrate','demo-import'].includes(v)).join(','); console.log('Local lifecycle step: '+lastStep); return docker(['compose','--project-name',project,'--env-file','.env',
     '-f','infra/docker/compose.yml','-f','infra/docker/compose.local.yml','-f','infra/docker/compose.selfhost.yml', ...args],
     { env: { ...process.env, ...localEnv, SELFHOST_RELEASE: release } }); };
+  diagnoseServices=()=>{for(const service of ['auth','postgres','minio','minio-init']){try{const logs=compose(['logs','--no-color','--tail','35',service]).toString();console.error('::error title=Local service '+service+'::'+redactDiagnostic(logs,diagnosticSecrets).replaceAll('%','%25'));}catch{}}};
   const cid = service => compose(['ps','-a','-q',service]).toString().trim();
   const volume = service => {
     const id = cid(service); if (!id) throw new Error('Required local service absent');
@@ -105,6 +106,7 @@ try {
   // Child-process errors can carry secrets/DB dumps; never echo their payload.
   const detail=redactDiagnostic(error?.status !== undefined ? String(error.stderr||'')+' '+String(error.stdout||'') : error.message,diagnosticSecrets);
   console.error('::error title=Local selfhost lifecycle::step='+lastStep+' '+detail.replaceAll('%','%25'));
+  if(diagnoseServices)diagnoseServices();
   console.error('Local operation failed; writers may be stopped. No secret values exported.');
   process.exitCode = 1;
 } finally { for (const fd of archiveDescriptors) closeSync(fd); }
