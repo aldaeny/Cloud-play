@@ -5,8 +5,8 @@ This is an engineering checklist, not legal advice or legal sign-off.
 Pinned official releases in Dockerfile.storage:
 - MinIO RELEASE.2025-04-22T22-12-26Z (AGPL-3.0):
   https://github.com/minio/minio/tree/RELEASE.2025-04-22T22-12-26Z
-- MC RELEASE.2025-04-16T18-13-26Z (AGPL-3.0):
-  https://github.com/minio/mc/tree/RELEASE.2025-04-16T18-13-26Z
+- MC RELEASE.2025-08-13T08-35-41Z (AGPL-3.0):
+  https://github.com/minio/mc/tree/RELEASE.2025-08-13T08-35-41Z
 No upstream binary/source patches are currently applied. Docker packaging and
 hardcoded architecture checksums are in infra/docker/Dockerfile.storage. Official
 GitHub downloads are free; commercial MinIO support is not included.
@@ -48,3 +48,18 @@ explicit, documented operator risk decision—not silent suppression. Scanner DB
 fetch failure is a failed scan, not "zero vulnerabilities". Reproduce on existing
 Linux Docker hardware after the lifecycle builds retained image tags. No paid
 scanner account is required. npm audit does not cover these binaries/OS packages.
+
+## Remediation applied after first scan
+
+The initial inventory reported storage HIGH224/CRITICAL10 and API HIGH44/CRITICAL1
+(dependency occurrences, not unique exploitable defects). Both Debian runtime
+builds now apply available same-distribution apt upgrades. MC moves to the latest
+published official free binary release, RELEASE.2025-08-13T08-35-41Z, with official
+amd64/arm64 SHA256s. No Go binary is relabeled as patched without rescanning.
+MinIO's latest release (RELEASE.2025-10-15T17-29-55Z) publishes no binary assets;
+replacing its old binary with a reviewed, reproducibly built source version and
+current Go/dependency toolchain is a remaining remediation path—not a claim of
+support or a reason to suppress embedded-Go findings. Final counts come from the
+final-SHA CI inventory, not these initial counts. New upstream DB advisories can
+change counts even without source changes. Package upgrades cannot fix embedded
+Go libraries; those require a rebuilt/replaced binary and lifecycle retesting.

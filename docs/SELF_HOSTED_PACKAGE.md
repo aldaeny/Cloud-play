@@ -225,3 +225,10 @@ compatibility role when absent, before Auth migrations and before isolated
 restore of those grants. Existing roles are never altered. No additional
 password/account or paid Supabase service is required. The source is reproducible
 at https://github.com/supabase/auth/blob/v2.197.0/migrations/20240612123726_enable_rls_update_grants.up.sql .
+
+Current storage client update: MC now uses official
+RELEASE.2025-08-13T08-35-41Z binaries with per-architecture SHA256 verification.
+Earlier release references above describe the original verified checkpoint.
+Storage/API Debian images apply available same-distribution package upgrades at
+build time; vulnerability clearance still depends on the generated final-image
+inventory. See STORAGE_DISTRIBUTION_COMPLIANCE.md for unresolved binary risks.

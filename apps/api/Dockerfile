@@ -1,7 +1,7 @@
 # Native Prisma build and runtime use the same libc/OpenSSL family.
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY . .
 ENV PRISMA_REQUIRE_NATIVE=true
 RUN npm ci --no-audit --no-fund && npm run build --workspace aether-api \
@@ -12,7 +12,7 @@ FROM node:22-bookworm-slim AS runtime
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 # npm workspaces may keep version-conflicting production dependencies local.
