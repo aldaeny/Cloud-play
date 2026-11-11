@@ -165,3 +165,14 @@ PASS. Local Docker is unavailable in the agent sandbox; CI supplies runtime proo
 Public ingress, trustworthy Geo provenance, automated PostgREST/RLS installation,
 production bootstrap/privilege hardening, full upgrade-to-a-different-release drill,
 physical devices and customer-operated hardware remain separate acceptance gates.
+
+## White label site binding
+
+`PUBLIC_BRANDING_TENANT_ID` binds the public login/viewer brand to an operator-selected
+site, never a browser-provided Host/query tenant. The initializer selects its generated
+tenant. Administration uses its authenticated tenant settings. Both App Router and
+Pages Router viewer shells load the safe public brand; home, login, settings and
+movie headers/titles/colors use it. Local raster logo files must be installed under
+`public/brand-assets/` in **both** viewer/admin releases. Approved custom-domain TLS
+routing, opening artwork and every editorial/legal marketing phrase still require
+operator-specific review; this is not an automated domain ownership service.

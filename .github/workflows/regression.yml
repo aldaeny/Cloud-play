@@ -72,6 +72,7 @@ jobs:
           npm run test:layout --workspace aether-web
           npm run test:search:browser --workspace aether-web
           npm run test:popup --workspace aether-web
+          node apps/web/tests/white-label-browser.mjs
       - name: Actual Admin browser provider and sync states (API fixtures)
         shell: bash
         run: |

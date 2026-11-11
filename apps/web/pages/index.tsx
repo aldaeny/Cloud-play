@@ -1,3 +1,5 @@
+import { useBranding } from '../src/components/brand/BrandingProvider';
+import { brandingStyle } from '../src/components/brand/branding-style';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -32,6 +34,8 @@ function Brand() {
 }
 export const getStaticProps=async()=>({props:{curatedChannelCount:getPublicChannels().length}});
 export default function Home({curatedChannelCount}:{curatedChannelCount:number}) {
+  const brand = useBranding();
+  const brandName = brand?.displayName || 'Cloud Play';
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('ar');
   const [active, setActive] = useState(0);
@@ -128,9 +132,9 @@ export default function Home({curatedChannelCount}:{curatedChannelCount:number})
     stage.scrollBy({ left: delta, behavior: reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }, [active, reduceMotion]);
   const move = (n: number) => setActive(current => (current + n + items.length) % items.length);
-  return <PlaybackPreferencesContext.Provider value={{ autoPlay: playbackAuto, startMuted: playbackMuted, scrollToPlayer }}><div className={`site theme-${theme} text-${textSize}${reduceMotion ? ' motion-off' : ''}${glowEnabled ? '' : ' no-glow'}${highContrast ? ' high-contrast' : ''}${solidPanels ? ' solid-panels' : ''}${hideCover ? ' hide-cover' : ''}${staticCover ? ' static-cover' : ''}`} id="top" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+  return <PlaybackPreferencesContext.Provider value={{ autoPlay: playbackAuto, startMuted: playbackMuted, scrollToPlayer }}><div className={`site theme-${theme} text-${textSize}${reduceMotion ? ' motion-off' : ''}${glowEnabled ? '' : ' no-glow'}${highContrast ? ' high-contrast' : ''}${solidPanels ? ' solid-panels' : ''}${hideCover ? ' hide-cover' : ''}${staticCover ? ' static-cover' : ''}`} id="top" style={brandingStyle(brand,theme)} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <IntroLayer/>
-    <Head><title>Cloud Play — Your world of stories</title><meta name="description" content="Cloud Play Iraq — free public-domain films and free live TV. No sign-in, no subscription, no payment."/><link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/></Head>
+    <Head><title>{brandName} — Your world of stories</title><meta name="description" content="Cloud Play Iraq — free public-domain films and free live TV. No sign-in, no subscription, no payment."/>{!brand && <link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/>}</Head>
     <AppHeader language={language} theme={theme} onToggleLanguage={() => chooseLanguage(language === 'ar' ? 'en' : 'ar')} onToggleTheme={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')} onSearchClick={openSearch} hasQuery={!!query.trim()} searchButtonRef={searchButtonRef}/>
     <div ref={searchRowRef} className="home-search shell">
       <SearchField
@@ -173,7 +177,7 @@ export default function Home({curatedChannelCount}:{curatedChannelCount:number})
         <Link href="/latest" className="browse-card home-highlight-card"><div className="browse-icon"><Icon name="film" size={23}/></div><div><span className="browse-tag">{language === 'ar' ? 'أحدث الأفلام' : 'NEW FILMS'}</span><h3>{language === 'ar' ? 'الأفلام الحديثة' : 'New films'}</h3><p>{language === 'ar' ? 'لا توجد أفلام حديثة مرخّصة في المكتبة حالياً.' : 'There are no recently released licensed films in the library yet.'}</p></div><span className="home-card-link">{language === 'ar' ? 'عرض الصفحة' : 'View page'} ↗</span><span className="browse-orb" aria-hidden="true"/></Link>
       </div>
     </section>
-    <section className="home-about shell reveal-on-scroll" aria-labelledby="home-about-title"><div className="home-about-panel"><div><div className="eyebrow"><span className="tiny-line"/>CLOUD PLAY IRAQ</div><h2 id="home-about-title">{language === 'ar' ? 'عن المنصة' : 'About the platform'}</h2><p>{language === 'ar' ? 'كلاود بلاي يجمع الأفلام المرخّصة وقنوات البث المباشر المجانية في مكان واحد، مجاناً بالكامل وبدون تسجيل دخول للمشاهدة. أنشئ حساباً مجانياً لحفظ مفضلتك ومتابعة المشاهدة عبر أجهزتك.' : 'Cloud Play brings licensed films and free live channels together, completely free and with no sign-in required to watch. Create a free account to keep your favorites and watch progress across devices.'}</p></div><Link className="home-about-link" href="/about">{language === 'ar' ? 'تفاصيل المنصة' : 'Platform details'} <span aria-hidden="true">↗</span></Link></div></section></main>
+    <section className="home-about shell reveal-on-scroll" aria-labelledby="home-about-title"><div className="home-about-panel"><div><div className="eyebrow"><span className="tiny-line"/>{brand ? brandName : 'CLOUD PLAY IRAQ'}</div><h2 id="home-about-title">{language === 'ar' ? 'عن المنصة' : 'About the platform'}</h2><p>{language === 'ar' ? 'كلاود بلاي يجمع الأفلام المرخّصة وقنوات البث المباشر المجانية في مكان واحد، مجاناً بالكامل وبدون تسجيل دخول للمشاهدة. أنشئ حساباً مجانياً لحفظ مفضلتك ومتابعة المشاهدة عبر أجهزتك.' : 'Cloud Play brings licensed films and free live channels together, completely free and with no sign-in required to watch. Create a free account to keep your favorites and watch progress across devices.'}</p></div><Link className="home-about-link" href="/about">{language === 'ar' ? 'تفاصيل المنصة' : 'Platform details'} <span aria-hidden="true">↗</span></Link></div></section></main>
     <footer className="footer shell reveal-on-scroll"><div><Brand/><p>{t.footer}</p><nav className="footer-pages" aria-label={language === 'ar' ? 'صفحات المنصة' : 'Platform pages'}><Link href="/exclusive">{language === 'ar' ? 'الحصريات' : 'Exclusives'}</Link><Link href="/latest">{language === 'ar' ? 'أحدث الأفلام' : 'New films'}</Link><Link href="/about">{language === 'ar' ? 'عن المنصة' : 'About'}</Link><Link href="/movies">{t.movies}</Link><Link href="/series">{t.series}</Link><Link href="/live">{t.live}</Link><Link href="/search">{t.searchAction}</Link><Link href="/favorites">{language === 'ar' ? 'المفضلة' : 'Favorites'}</Link><Link href="/continue">{language === 'ar' ? 'متابعة المشاهدة' : 'Continue watching'}</Link><Link href="/settings">{t.settings}</Link><Link href="/login">{language === 'ar' ? 'تسجيل الدخول' : 'Sign in'}</Link></nav></div><span>© {new Date().getFullYear()} {t.rights}</span></footer>
     {modal !== null && <div className="modal-backdrop" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)} aria-label={t.close}><Icon name="close"/></button><div className="modal-art"><Image src={items[modal].image} fill sizes="400px" alt=""/></div><div className="modal-body"><span className="eyebrow">{t.demo}</span><h2 id="dialog-title">{items[modal][language]}</h2><h3>{t.modalTitle}</h3><p>{t.modalBody}</p><button className="outline-button" onClick={() => setModal(null)}>{t.close}</button></div></div></div>}
   </div></PlaybackPreferencesContext.Provider>;

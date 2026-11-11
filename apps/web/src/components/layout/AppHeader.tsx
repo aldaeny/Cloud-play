@@ -1,5 +1,6 @@
 'use client';
 
+import { useBranding } from '../brand/BrandingProvider';
 import Link from 'next/link';
 import { useNavigation } from '../navigation/NavigationProvider';
 import { type Ref } from 'react';
@@ -27,6 +28,7 @@ export default function AppHeader({
   searchButtonRef?: Ref<HTMLButtonElement>;
   accountHref?: string;
 }) {
+  const brand = useBranding();
   const navigation = useNavigation();
   const ar = language === 'ar';
   const handleSearch = () => { if (onSearchClick) onSearchClick(); else void navigation.push('/search'); };
@@ -34,7 +36,7 @@ export default function AppHeader({
   return (
     <header className="app-header">
       <div className="app-header-inner">
-        <Link href="/" className="app-header-brand" aria-label={ar ? 'كلاود بلاي — الرئيسية' : 'Cloud Play home'}>
+        <Link href="/" className="app-header-brand" aria-label={brand ? `${brand.displayName} — ${ar ? 'الرئيسية' : 'home'}` : ar ? 'كلاود بلاي — الرئيسية' : 'Cloud Play home'}>
           <CloudPlayBrand />
         </Link>
         <div className="app-header-actions">

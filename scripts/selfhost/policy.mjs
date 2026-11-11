@@ -31,3 +31,9 @@ export function parseEnvironment(text) {
   }
   return result;
 }
+/** Actionable local diagnostics with known secret values removed, never env dumps. */
+export function redactDiagnostic(text, values) {
+  let result=String(text||'');
+  for(const value of Object.values(values).filter(v=>typeof v==='string'&&v.length>=8).sort((a,b)=>b.length-a.length))result=result.split(value).join('[REDACTED]');
+  return result.replace(/(?:postgres(?:ql)?:\/\/|Bearer\s+)[^\s"']+/gi,'[REDACTED_CREDENTIAL]').slice(-6000).replace(/[\r\n]+/g,' ');
+}

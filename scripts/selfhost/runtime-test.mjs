@@ -83,7 +83,9 @@ try {
   pass('corrupt archive rejected before restore target resource creation');
   assert.throws(()=>cli('rollback',target,[archive]));
   pass('in-place destructive schema rollback refused; documented rollback is separate-project restore');
-  writeFileSync('selfhost-runtime-evidence.json',JSON.stringify({head:sha,status:'PASS',checks,scope:'disposable Compose applications + private storage + local GoTrue schema/TLS; not a production or physical-device proof'},null,2));
+  const evidence={head:sha,status:'PASS',checks,scope:'disposable Compose applications + private storage + local GoTrue schema/TLS; not a production or physical-device proof'};
+  writeFileSync('selfhost-runtime-evidence.json',JSON.stringify(evidence,null,2));
+  console.log('::notice title=Selfhost package verified assertions::'+JSON.stringify(evidence));
 } catch(error) {
   const text=String(error.stderr||'')+' '+String(error.stdout||'');
   const known=['Cannot find module','unhealthy','permission denied','unknown flag','service did not complete','port is already allocated','MIGRATIONS_FAILED','BOOTSTRAP_REQUIRES_EMPTY','Build release must equal'];

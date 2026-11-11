@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, chmod
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { projectName, releaseName, localDocker, archivePath, parseEnvironment } from './policy.mjs';
+import { projectName, releaseName, localDocker, archivePath, parseEnvironment, redactDiagnostic } from './policy.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const [action, projectArg, releaseArg, archiveArg] = process.argv.slice(2);
 const docker = (args, options = {}) => execFileSync('docker', ['--context','default',...args], { cwd: root, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...options });
@@ -12,6 +12,7 @@ const archiveDescriptors=[];
 const openArchive=file=>{const fd=openSync(file,'r');archiveDescriptors.push(fd);return fd;};
 const toFile=(file,args)=>{const fd=openSync(file,'wx',0o600);try{docker(args,{stdio:['pipe',fd,'pipe']});}finally{closeSync(fd);}};
 const sha = file => { const fd=openSync(file,'r'), hash=createHash('sha256'), buffer=Buffer.alloc(1024*1024);try{let n;while((n=readSync(fd,buffer,0,buffer.length,null)))hash.update(buffer.subarray(0,n));return hash.digest('hex');}finally{closeSync(fd);} };
+let diagnosticSecrets={...process.env}, lastStep='preflight';
 const writers = ['web','admin','worker-media','api','auth-gateway','auth'];
 try {
   const project = projectName(projectArg), release = releaseName(releaseArg);
@@ -20,9 +21,10 @@ try {
   // Reject any supplied database URI which is not this Compose service.
   const envText = readFileSync(path.join(root, '.env'), 'utf8');
   const localEnv = parseEnvironment(envText);
+  diagnosticSecrets={...diagnosticSecrets,...localEnv};
   const database = localEnv.DATABASE_URL;
   if (new URL(database).hostname !== 'postgres') throw new Error('Only the local postgres service is authorized');
-  const compose = args => { console.log('Local lifecycle step: '+args[0]); return docker(['compose','--project-name',project,'--env-file','.env',
+  const compose = args => { lastStep=args[0]+':'+args.filter(v=>['api','worker-media','web','admin','tools','postgres','redis','minio','minio-init','bootstrap','migrate','demo-import'].includes(v)).join(','); console.log('Local lifecycle step: '+lastStep); return docker(['compose','--project-name',project,'--env-file','.env',
     '-f','infra/docker/compose.yml','-f','infra/docker/compose.local.yml','-f','infra/docker/compose.selfhost.yml', ...args],
     { env: { ...process.env, ...localEnv, SELFHOST_RELEASE: release } }); };
   const cid = service => compose(['ps','-a','-q',service]).toString().trim();
@@ -101,7 +103,9 @@ try {
   console.log(`PASS local ${action}; no cloud or production operation performed`);
 } catch (error) {
   // Child-process errors can carry secrets/DB dumps; never echo their payload.
-  console.error(error?.status !== undefined ? 'Local Docker operation failed; sensitive command output withheld. Writers may be stopped; inspect locally.' : error.message);
+  const detail=redactDiagnostic(error?.status !== undefined ? String(error.stderr||'')+' '+String(error.stdout||'') : error.message,diagnosticSecrets);
+  console.error('::error title=Local selfhost lifecycle::step='+lastStep+' '+detail.replaceAll('%','%25'));
+  console.error('Local operation failed; writers may be stopped. No secret values exported.');
   process.exitCode = 1;
 } finally { for (const fd of archiveDescriptors) closeSync(fd); }
 

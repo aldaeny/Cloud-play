@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { projectName, releaseName, localDocker, archivePath, parseEnvironment } from './policy.mjs';
+import { projectName, releaseName, localDocker, archivePath, parseEnvironment, redactDiagnostic } from './policy.mjs';
 test('projects cannot select production/default names or inject flags', () => {
   for (const value of ['production','cloudplay','--project','cloudplay-local-../prod','cloudplay-local-X','']) assert.throws(()=>projectName(value));
   assert.equal(projectName('cloudplay-local-fixture'),'cloudplay-local-fixture');
@@ -23,4 +23,9 @@ test('environment parsing is deterministic, dependency-free and never evaluates 
   assert.deepEqual(parseEnvironment('# comment\nDATABASE_URL="postgresql://u:p@postgres/db"\nTOKEN=abc.def\nEMPTY=""'),{DATABASE_URL:'postgresql://u:p@postgres/db',TOKEN:'abc.def',EMPTY:''});
   for(const text of ['KEY="unterminated','KEY=a\nKEY=b','export KEY=x'])assert.throws(()=>parseEnvironment(text));
   assert.equal(parseEnvironment('KEY=$(dangerous-command)').KEY,'$(dangerous-command)');
+});
+
+test('diagnostics redact credentials and known secrets without hiding failure context',()=>{
+  const result=redactDiagnostic('build failed password-unique-secret Bearer abc.def.ghi postgresql://user:pass@host/db\nreason: denied',{PASSWORD:'password-unique-secret'});
+  assert.ok(result.includes('build failed'));assert.ok(result.includes('denied'));assert.ok(!result.includes('password-unique-secret'));assert.ok(!result.includes('abc.def.ghi'));assert.ok(!result.includes('user:pass'));assert.ok(!result.includes('\n'));
 });
