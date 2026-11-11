@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {execFileSync} from 'node:child_process';
 import { createRequire } from 'node:module';
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, createHash, randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
 import pg from 'pg';
 const require = createRequire(import.meta.url);
@@ -66,6 +66,18 @@ try {
   assert.equal(profiles.body.length, 1); assert.equal(profiles.body[0].id, own.body.id);assert.equal(profiles.body[0].name,inertName);
   await request(server).put(`/profiles/${otherProfile}`).set('Authorization', bearer).send({ name: 'stolen' }).expect(404);
   await request(server).delete(`/profiles/${otherProfile}`).set('Authorization', bearer).expect(404);
+  // Explicit isolated rollout of the GLOBAL resource-server policy. Real Auth,
+  // sessions/nonce DB and guard; generic client headers cannot substitute it.
+  const oldPolicy=process.env.API_GEO_ALLOWED_COUNTRIES,oldKey=process.env.EXTERNAL_GEO_SIGNING_KEY;
+  process.env.API_GEO_ALLOWED_COUNTRIES='IQ,US';process.env.EXTERNAL_GEO_SIGNING_KEY='isolated-global-resource-geo-key-32';
+  const apiProof=(patch={})=>{const now=Date.now(),p=Buffer.from(JSON.stringify({channelId:'api:GET:'+createHash('sha256').update('/profiles').digest('hex'),tokenHash:createHash('sha256').update(access).digest('hex'),country:'IQ',ipHash:'a'.repeat(64),platform:'web',issuedAt:now,expiresAt:now+30000,nonce:randomUUID(),...patch})).toString('base64url');return p+'.'+createHmac('sha256',process.env.EXTERNAL_GEO_SIGNING_KEY).update(p).digest('base64url');};
+  try{
+   await request(server).get('/profiles').set('Authorization',bearer).set('x-country','IQ').set('x-forwarded-for','8.8.8.8').expect(403);
+   const proof=apiProof();await request(server).get('/profiles').set('Authorization',bearer).set('x-api-geo',proof).expect(200);
+   await request(server).get('/profiles').set('Authorization',bearer).set('x-api-geo',proof).expect(403);
+   for(const patch of [{ipHash:'b'.repeat(64)},{country:'US'},{country:'DE'},{expiresAt:0}])await request(server).get('/profiles').set('Authorization',bearer).set('x-api-geo',apiProof(patch)).expect(403);
+   console.log('PASS global API Geo: real Auth/native PG guard, no client header fallback, nonce replay and same-session country/IP changes denied');
+  }finally{if(oldPolicy===undefined)delete process.env.API_GEO_ALLOWED_COUNTRIES;else process.env.API_GEO_ALLOWED_COUNTRIES=oldPolicy;if(oldKey===undefined)delete process.env.EXTERNAL_GEO_SIGNING_KEY;else process.env.EXTERNAL_GEO_SIGNING_KEY=oldKey;}
   await pool.query('UPDATE "AppUser" SET status=\'disabled\' WHERE id=$1', [user.id]);
   await request(server).get('/profiles').set('Authorization', bearer).expect(403);
   await pool.query('UPDATE "AppUser" SET status=\'active\' WHERE id=$1', [user.id]);

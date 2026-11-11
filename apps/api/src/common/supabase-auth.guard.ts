@@ -1,3 +1,4 @@
+import {ApiGeoPolicyService} from './api-geo-policy.service';
 /**
  * Supabase-backed authentication guard for the Hybrid architecture (D1 Option C).
  *
@@ -24,7 +25,7 @@
  * `JwtAuthGuard` delegates here when API_END_USER_AUTHORITY=supabase.
  * Production bootstrap requires that setting; there is no denial fallback.
  */
-import { CanActivate, ExecutionContext, Injectable, Logger, HttpException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, HttpException, Optional } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma.service';
 import { UserRequest } from './permissions.decorator';
@@ -43,6 +44,7 @@ export class SupabaseAuthGuard implements CanActivate {
   constructor(
     private readonly supabaseAuth: SupabaseAuthService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly geo?:ApiGeoPolicyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -67,6 +69,8 @@ export class SupabaseAuthGuard implements CanActivate {
       }
       throw deny('AUTH_UNAVAILABLE', 503);
     }
+
+    if(process.env.API_GEO_ALLOWED_COUNTRIES!==undefined){if(!this.geo)throw new HttpException('API_GEO_POLICY_UNAVAILABLE',503);await this.geo.require(request,identity.id,token);}
 
     // The verified Supabase id IS the business primary key.
     const account = await this.prisma.appUser.findUnique({

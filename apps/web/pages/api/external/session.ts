@@ -1,6 +1,6 @@
 import type {NextApiRequest,NextApiResponse} from 'next';
 import {backendChannel} from '../../../src/server/protected-live';
-import {signHostingGeo} from '../../../src/server/playback-geo';
+import {signHostingGeo,apiGeoHeaders} from '../../../src/server/playback-geo';
 import {enforceRateLimit} from '../../../src/server/rate-limit';
 const COOKIE='__Host-cloudplay-media',LEASE='__Host-cloudplay-lease';
 function cookie(name:string,value:string,age:number){return `${name}=${value}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;}
@@ -20,7 +20,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   const id=backendChannel(typeof req.body?.channelId==='string'?req.body.channelId:'');
   const session=req.cookies[LEASE];
   const geo=req.method==='DELETE'?undefined:signHostingGeo(req,id,token);
-  const upstream=await fetch(new URL(`/external-playback/${id}/session`,origin),{method:req.method,headers:{Authorization:`Bearer ${token}`,...(geo?{'x-external-geo':geo}:{}),...(session?{'x-playback-session':session}:{})},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
+  const upstream=await fetch(new URL(`/external-playback/${id}/session`,origin),{method:req.method,headers:{Authorization:`Bearer ${token}`,...apiGeoHeaders(req,req.method!,`/external-playback/${id}/session`,token),...(geo?{'x-external-geo':geo}:{}),...(session?{'x-playback-session':session}:{})},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(15000)});
   if(!upstream.ok){
    if(req.method==='DELETE')res.setHeader('Set-Cookie',[cookie(COOKIE,'',0),cookie(LEASE,'',0)]);
    return res.status([401,403,404,429].includes(upstream.status)?upstream.status:503).json({error:'PLAYBACK_SESSION_UNAVAILABLE'});

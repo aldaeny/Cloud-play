@@ -21,3 +21,9 @@ export function signHostingGeo(req:NextApiRequest,channelId:string,token:string,
  const payload=Buffer.from(JSON.stringify({channelId,tokenHash:createHash('sha256').update(token).digest('hex'),country,...(ipHash?{ipHash}:{}),platform:'web',issuedAt,expiresAt:issuedAt+30000,nonce:randomUUID()})).toString('base64url');
  return payload+'.'+createHmac('sha256',key).update(payload).digest('base64url');
 }
+
+export function apiGeoHeaders(req:NextApiRequest,method:string,path:string,token:string):Record<string,string>{
+ if(process.env.API_GEO_ENFORCEMENT!=='true')return {};
+ const scope='api:'+method.toUpperCase()+':'+createHash('sha256').update(path).digest('hex');
+ return {'x-api-geo':signHostingGeo(req,scope,token,true)};
+}

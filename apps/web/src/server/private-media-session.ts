@@ -1,5 +1,5 @@
 import type {NextApiRequest,NextApiResponse} from 'next';
-import {signHostingGeo} from './playback-geo';
+import {signHostingGeo,apiGeoHeaders} from './playback-geo';
 export type MediaBinding={userId:string;sessionId:string;country:string;ipHash:string;expiresAt:number};
 export const PRIVATE_COOKIE='__Host-cloudplay-private';
 export const MEDIA_TTL_MS=120000;
@@ -27,7 +27,7 @@ export async function authorizeMedia(req:NextApiRequest,allowCookie=true):Promis
  let target:URL;try{target=new URL(process.env.API_INTERNAL_URL||'');if(target.protocol!=='https:'||target.username||target.password||target.pathname!=='/'||target.hash||target.search)throw new Error();}catch{throw new MediaAccessError(503,'AUTH_UNAVAILABLE');}
  let geo:string;try{geo=signHostingGeo(req,'private-media',token,true);}catch{throw new MediaAccessError(403,'TRUSTED_GEO_REQUIRED');}
  let response:Response;
- try{response=await fetch(new URL('/private-media/authorize',target),{method:'POST',headers:{Authorization:`Bearer ${token}`,'x-external-geo':geo},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000)});}catch{throw new MediaAccessError(503,'AUTH_UNAVAILABLE');}
+ try{response=await fetch(new URL('/private-media/authorize',target),{method:'POST',headers:{Authorization:`Bearer ${token}`,'x-external-geo':geo,...apiGeoHeaders(req,'POST','/private-media/authorize',token)},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(8000)});}catch{throw new MediaAccessError(503,'AUTH_UNAVAILABLE');}
  if(!response.ok)throw new MediaAccessError([401,403,429].includes(response.status)?response.status:503,'PRIVATE_MEDIA_DENIED');
  let b:MediaBinding;try{const text=await response.text();if(text.length>2048)throw new Error();b=JSON.parse(text);
  if(!uuid.test(b.userId)||!uuid.test(b.sessionId)||!/^[A-Z]{2}$/.test(b.country)||!/^[a-f0-9]{64}$/.test(b.ipHash)||!Number.isSafeInteger(b.expiresAt)||b.expiresAt<=Date.now())throw new Error();

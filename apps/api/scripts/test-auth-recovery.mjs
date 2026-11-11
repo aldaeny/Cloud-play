@@ -98,6 +98,7 @@ try {
     throw new Error('ISOLATED_NEST_PLAYBACK_FAILED');
   });
   if(process.env.ISOLATED_SOAK_MS){const soakLine=nestResult.stdout.split('\n').find(line=>line.startsWith('::notice title=Isolated ten-minute soak::'));assert.ok(soakLine);console.log(soakLine);}
+  const globalGeo=nestResult.stdout.split('\n').find(line=>line.startsWith('PASS global API Geo:'));assert.ok(globalGeo);console.log('::notice title=Global API Geo isolated assertions::'+globalGeo);
   const loadLine=nestResult.stdout.split('\n').find(line=>line.startsWith('::notice title=Progressive synthetic load::'));
   assert.ok(loadLine);console.log(loadLine);
   const capacityLine=nestResult.stdout.split('\n').find(line=>line.startsWith('PERFORMANCE_EVIDENCE '));
