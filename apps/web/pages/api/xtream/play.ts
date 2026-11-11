@@ -12,6 +12,14 @@ function one(value: string | string[] | undefined): string {
  * the encrypted token and are never sent to the browser in the clear.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Legacy bearer capabilities are not live Auth/Geo-session authorization.
+  // Never allow this alternate private delivery path to bypass the protected
+  // backend lease boundary in production. Management/catalog remain intact.
+  if(process.env.NODE_ENV==='production'){
+    res.setHeader('Cache-Control','private, no-store');
+    return res.status(503).json({error:'SESSION_BOUND_XTREAM_REQUIRED'});
+  }
+
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');

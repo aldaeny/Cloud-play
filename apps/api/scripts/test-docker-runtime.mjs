@@ -1,6 +1,6 @@
 // Real Docker image/native Prisma/isolated PostgreSQL. No production URL read.
 import assert from 'node:assert/strict';
-import {execFileSync} from 'node:child_process';
+import {execFileSync,spawnSync} from 'node:child_process';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {setTimeout as wait} from 'node:timers/promises';
@@ -44,7 +44,13 @@ try{
  const result={status:'PASS',scope:'real Docker production image; isolated PostgreSQL17 only',checks,engine:engines,node:run(['exec',api,'node','--version']),production_accessed:false,secret_values_exported:false};
  await writeFile('docker-runtime-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Docker native runtime assertions::'+JSON.stringify(result));
 }catch(error){
- const result={status:'FAIL',completed_checks:checks,checkpoint:'after_check_'+checks.length,error_type:['AssertionError','Error','TypeError'].includes(error?.name)?error.name:'Error',exit_status:typeof error?.status==='number'?error.status:null,actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,production_accessed:false};
+ let diagnostic={};
+ if(ownedApi){
+  const output=spawnSync('docker',['logs',api],{encoding:'utf8',timeout:10000});const logs=String(output.stdout||'')+String(output.stderr||'');
+  const state=JSON.parse(run(['inspect','--format','{{json .State}}',api]));
+  diagnostic={container_exit:state.ExitCode,oom_killed:state.OOMKilled,missing_modules:[...logs.matchAll(/Cannot find module '([a-zA-Z0-9_@./-]+)'/g)].map(m=>m[1]),prisma_codes:[...new Set(logs.match(/P10[0-9]{2}/g)||[])],missing_packages:[...logs.matchAll(/The "([a-zA-Z0-9_@./-]+)" package is missing/g)].map(m=>m[1]),config_errors:['Production JWT secrets','Production DATABASE_URL','Production end-user authority','Production database requires','Production XTREAM_ENCRYPTION_KEY','Production DEFAULT_TENANT_ID'].filter(s=>logs.includes(s))};
+ }
+ const result={status:'FAIL',diagnostic,completed_checks:checks,checkpoint:'after_check_'+checks.length,error_type:['AssertionError','Error','TypeError'].includes(error?.name)?error.name:'Error',exit_status:typeof error?.status==='number'?error.status:null,actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,production_accessed:false};
  await writeFile('docker-runtime-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::error title=Docker native runtime failure::'+JSON.stringify(result));process.exitCode=1;
 
 }finally{

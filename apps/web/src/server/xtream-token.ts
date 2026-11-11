@@ -37,8 +37,8 @@ function fromB64url(input: string): Buffer {
 }
 
 /** Encrypt a provider-relative path into an expiring, URL-safe token. */
-export function sealPath(path: string, secret: string, ttlMs: number = TOKEN_TTL_MS): string {
-  const payload = Buffer.from(JSON.stringify({ p: path, e: Date.now() + ttlMs }), 'utf8');
+export function sealPath(path: string, secret: string, ttlMs: number = TOKEN_TTL_MS, maxExpiresAt: number = Infinity): string {
+  const payload = Buffer.from(JSON.stringify({ p: path, e: Math.min(Date.now() + ttlMs,maxExpiresAt) }), 'utf8');
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv('aes-256-gcm', keyFor(secret), iv);
   const body = Buffer.concat([cipher.update(payload), cipher.final()]);

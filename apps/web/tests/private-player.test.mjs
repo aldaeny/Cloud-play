@@ -52,6 +52,7 @@ function compile() {
     'src/server/xtream-access.ts',
     'src/server/xtream-private.ts',
     'pages/api/xtream/stream.ts',
+    'pages/api/xtream/play.ts',
     '--outDir', out,
     '--module', 'commonjs',
     '--target', 'es2022',
@@ -179,6 +180,15 @@ async function main() {
   };
 
   console.log('\nPrivate player — security & integration\n');
+
+  await check('unbound private Xtream delivery is explicitly unavailable in production', async () => {
+    const old=process.env.NODE_ENV;process.env.NODE_ENV='production';
+    try{for(const handler of [streamHandler,fixtureRequire('./pages/api/xtream/play.js').default]){const res=await invoke(handler,{t:tokenMod.sealPath('/live/u/p/5.m3u8',SECRET)});assert.equal(res.statusCode,503);assert.deepEqual(JSON.parse(res.payload()),{error:'SESSION_BOUND_XTREAM_REQUIRED'});}}
+    finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;}
+  });
+  await check('nested Xtream capability cannot outlive its parent cap', () => {
+    const parent=Date.now()+1000;const child=tokenMod.sealPath('/seg.ts',SECRET,60000,parent);assert.equal(tokenMod.openToken(child,SECRET).expiresAt,parent);
+  });
 
   await check('token round-trips a provider path', () => {
     const sealed = tokenMod.sealPath('/live/u/p/5.m3u8', SECRET, 60_000);
