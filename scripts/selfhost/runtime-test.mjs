@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes, randomUUID, createHash, createHmac } from 'node:crypto';
-import { existsSync, readFileSync, rmSync, writeFileSync, mkdtempSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, writeFileSync, mkdtempSync, mkdirSync, cpSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseEnvironment } from './policy.mjs';
@@ -16,13 +16,24 @@ const compose=(project,args)=>run('docker',[...base,'--project-name',project,...
 const cli=(action,project,extra=[])=>run(process.execPath,['scripts/selfhost/cli.mjs',action,project,sha,...extra],{env});
 const checks=[];
 const pass=name=>{checks.push(name);console.log('PASS '+name);};
-let ownedEnv=false;
+const baselineRelease='3096406614ad72c27216b955b34d87373c9049ce';
+const baselineRoot=path.join(dir,'prior-release-source'),priorArchive=path.join(dir,'prior-release-backup');
+let ownedEnv=false,baselineAdded=false;
 try {
   if(existsSync('.env'))throw new Error('Fixture refuses an existing environment file');
-  run(process.execPath,['scripts/selfhost/init.mjs']);ownedEnv=true;
-  let config=readFileSync('.env','utf8');config=/^VOD_DELIVERY_ENABLED=/m.test(config)?config.replace(/^VOD_DELIVERY_ENABLED=.*$/m,'VOD_DELIVERY_ENABLED="true"'):config+'\nVOD_DELIVERY_ENABLED="true"\n';writeFileSync('.env',config);
-  // Avoid collisions with the other isolated runtime job. No host-service ports needed.
-  console.log(cli('install',source));
+  // Detached, disposable historical source fixture only; never switches the working branch.
+  run('git',['fetch','origin',baselineRelease]);
+  run('git',['worktree','add','--detach',baselineRoot,baselineRelease]);baselineAdded=true;
+  run(process.execPath,['scripts/selfhost/init.mjs'],{cwd:baselineRoot});
+  let config=readFileSync(path.join(baselineRoot,'.env'),'utf8');config=/^VOD_DELIVERY_ENABLED=/m.test(config)?config.replace(/^VOD_DELIVERY_ENABLED=.*$/m,'VOD_DELIVERY_ENABLED="true"'):config+'\nVOD_DELIVERY_ENABLED="true"\n';writeFileSync(path.join(baselineRoot,'.env'),config);
+  const priorCli=(action,extra=[])=>run(process.execPath,['scripts/selfhost/cli.mjs',action,source,baselineRelease,...extra],{cwd:baselineRoot,env:{...env,SELFHOST_RELEASE:baselineRelease}});
+  console.log(priorCli('install'));
+  console.log(priorCli('health'));
+  console.log(priorCli('backup',[priorArchive]));
+  cpSync(path.join(baselineRoot,'.env'),'.env');ownedEnv=true;
+  cpSync(path.join(baselineRoot,'.selfhost'),'.selfhost',{recursive:true});
+  console.log(cli('upgrade',source,[priorArchive]));
+  pass('actual cross-release upgrade from retained source '+baselineRelease+' to '+sha+' with verified pre-upgrade backup; no schema downgrade');
   console.log(cli('health',source));
   console.log(cli('migrate',source));
   console.log(cli('health',source));
@@ -113,5 +124,6 @@ try {
 } finally {
   // Only resources created under these explicit disposable fixture projects.
   for(const project of [source,target,rollbackTarget,'cloudplay-local-corrupt'])try{compose(project,['down','--volumes','--remove-orphans']);}catch{}
+  if(baselineAdded)try{run('git',['worktree','remove','--force',baselineRoot]);}catch{}
   if(ownedEnv){rmSync('.env');rmSync('.selfhost',{recursive:true,force:true});}rmSync(dir,{recursive:true,force:true});
 }
