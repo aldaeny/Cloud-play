@@ -61,7 +61,7 @@ export default function OwnerPlayerLink({ language }: { language: Language }) {
       <span className="owner-link-mark" aria-hidden="true">▶</span>
       <span className="owner-link-text">
         <strong>{ar ? 'مشغّلي الخاص' : 'My private player'}</strong>
-        <small>{ar ? 'قنواتك وأفلامك ومسلسلاتك — بضغطة واحدة' : 'Your channels, movies and series — one tap'}</small>
+        <small>{ar ? 'قنواتك وأفلامك ومسلسلاتك بضغطة واحدة' : 'Your channels, movies and series in one tap'}</small>
       </span>
       <span className="owner-link-arrow" aria-hidden="true">{ar ? '←' : '→'}</span>
     </Link>

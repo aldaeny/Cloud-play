@@ -45,15 +45,13 @@ async function settleScroll(page) {
   }, undefined, { polling: 120, timeout: 8000 });
 }
 
-/** Geometry of the dock's real visual top (pill, raised active circle and notch). */
+/** Geometry of the dock's real visual top (the pill and the detached search). */
 const DOCK_TOP = `(() => {
   const bar = document.querySelector('.cp-nav-bar');
   if (!bar) return Infinity;
   const tops = [bar.getBoundingClientRect().top];
-  const active = document.querySelector('.cp-nav-btn.cp-nav-active .cp-nav-ico');
-  const notch = document.querySelector('.cp-nav-notch:not(.is-hidden)');
-  if (active) tops.push(active.getBoundingClientRect().top);
-  if (notch) tops.push(notch.getBoundingClientRect().top);
+  const search = document.querySelector('.cp-nav-search');
+  if (search && search.getBoundingClientRect().height > 0) tops.push(search.getBoundingClientRect().top);
   return Math.min(...tops);
 })()`;
 
@@ -112,9 +110,11 @@ for (const viewport of viewports) {
       assert.ok(state.overflow <= 1, `page overflow ${state.overflow}px`);
     });
 
-    await check(`${label}: dock labels are not vertically clipped`, async () => {
-      const clipped = await page.evaluate(() => [...document.querySelectorAll('.cp-nav-label')]
-        .filter(node => node.scrollHeight > node.clientHeight)
+    // Only the active capsule shows a label; the icon-only items keep theirs at
+    // zero width on purpose, so clipping is judged on the visible one.
+    await check(`${label}: the active capsule label is not clipped`, async () => {
+      const clipped = await page.evaluate(() => [...document.querySelectorAll('.cp-nav-btn.cp-nav-active .cp-nav-label')]
+        .filter(node => node.getBoundingClientRect().width > 8 && node.scrollHeight > node.clientHeight + 1)
         .map(node => `${node.textContent}: ${node.clientHeight}<${node.scrollHeight}`));
       assert.deepEqual(clipped, [], `clipped labels: ${clipped.join(', ')}`);
     });
@@ -133,7 +133,7 @@ for (const viewport of viewports) {
       assert.ok(after.scrolled > 0 || viewport.height > 1000, 'page did not scroll');
     });
 
-    await check(`${label}: bottom reserve covers the dock incl. raised button`, async () => {
+    await check(`${label}: bottom reserve covers the dock incl. the search button`, async () => {
       const reserve = await page.evaluate(dockTop => ({
         padding: parseFloat(getComputedStyle(document.body).paddingBottom),
         dockHeight: window.innerHeight - dockTop,
@@ -317,13 +317,20 @@ for (const route of ['/', '/movies', '/series', '/my-tv', '/tv-sources', '/setti
     await page.waitForTimeout(300);
     const state = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth - window.innerWidth,
-      labels: [...document.querySelectorAll('.cp-nav-label')].filter(node => node.scrollHeight > node.clientHeight).length,
-      raised: !!document.querySelector('.cp-nav-btn.cp-nav-active .cp-nav-ico'),
+      labels: [...document.querySelectorAll('.cp-nav-label')].filter(node => node.getBoundingClientRect().width > 8 && node.scrollHeight > node.clientHeight + 1).length,
+      capsule: !!document.querySelector('.cp-nav-btn.cp-nav-active'),
+      capsuleLabelVisible: (() => {
+        const label = document.querySelector('.cp-nav-btn.cp-nav-active .cp-nav-label');
+        if (!label) return false;
+        const rect = label.getBoundingClientRect();
+        return rect.width > 8 && getComputedStyle(label).opacity !== '0';
+      })(),
     }));
     assert.ok(state.overflow <= 1, `${route} overflow ${state.overflow}px`);
     assert.equal(state.labels, 0, `${route} has clipped dock labels`);
-    // Only the six dock destinations have an active (raised) item by design.
-    assert.equal(state.raised, dockRoutes.has(route), `${route} raised-button state changed`);
+    // Only the six dock destinations get the active capsule by design.
+    assert.equal(state.capsule, dockRoutes.has(route), `${route} active-capsule state changed`);
+    if (state.capsule) assert.equal(state.capsuleLabelVisible, true, `${route} active capsule lost its label`);
     await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
     await settleScroll(page);
     const covered = await page.evaluate(dockTop => [...document.querySelectorAll('main a, main button')]

@@ -29,7 +29,7 @@ export function ViewModeToggle({ value, onChange, language }: Props) {
             aria-pressed={selected}
             aria-label={label[language]}
             title={label[language]}
-            className={`tw-flex tw-h-full tw-items-center tw-gap-1.5 tw-rounded-lg tw-px-2.5 tw-text-xs tw-font-semibold tw-transition-colors focus-visible:tw-outline focus-visible:tw-outline-2 focus-visible:tw-outline-violet ${selected ? 'tw-bg-gradient-to-r tw-from-violet tw-to-accent tw-text-white' : 'tw-text-muted hover:tw-bg-panelHover hover:tw-text-white'}`}
+            className={`tw-flex tw-h-full tw-items-center tw-gap-1.5 tw-rounded-lg tw-px-2.5 tw-text-xs tw-font-semibold tw-transition-colors focus-visible:tw-outline focus-visible:tw-outline-2 focus-visible:tw-outline-violet ${selected ? 'tw-bg-accent tw-text-white' : 'tw-text-muted hover:tw-bg-panelHover hover:tw-text-white'}`}
           >
             <Icon size={16} aria-hidden="true" />
             <span className="tw-hidden md:tw-inline">{label[language]}</span>
