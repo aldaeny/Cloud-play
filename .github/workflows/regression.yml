@@ -41,9 +41,9 @@ jobs:
         run: node apps/api/scripts/test-external-tls.mjs
       - name: Install isolated browser and original media fixture tooling
         run: |
-          node node_modules/playwright-core/cli.js install --with-deps chromium
-          if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
-          FFMPEG="$(command -v ffmpeg)" node scripts/generate-media-fixtures.mjs .cache/media-fixtures
+          node scripts/fixture-tool-step.mjs browser_install node node_modules/playwright-core/cli.js install --with-deps chromium
+          if ! command -v ffmpeg >/dev/null; then node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get update && node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get install -y ffmpeg; fi
+          FFMPEG="$(command -v ffmpeg)" node scripts/fixture-tool-step.mjs media_generate node scripts/generate-media-fixtures.mjs .cache/media-fixtures
       - name: Actual isolated HTTP and generated HLS DASH M3U transport
         run: MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/api/scripts/test-external-http-protocols.mjs
       - name: Worker rejects uploaded network playlists without connecting

@@ -61,3 +61,11 @@ allowance is reset and no error is treated as an admission. Browser tooling
 installation also failed in both application/Auth jobs before playback execution;
 raw logs could not be fetched from restricted results hosts. Docker passed.
 No production readiness/Shared Quota PASS is inferred from this failed run.
+
+Run `43043838531` at `ba594441c9085df6214419b77afb60bf7a5c7a15`:
+**PASS isolated shared-quota mechanics** on Node22/24/26, including actual stopped
+PG authority and bounded stale-pool recovery. Docker also PASS. Full CI **FAIL**:
+browser/media fixture tooling failed before application and Auth browser tests.
+No overall acceptance claim. Added fixed-label tooling failure classifications
+(no arbitrary error/secret fragments) to identify the failing command without
+bypassing it. Final handoff records results of the required post-change full CI.
