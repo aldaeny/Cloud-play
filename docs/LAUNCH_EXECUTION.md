@@ -59,3 +59,18 @@ claim while these acceptance gates are unmet.
 Final exactHEAD/fullCI and weighted acceptance are supplied in final handoff,
 not inferred from prior green commits. Existing readiness/closure documents retain
 historical evidence and do not override this run's actual results.
+
+## Follow-up installer evidence
+
+Run43057439070 (cd677f1): native tests including real round-robin quota hop and
+Docker PASS; Application/Auth FAIL at APT, now official archive.ubuntu.com also
+fails DNS. Changing the Azure mirror alone did not solve network availability.
+
+The next candidate downloads the lockfile-matched Chromium normally (never skip,
+never system-browser substitute), then uses Playwright's normal host validation
+and actual headless launch/DOM test to establish runtime dependencies. Only a
+diagnosed missing-library failure invokes signed APT dependency installation;
+that installation must succeed or the step fails. This removes unconditional
+network installation of optional font packages on an already capable runner,
+without disabling host requirements or any actual application/browser tests.
+Missing dependencies, unavailable browser download or failed launch remain fatal.
