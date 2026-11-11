@@ -17,6 +17,11 @@ export class IdentityService {
   ) {}
 
   private requireTokenSecrets() {
+    // Retain explicit legacy development compatibility, never operate a second
+    // end-user credential issuer beside the selected Supabase authority.
+    if ((process.env.API_END_USER_AUTHORITY || 'legacy') !== 'legacy') {
+      throw new ServiceUnavailableException('END_USER_AUTH_MANAGED_BY_SUPABASE');
+    }
     const access = process.env.JWT_ACCESS_SECRET;
     const refresh = process.env.JWT_REFRESH_SECRET;
     if (!access || !refresh || access === refresh) throw new ServiceUnavailableException('User authentication is not configured securely');
@@ -235,6 +240,9 @@ export class IdentityService {
   }
 
   async updateIdentity(userId: string, dto: IdentityUpdateDto) {
+    if ((dto.email || dto.password) && (process.env.API_END_USER_AUTHORITY || 'legacy') !== 'legacy') {
+      throw new ServiceUnavailableException('END_USER_AUTH_MANAGED_BY_SUPABASE');
+    }
     const updateData: Prisma.AppUserUpdateInput = {};
     if (dto.email) updateData.email = dto.email;
     if (dto.name) {

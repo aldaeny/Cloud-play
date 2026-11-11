@@ -50,6 +50,9 @@ try {
   app = mod.createNestApplication({ logger: false }); app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   await app.init();
   const server = app.getHttpServer(), bearer = `Bearer ${access}`;
+  for(const [path,body] of [['login',{email:'fixture@example.invalid',password:'FixtureAa1!'}],['register',{email:'fixture@example.invalid',password:'FixtureAa1!',name:'Fixture',phone:'+12025550123'}],['refresh',{refresh_token:'fixture'}]]){
+    const denied=await request(server).post('/auth/'+path).send(body).expect(503);assert.equal(denied.body.message,'END_USER_AUTH_MANAGED_BY_SUPABASE');
+  }
   await request(server).get('/profiles').expect(401);
   await request(server).get(`/external-playback/${randomUUID()}/manifest`).expect(401);
   await request(server).get(`/external-playback/${randomUUID()}/manifest`).set('Authorization', bearer).expect(403);

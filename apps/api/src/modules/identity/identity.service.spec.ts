@@ -37,6 +37,17 @@ describe('IdentityService', () => {
     service = module.get<IdentityService>(IdentityService);
   });
 
+  it('does not issue or mutate end-user credentials when Supabase is selected',async()=>{
+    const original=process.env.API_END_USER_AUTHORITY;
+    process.env.API_END_USER_AUTHORITY='supabase';jest.clearAllMocks();
+    try{
+      const login={email:'fixture@example.invalid',password:'fixture-password'};
+      for(const call of [()=>service.register({...login,name:'Fixture',phone:'+10000000000'}),()=>service.login(login),()=>service.loginWithPhone({phone:'+10000000000',password:login.password}),()=>service.refresh('fixture'),()=>service.updateIdentity('fixture',{email:login.email}),()=>service.updateIdentity('fixture',{password:login.password})]){
+        await expect(call()).rejects.toThrow('END_USER_AUTH_MANAGED_BY_SUPABASE');
+      }
+      expect(mockJwt.signAsync).not.toHaveBeenCalled();expect(mockJwt.verifyAsync).not.toHaveBeenCalled();expect(mockPrisma.appUser.create).not.toHaveBeenCalled();expect(mockPrisma.appUser.update).not.toHaveBeenCalled();expect(mockPrisma.appUser.findUnique).not.toHaveBeenCalled();
+    }finally{if(original===undefined)delete process.env.API_END_USER_AUTHORITY;else process.env.API_END_USER_AUTHORITY=original;}
+  });
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
