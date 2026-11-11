@@ -86,6 +86,7 @@ try {
     password, database: 'postgres', connectionTimeoutMillis: 2000 });
   pool.on('error', () => {}); // Expected idle-connection errors during outage test.
   // Official GoTrue requires the named role even when POSTGRES_USER is custom.
+  await check('selfhost GoTrue compatibility role is idempotent and least-privilege; existing role untouched',async()=>{
   const roleSql = require(path.join(root, 'scripts/selfhost/roles.cjs'));
   const roleQuery = "SELECT rolcanlogin,rolsuper,rolinherit,rolcreatedb,rolcreaterole,rolreplication,rolbypassrls FROM pg_roles WHERE rolname='postgres'";
   const previousRole = (await pool.query(roleQuery)).rows;
@@ -94,7 +95,7 @@ try {
   const preparedRole = (await pool.query(roleQuery)).rows;
   if(previousRole.length) assert.deepEqual(preparedRole, previousRole);
   else assert.deepEqual(preparedRole,[{rolcanlogin:false,rolsuper:false,rolinherit:false,rolcreatedb:false,rolcreaterole:false,rolreplication:false,rolbypassrls:false}]);
-  pass('selfhost GoTrue compatibility role is idempotent and least-privilege; existing role untouched');
+  });
   // Embedded cluster is fresh and local; no external connection string accepted.
   for (const dir of (await readdir(path.join(api, 'prisma/migrations'))).sort()) {
     if (dir === 'migration_lock.toml') continue;

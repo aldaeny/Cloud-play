@@ -24,6 +24,8 @@ try {
   // Avoid collisions with the other isolated runtime job. No host-service ports needed.
   console.log(cli('install',source));
   console.log(cli('health',source));
+  console.log(cli('migrate',source));
+  console.log(cli('health',source));
   pass('actual package builds and installs API/worker/web/admin/storage/database; native migrations and unique first-admin bootstrap');
   assert.throws(()=>cli('install',source));
   assert.throws(()=>compose(source,['run','--rm','--no-deps','-e','BOOTSTRAP_ADMIN_EMAIL','-e','BOOTSTRAP_ADMIN_PASSWORD','tools','bootstrap']));
@@ -71,6 +73,8 @@ try {
   const before=probeAt(source,true);
   assert.equal(before.bytes,payload.bytes);assert.equal(before.staff.length,1);
   console.log(cli('backup',source,[archive]));
+  assert.throws(()=>cli('upgrade',source,[archive]));
+  pass('upgrade rejects same-release snapshot; cross-release rehearsal requires retained prior release');
   pass('quiesced logical PostgreSQL and private MinIO volume snapshot with checksums and restricted secret archive');
   assert.throws(()=>cli('restore',source,[archive]));
   // Stop only the source fixture to release loopback ports. Keep all its volumes.
