@@ -70,7 +70,6 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
  }catch(error){
   const code=typeof error?.code==='string'&&/^[A-Z0-9_]{1,32}$/.test(error.code)?error.code:'LOAD_CHECK_FAILED';
   const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null,http_status:typeof error?.status==='number'?error.status:null,expected_got:String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1)||null,known_reason:['Server is not running','ECONNRESET','ECONNREFUSED','socket hang up','RSS safety stop','free memory safety stop','total duration safety stop','connection recovery budget'].find(text=>String(error?.message||'').includes(text))||null};
-  if(process.env.ISOLATED_SOAK_MS){const {soak}=await import('./test-soak.mjs');await soak({users,call,base,prisma,stats});}
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('LOAD_FAILURE '+JSON.stringify(result));throw error;
  }finally{
   // Disposable identities only. Never print tokens, emails or passwords.
