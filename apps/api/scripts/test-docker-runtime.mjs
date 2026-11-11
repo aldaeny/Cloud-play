@@ -25,7 +25,7 @@ try{
  assert.throws(()=>run(['run','--rm',image]));passed('production startup fails closed without mandatory configuration');
  run(['network','create',network]);ownedNetwork=true;
  run(['run','-d','--name',db,'--label','cloudplay.fixture=docker-native','--network',network,'-e','POSTGRES_PASSWORD='+password,'postgres:17']);ownedDb=true;
- let ready=false;for(let i=0;i<40;i++){try{run(['exec',db,'pg_isready','-U','postgres']);ready=true;break;}catch{}await wait(500);}assert.ok(ready);
+ let ready=false;for(let i=0;i<40;i++){try{run(['exec',db,'pg_isready','-h','127.0.0.1','-U','postgres']);ready=true;break;}catch{}await wait(500);}assert.ok(ready);
  for(const dir of (await readdir('apps/api/prisma/migrations')).sort()){
   if(dir==='migration_lock.toml')continue;
   run(['exec','-i',db,'psql','-U','postgres','-v','ON_ERROR_STOP=1'],{input:await readFile('apps/api/prisma/migrations/'+dir+'/migration.sql')});
@@ -43,7 +43,10 @@ try{
  run(['start',api]);await waitHealth(200);passed('production image restarts; native DB/health remains intact');
  const result={status:'PASS',scope:'real Docker production image; isolated PostgreSQL17 only',checks,engine:engines,node:run(['exec',api,'node','--version']),production_accessed:false,secret_values_exported:false};
  await writeFile('docker-runtime-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Docker native runtime assertions::'+JSON.stringify(result));
-}catch{console.error('DOCKER_NATIVE_RUNTIME_FAILED (raw output withheld; no credentials logged)');process.exitCode=1;
+}catch(error){
+ const result={status:'FAIL',completed_checks:checks,checkpoint:'after_check_'+checks.length,error_type:['AssertionError','Error','TypeError'].includes(error?.name)?error.name:'Error',exit_status:typeof error?.status==='number'?error.status:null,actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,production_accessed:false};
+ await writeFile('docker-runtime-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::error title=Docker native runtime failure::'+JSON.stringify(result));process.exitCode=1;
+
 }finally{
  if(ownedApi)run(['rm','-f',api]);if(ownedDb)run(['rm','-f',db]);if(ownedNetwork)run(['network','rm',network]);
 }

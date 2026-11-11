@@ -2,14 +2,18 @@
 // Only DNS answers and final public-IP routing are fixture seams; no provider contact.
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+process.chdir(fileURLToPath(new URL('../../../',import.meta.url)));
 const out=mkdtempSync(path.join(tmpdir(),'playlist-route-socket-'));
 execFileSync(process.execPath,['node_modules/typescript/bin/tsc','apps/web/pages/api/playlist/stream.ts','--outDir',out,'--module','commonjs','--target','es2022','--esModuleInterop','--skipLibCheck','--strict']);
 const require=createRequire(path.join(out,'test.cjs')),http=require('node:http'),dns=require('node:dns/promises');
-const originalRequest=http.request,originalLookup=dns.lookup;
+const https=require('node:https');
+const originalRequest=http.request,originalSecureRequest=https.request,originalLookup=dns.lookup;
+let secureOrigin,badOrigin;let tlsPort=0,badPort=0,sni='';
 const {sealStream,openStream}=require('./src/server/playlist-token.js');
 const {resetHostVerdicts}=require('./src/server/safe-fetch.js');
 const handler=require('./pages/api/playlist/stream.js').default;
@@ -44,6 +48,14 @@ const hit=token=>fetch(`http://127.0.0.1:${edge.address().port}/api/playlist/str
 let passed=0;
 const check=async(name,fn)=>{answers=[];pinned=[];resetHostVerdicts();await fn();passed++;console.log('PASS '+name);};
 try{
+ for(const name of ['fixture.example','mismatch.example'])execFileSync('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-days','1','-subj','/CN='+name,'-addext','subjectAltName=DNS:'+name,'-keyout',path.join(out,name+'.key'),'-out',path.join(out,name+'.pem')],{stdio:'ignore'});
+ const cert=readFileSync(path.join(out,'fixture.example.pem')),badCert=readFileSync(path.join(out,'mismatch.example.pem'));
+ secureOrigin=https.createServer({key:readFileSync(path.join(out,'fixture.example.key')),cert},(req,res)=>{sni=req.socket.servername;res.setHeader('content-type','video/mp2t');res.end(Buffer.alloc(188,71));});
+ badOrigin=https.createServer({key:readFileSync(path.join(out,'mismatch.example.key')),cert:badCert},(_req,res)=>res.end('must not read'));
+ for(const srv of [secureOrigin,badOrigin])await new Promise(resolve=>srv.listen(0,'127.0.0.1',resolve));tlsPort=secureOrigin.address().port;badPort=badOrigin.address().port;
+ https.request=(url,options,cb)=>{assert.equal(url.hostname,'fixture.example');assert.equal(options.rejectUnauthorized,true);assert.equal(options.agent,false);return originalSecureRequest(url,{...options,ca:url.port===String(badPort)?badCert:cert,lookup:(host,opts,done)=>options.lookup(host,opts,(error,address,family)=>{if(error)return done(error);pinned.push(...(Array.isArray(address)?address.map(v=>v.address):[address]));sockets++;if(opts.all)done(null,[{address:'127.0.0.1',family:4}]);else done(null,'127.0.0.1',4);})},cb);};
+ await check('actual TLS keeps original hostname verification and SNI while pinning IP',async()=>{const r=await hit(grant(`https://fixture.example:${tlsPort}/seg.ts`));assert.equal(r.status,200);await r.arrayBuffer();assert.equal(sni,'fixture.example');assert.deepEqual(pinned,['8.8.8.8']);});
+ await check('actual TLS rejects a trusted certificate for the wrong hostname',async()=>{assert.equal((await hit(grant(`https://fixture.example:${badPort}/seg.ts`))).status,502);});
  await check('legacy unbound capability delivery fails closed in production before any socket',async()=>{const old=process.env.NODE_ENV;process.env.NODE_ENV='production';try{const before=sockets;const r=await hit(grant(`http://fixture.example:${port}/seg.ts`));assert.equal(r.status,503);assert.deepEqual(await r.json(),{error:'SESSION_BOUND_PLAYLIST_REQUIRED'});assert.equal(sockets,before);}finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;}});
  for(const target of ['http://127.0.0.1/','http://[::1]/','http://10.0.0.1/','http://172.16.0.1/','http://192.168.0.1/','http://[fc00::1]/','http://169.254.169.254/','http://[fe80::1]/','http://[ff02::1]/','http://0.0.0.0/','http://224.0.0.1/','http://198.18.0.1/','http://100.64.0.1/','http://[::ffff:127.0.0.1]/','http://2130706433/','http://0x7f000001/','http://0177.0.0.1/','http://metadata.google.internal/','http://fixture.example:5432/','http://fixture.example:22/']){
   await check('HTTP route denies forbidden target '+new URL(target).hostname,async()=>{const before=sockets;assert.equal((await hit(grant(target))).status,403);assert.equal(sockets,before);});
@@ -56,5 +68,5 @@ try{
  await check('public redirect to metadata denied without internal socket',async()=>{const before=upstreamRequests;assert.equal((await hit(grant(`http://fixture.example:${port}/internal`))).status,403);assert.equal(upstreamRequests,before+1);});
  await check('redirect chain bounded at four socket requests',async()=>{const before=upstreamRequests;assert.ok((await hit(grant(`http://fixture.example:${port}/chain/0`))).status>=400);assert.equal(upstreamRequests,before+4);});
  await check('safe same-origin redirect preserves HLS and rewrites key/segment without extending expiry',async()=>{const token=grant(`http://fixture.example:${port}/hop`,5000),parent=openStream(token,secret);const r=await hit(token);assert.equal(r.status,200);const text=await r.text();assert.ok(!text.includes('fixture.example'));const tokens=[...text.matchAll(/\/api\/playlist\/stream\?t=([^"\s]+)/g)].map(m=>decodeURIComponent(m[1]));assert.equal(tokens.length,2);for(const t of tokens){assert.ok(openStream(t,secret).expiresAt<=parent.expiresAt);assert.equal((await hit(t)).status,200);}});
- console.log(`PLAYLIST SOCKET SECURITY: ${passed} checks PASS; real HTTP boundary/sockets, synthetic DNS, no provider contact.`);
-}finally{dns.lookup=originalLookup;http.request=originalRequest;for(const s of [edge,origin]){s.closeAllConnections();await new Promise(resolve=>s.close(resolve));}rmSync(out,{recursive:true,force:true});}
+ console.log(`PLAYLIST SOCKET SECURITY: ${passed} checks PASS; real HTTP boundary/sockets, synthetic DNS, no provider contact.`);console.log(`::notice title=Playlist socket security::${passed} PASS; actual HTTP route and sockets; TLS hostname/SNI, all-answer DNS validation, rebinding, mixed A/AAAA, unsafe redirects, port/IP denial, nested TTL cap, production legacy gate.`);
+}finally{dns.lookup=originalLookup;http.request=originalRequest;https.request=originalSecureRequest;for(const s of [edge,origin,secureOrigin,badOrigin].filter(Boolean)){s.closeAllConnections();await new Promise(resolve=>s.close(resolve));}rmSync(out,{recursive:true,force:true});}

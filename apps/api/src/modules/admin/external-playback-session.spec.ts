@@ -47,3 +47,28 @@ describe('playback cleanup scheduler safety',()=>{
   const service=new ExternalPlaybackSessionService({} as never),tick=jest.spyOn(service,'expireBatch').mockResolvedValue({expired:1,nonces:1,skipped:false});service.onModuleInit();await jest.advanceTimersByTimeAsync(60000);expect(tick).toHaveBeenCalledTimes(1);await service.onModuleDestroy();await jest.advanceTimersByTimeAsync(60000);expect(tick).toHaveBeenCalledTimes(1);
  });
 });
+
+describe('fresh Geo on every protected media authorization',()=>{
+ const previous=process.env.EXTERNAL_GEO_SIGNING_KEY;
+ const key='isolated-fresh-geo-unit-signing-key',id=randomUUID(),session=randomUUID(),user={id:randomUUID(),tenantId:randomUUID(),profiles:[]};
+ const token='fixture.'+Buffer.from(JSON.stringify({session_id:session})).toString('base64url')+'.fixture';
+ function assertion(patch={}){const now=Date.now(),p=Buffer.from(JSON.stringify({channelId:id,tokenHash:createHash('sha256').update(token).digest('hex'),country:'IQ',platform:'web',issuedAt:now,expiresAt:now+30000,nonce:randomUUID(),...patch})).toString('base64url');return p+'.'+createHmac('sha256',key).update(p).digest('base64url');}
+ beforeEach(()=>{process.env.EXTERNAL_GEO_SIGNING_KEY=key;});
+ afterAll(()=>{if(previous===undefined)delete process.env.EXTERNAL_GEO_SIGNING_KEY;else process.env.EXTERNAL_GEO_SIGNING_KEY=previous;});
+ async function authorize(value:unknown){
+  const {ExternalPlaybackSessionService}=await import('./external-playback-session.service');
+  const lease={id:randomUUID(),country:'IQ',platform:'web',revokedAt:null,expiresAt:new Date(Date.now()+120000),absoluteExpiresAt:new Date(Date.now()+3600000)};
+  const service=new ExternalPlaybackSessionService({externalPlaybackLease:{findFirst:jest.fn().mockResolvedValue(lease)}} as never);
+  jest.spyOn(service,'assertSupabaseSession').mockResolvedValue();
+  return service.require(user,id,lease.id,{headers:{authorization:'Bearer '+token,'x-external-geo':value,'x-forwarded-for':'8.8.8.8','x-vercel-ip-country':'IQ'}} as never);
+ }
+ it('allows fresh signed same-country context after authoritative session check',async()=>{expect((await authorize(assertion())).country).toBe('IQ');});
+ it.each([undefined,'IQ','forged.signature',['conflicting','headers']])('rejects direct or forged context even with country/IP headers',async value=>{await expect(authorize(value)).rejects.toThrow('TRUSTED_GEO_REQUIRED');});
+ it.each([{country:'US'},{platform:'tv'},{expiresAt:1},{tokenHash:'different'},{channelId:randomUUID()}])('rejects changed/expired/mismatched media context',async patch=>{await expect(authorize(assertion(patch))).rejects.toThrow();});
+});
+
+describe('unsupported encrypted HLS fails closed before resource minting',()=>{
+ it.each(['METHOD=AES-128,URI="key"','URI="key",METHOD=AES-128','METHOD = AES-128,URI="key"','METHOD=NONE,URI="key"','URI="key"'])('rejects key declaration %s',async value=>{
+  const {parseHls}=await import('./external-policy');expect(parseHls(`#EXTM3U\n#EXT-X-KEY:${value}\n#EXTINF:2,\nseg.ts`,new URL('https://fixture.example/a.m3u8')).result).toBe('drm_protected');
+ });
+});
