@@ -14,7 +14,7 @@ export async function privateMediaLive({prisma,userId,secondUserId,token,secondT
  const originalRequest=https.request,lookup=dns.lookup;
  let mediaServer,edge,checks=0,stage='compile',interrupt=false;
  const otherSid=JSON.parse(Buffer.from(otherSessionToken.split('.')[1],'base64url')).session_id;
- const pass=label=>{checks++;console.log('PASS private media actual Auth: '+label);};
+ const pass=label=>{checks++;console.log('PASS protected authenticated playback: private media actual Auth: '+label);};
  try{
   execFileSync(process.execPath,['node_modules/typescript/bin/tsc',...['playlist/import','playlist/stream','xtream/play','xtream/stream','private-media/renew'].map(r=>'apps/web/pages/api/'+r+'.ts'),'--outDir',out,'--module','commonjs','--target','es2022','--esModuleInterop','--skipLibCheck','--strict'],{stdio:'pipe'});
   const handlers=Object.fromEntries(['playlist/import','playlist/stream','xtream/play','xtream/stream','private-media/renew'].map(r=>['/api/'+r,require('./pages/api/'+r+'.js').default]));

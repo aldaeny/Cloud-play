@@ -4,18 +4,19 @@ import type {ReadableStream as NodeWebReadableStream} from 'node:stream/web';
 import {authorizeMedia,assertMediaBinding,mediaFailure,MediaAccessError,type MediaBinding} from './private-media-session';
 import {parsePublicUrl,safeFetch,readCapped} from './safe-fetch';
 import {enforceRateLimit} from './rate-limit';
-export type BoundGrant={origin:string;path:string;expiresAt:number;binding?:MediaBinding;referrer?:string;userAgent?:string;role?:'key';purpose?:'selection';source?:string};
+export type BoundGrant={origin:string;path:string;expiresAt:number;binding?:MediaBinding;referrer?:string;userAgent?:string;role?:'key';purpose?:'selection';source?:string;depth?:number};
 export type BoundCodec={open(token:string):BoundGrant;seal(grant:BoundGrant):string;route:string};
 /** Restricted HLS URI grammar. No unknown URL-bearing extension is passed to
  * browsers; AES-128 identity keys are proxied just like segments. No DRM bypass. */
 export function rewriteBoundHls(text:string,base:URL,grant:BoundGrant,codec:BoundCodec):string{
  if(!text.trimStart().startsWith('#EXTM3U')||text.length>2*1024*1024)throw new Error('INVALID_MANIFEST');
  let references=0;
+ if(!Number.isInteger(grant.depth??0)||(grant.depth??0)>8)throw new Error('MANIFEST_DEPTH_LIMIT');
  const ref=(value:string,role?:'key')=>{
   if(++references>4000||value.includes('{$')||/[\u0000-\u0020\\]/.test(value))throw new Error('INVALID_REFERENCE');
   const target=parsePublicUrl(new URL(value,base).href);
   if(target.origin!==grant.origin)throw new Error('OFF_ORIGIN_REFERENCE');
-  return `${codec.route}?t=${encodeURIComponent(codec.seal({...grant,path:target.pathname+target.search,role}))}`;
+  return `${codec.route}?t=${encodeURIComponent(codec.seal({...grant,path:target.pathname+target.search,role,depth:(grant.depth??0)+1}))}`;
  };
  return text.split(/\r?\n/).map(line=>{
   const value=line.trim();if(!value)return '';
@@ -31,6 +32,7 @@ export function rewriteBoundHls(text:string,base:URL,grant:BoundGrant,codec:Boun
   }
   // Ambiguous, unquoted, duplicated or unfamiliar URI attributes fail closed.
   if(/(?:^|[, :])(?:[A-Z-]*URI)\s*=/i.test(value)&&!/(?:^|,)URI="[^"]+"/.test(value.replace(/^#[^:]+:/,'')))throw new Error('INVALID_REFERENCE');
+  if(uriCount!==(value.match(/URI="[^"]+"/g)||[]).length)throw new Error('INVALID_REFERENCE');
   const rewritten=value.replace(/URI="([^"]*)"/g,(_m,uri:string)=>`URI="${ref(uri,key?'key':undefined)}"`);
   // Do not return provider origins/credentials via metadata, nested attributes
   // or HLS extension tags the proxy does not understand.
@@ -48,6 +50,7 @@ export async function boundMediaProxy(req:NextApiRequest,res:NextApiResponse,cod
   if(typeof req.query.t!=='string')throw new MediaAccessError(403,'BAD_TOKEN');
   try{grant=codec.open(req.query.t);}catch{throw new MediaAccessError(403,'BAD_TOKEN');}
   assertMediaBinding(grant.binding,current);
+  if(!Number.isInteger(grant.depth??0)||(grant.depth??0)>8)throw new MediaAccessError(403,'MEDIA_DEPTH_LIMIT');
   if(grant.purpose)throw new MediaAccessError(403,'SELECTION_NOT_MEDIA');
   if(grant.expiresAt<=Date.now())throw new MediaAccessError(403,'BAD_TOKEN');
  }catch(error){return mediaFailure(res,error);}

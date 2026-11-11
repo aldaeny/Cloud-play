@@ -28,6 +28,7 @@ export type StreamGrant = {
   binding?: MediaBinding;
   role?: 'key';
   purpose?:'selection';
+  depth?:number;
   /** Parent cap when re-sealing nested resources; never extend authorization. */
   expiresAt?: number;
   origin: string;
@@ -84,6 +85,7 @@ export function sealStream(
       b: grant.binding,
       k: grant.role,
       s: grant.purpose,
+      d:grant.depth,
       o: grant.origin,
       p: grant.path,
       r: grant.referrer ?? '',
@@ -125,7 +127,7 @@ export function openStream(
     throw new PlaylistTokenError();
   }
   if (!parsed || typeof parsed !== 'object') throw new PlaylistTokenError();
-  const record = parsed as { b?:MediaBinding; k?:'key';s?:'selection'; o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
+  const record = parsed as { b?:MediaBinding; k?:'key';s?:'selection';d?:number; o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
   if (typeof record.o !== 'string' || typeof record.p !== 'string' || typeof record.e !== 'number') {
     throw new PlaylistTokenError();
   }
@@ -150,6 +152,7 @@ export function openStream(
     binding: record.b,
     role:record.k,
     purpose:record.s,
+    depth:record.d,
     origin,
     path,
     referrer: referrer || undefined,

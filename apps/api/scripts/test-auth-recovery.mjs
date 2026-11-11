@@ -105,7 +105,7 @@ try {
   await writeFile('production-readiness-performance.json',JSON.stringify(capacity,null,2)+'\n');
   console.log('::notice title=Isolated playback capacity::'+JSON.stringify(capacity));
   for(const line of nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')))await passed(line.slice(5));
-  assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,9);
+  assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,13);
   await passed('actual Nest native Prisma and Web owner-ID ACL integrate with Supabase identity; tenant disabled and invalid-token checks pass');
 
   const row = (await pool.query('SELECT recovery_token FROM auth.users WHERE email=$1', [email])).rows[0];

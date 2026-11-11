@@ -4,6 +4,7 @@ import { createServer } from 'node:https';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {execFileSync} from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createHmac, randomUUID } from 'node:crypto';
 import assert from 'node:assert/strict';
@@ -79,13 +80,12 @@ try {
     await request(server).get('/profiles').set('Authorization', `Bearer ${token}`).expect(401);
   }
   assert.equal((await pool.query('SELECT name FROM "Profile" WHERE id=$1', [otherProfile])).rows[0].name, 'Foreign');
-  const ts = require('typescript');
+  // Compile the actual dependency graph, not a single-file transpile that
+  // cannot resolve the new live-session/Geo module. No mocked owner verifier.
   const ownerSource = path.resolve(api, '../web/src/server/xtream-access.ts');
-  const compiledOwner = path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'owner.cjs');
-  await writeFile(compiledOwner, ts.transpileModule(await readFile(ownerSource, 'utf8'), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
-  }).outputText);
-  const owner = require(compiledOwner);
+  const ownerDir=path.resolve(process.env.AUTH_FIXTURE_CERT_DIR,'owner-compiled');
+  execFileSync(process.execPath,['node_modules/typescript/bin/tsc',ownerSource,'--outDir',ownerDir,'--module','commonjs','--target','es2022','--esModuleInterop','--skipLibCheck','--strict'],{stdio:'pipe'});
+  const owner = require(path.join(ownerDir,'xtream-access.js'));
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://127.0.0.1:9443';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'isolated-gateway-fixture';
   process.env.XTREAM_OWNER_EMAILS = user.email;
@@ -98,7 +98,7 @@ try {
   const {testProtectedAuthPlayback}=await import('./test-protected-auth-playback.mjs');
   const playbackSession=JSON.parse(process.env.AUTH_PLAYBACK_SESSION);
   const prisma=app.get(require(path.join(api,'dist/prisma.service.js')).PrismaService);
-  assert.equal(await testProtectedAuthPlayback({app,prisma,tenant,userId:user.id,session:playbackSession,certDir:process.env.AUTH_FIXTURE_CERT_DIR,refreshToken:playbackSession.refresh_token,otherSessionToken:access}),9);
+  assert.equal(await testProtectedAuthPlayback({app,prisma,tenant,userId:user.id,session:playbackSession,certDir:process.env.AUTH_FIXTURE_CERT_DIR,refreshToken:playbackSession.refresh_token,otherSessionToken:access}),13);
   console.log('PASS actual Nest native Prisma Supabase identity: own create/read, forged body ignored, cross-user/cross-tenant update/delete denied, disabled/expired/forged/malformed rejected');
 } finally {
   await app?.close(); tls.closeAllConnections(); await new Promise(resolve => tls.close(resolve)); await pool.end();

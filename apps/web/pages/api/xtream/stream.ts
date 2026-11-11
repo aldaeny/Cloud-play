@@ -106,7 +106,7 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if(process.env.NODE_ENV==='production')return boundMediaProxy(req,res,{
     open:t=>{const g=openToken(t,proxySecret());if(g.origin!==providerOrigin()||g.source!==providerFingerprint())throw new TokenError();return {...g,origin:g.origin};},
-    seal:g=>sealPath(g.path,proxySecret(),Math.max(0,g.expiresAt-Date.now()),g.expiresAt,g.binding,g.origin,g.role,undefined,g.source),
+    seal:g=>sealPath(g.path,proxySecret(),Math.max(0,g.expiresAt-Date.now()),g.expiresAt,g.binding,g.origin,g.role,undefined,g.source,g.depth),
     route:'/api/xtream/stream',
   });
 
