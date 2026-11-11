@@ -1,0 +1,40 @@
+name: Application verification
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Lint
+        run: |
+          npm run lint --workspace aether-api
+          npm run lint --workspace aether-web
+          npm run lint --workspace aether-admin
+      - name: API tests
+        run: npm run test --workspace aether-api -- --runInBand
+      - name: Web unit and contract suites
+        run: |
+          for suite in private public fta films community playlists live channels xtream-url search-security api-bridge rate-limit recovery; do
+            npm run "test:$suite" --workspace aether-web || exit "$?"
+          done
+      - name: API build (native Prisma required)
+        run: PRISMA_REQUIRE_NATIVE=1 npm run build --workspace aether-api
+      - name: Web and admin builds
+        run: |
+          npm run build --workspace aether-web
+          npm run build --workspace aether-admin

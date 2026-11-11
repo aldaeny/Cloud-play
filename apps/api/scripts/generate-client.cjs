@@ -59,6 +59,9 @@ function tryNativeGenerate() {
       process.stderr.write(text);
       throw new Error('`prisma generate` failed for a non-network reason.');
     }
+    if (process.env.PRISMA_REQUIRE_NATIVE === '1') {
+      throw new Error('Native Prisma generation required; engine download failed.');
+    }
     log('engine host unreachable — falling back to offline type generation.');
     return false;
   }

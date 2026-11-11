@@ -48,6 +48,19 @@ describe('RightsService', () => {
 
       const result = await service.checkRights('title-id', 'US');
       expect(result).toHaveLength(1);
+      await expect(service.checkRights('title-id', 'GB')).rejects.toThrow('RIGHTS_OR_RATING');
+    });
+
+    it.each(['["US",', '"RUS"', '["RUS"]', '{"country":"US"}', '["US",42]', 'RUS'])(
+      'rejects malformed or substring-only territory data: %s', async territories => {
+        mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1', territories }]);
+        await expect(service.checkRights('title-id', 'US')).rejects.toThrow('RIGHTS_OR_RATING');
+      });
+
+    it('retains exact legacy single-code matches', async () => {
+      mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1', territories: 'US' }]);
+      await expect(service.checkRights('title-id', 'US')).resolves.toHaveLength(1);
+      await expect(service.checkRights('title-id', 'U')).rejects.toThrow('RIGHTS_OR_RATING');
     });
   });
 

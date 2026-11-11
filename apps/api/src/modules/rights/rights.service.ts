@@ -1,6 +1,19 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
+// Current writes use a JSON array. Preserve a legacy single country code, but
+// fail closed on malformed lists, JSON strings, objects and partial matches.
+function parseTerritories(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.every(value => typeof value === 'string' && /^[A-Z]{2}$/.test(value))
+      ? parsed : [];
+  } catch {
+    return /^[A-Z]{2}$/.test(raw) ? [raw] : [];
+  }
+}
+
 @Injectable()
 export class RightsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -19,17 +32,9 @@ export class RightsService {
     }
 
     if (territory && windows.length > 0) {
-      // Check if territory is in any of the windows
-      const matched = windows.some(w => {
-        if (!w.territories) return false;
-        // territories is stored as JSON string
-        try {
-          const territories = JSON.parse(w.territories);
-          return territories.includes(territory);
-        } catch {
-          return w.territories.includes(territory);
-        }
-      });
+      // Only complete country codes can grant rights. A substring search on
+      // malformed JSON or a JSON string can accidentally authorize a country.
+      const matched = windows.some(w => parseTerritories(w.territories).includes(territory));
       if (!matched) {
         throw new ForbiddenException('RIGHTS_OR_RATING', { cause: new Error('403') });
       }
@@ -44,14 +49,7 @@ export class RightsService {
     });
     const territories = new Set<string>();
     for (const w of windows) {
-      if (w.territories) {
-        try {
-          const parsed = JSON.parse(w.territories);
-          parsed.forEach((t: string) => territories.add(t));
-        } catch {
-          territories.add(w.territories);
-        }
-      }
+      for (const territory of parseTerritories(w.territories)) territories.add(territory);
     }
     return Array.from(territories);
   }
