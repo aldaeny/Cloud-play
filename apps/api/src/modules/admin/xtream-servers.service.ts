@@ -8,6 +8,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma.service';
 import { Prisma } from '@prisma/client';
 import { failoverCandidates, isValidPriority, selectServer, MAX_PRIORITY, MIN_PRIORITY } from './xtream-selection';
+import { XtreamProviderAdapter } from './xtream-provider.adapter';
 import { XtreamHealthService, MAX_SERVERS_PER_SWEEP } from './xtream-health.service';
 
 type ServerInput = {
@@ -22,6 +23,13 @@ export class XtreamServersService {
     private readonly health: XtreamHealthService,
   ) {}
 
+  /** Internal only: normalized metadata, never return decrypted account data. */
+  async retrieveCatalog(tenantId: string, id: string, adapter: XtreamProviderAdapter, signal: AbortSignal) {
+    const server = await this.prisma.xtreamServer.findFirst({ where: { id, tenantId, enabled: true } });
+    if (!server) throw new NotFoundException('Enabled Xtream server not found');
+    return adapter.retrieve(server.baseUrl, server.username, this.decryptSecret(server.passwordEncrypted), signal);
+  }
+
   private key(): Buffer {
     const value = process.env.XTREAM_ENCRYPTION_KEY;
     if (!value || !/^[a-fA-F0-9]{64}$/.test(value)) {
@@ -30,7 +38,7 @@ export class XtreamServersService {
     return Buffer.from(value, 'hex');
   }
 
-  private encrypt(value: string): string {
+  encryptSecret(value: string): string {
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key(), iv);
     const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
@@ -44,7 +52,7 @@ export class XtreamServersService {
    * and never included in an error message. A tampered or truncated ciphertext
    * fails GCM authentication and throws, rather than yielding garbage.
    */
-  private decrypt(value: string): string {
+  decryptSecret(value: string): string {
     const parts = value.split('.');
     if (parts.length !== 3) throw new InternalServerErrorException('Stored credential is malformed');
     try {
@@ -130,7 +138,7 @@ export class XtreamServersService {
     if (!input.password) throw new BadRequestException('password is required');
     const data = {
       tenantId, name: input.name.trim(), baseUrl: input.baseUrl.replace(/\/+$/, ''),
-      username: input.username.trim(), passwordEncrypted: this.encrypt(input.password),
+      username: input.username.trim(), passwordEncrypted: this.encryptSecret(input.password),
       ...(input.priority !== undefined ? { priority: input.priority } : {}),
       ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
     };
@@ -180,7 +188,7 @@ export class XtreamServersService {
     if (input.name !== undefined) data.name = input.name.trim();
     if (input.baseUrl !== undefined) data.baseUrl = input.baseUrl.replace(/\/+$/, '');
     if (input.username !== undefined) data.username = input.username.trim();
-    if (input.password !== undefined) data.passwordEncrypted = this.encrypt(input.password);
+    if (input.password !== undefined) data.passwordEncrypted = this.encryptSecret(input.password);
     if (input.priority !== undefined) data.priority = input.priority;
 
     if (input.isDefault === true) {
@@ -223,7 +231,7 @@ export class XtreamServersService {
     }
 
     const result = await this.health.probe(
-      { baseUrl: existing.baseUrl, username: existing.username, password: this.decrypt(existing.passwordEncrypted) },
+      { baseUrl: existing.baseUrl, username: existing.username, password: this.decryptSecret(existing.passwordEncrypted) },
       process.env.XTREAM_ALLOW_HTTP === 'true',
     );
 

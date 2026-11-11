@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
   const result = await callApi<{ data: unknown[] }>({
-    path: '/hybrid/profiles', authorization: req.headers.authorization,
+    geoRequest:req, path: '/hybrid/profiles', authorization: req.headers.authorization,
   });
   if (!result.ok) return res.status(result.status).json({ error: result.code });
   return res.status(200).json(result.data);

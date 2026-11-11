@@ -1,4 +1,7 @@
 'use client';
+import {usePrivateMediaUrl,PRIVATE_MEDIA_DENIED} from '../../lib/use-private-media-url';
+import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
+import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 
 import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, RotateCcw } from 'lucide-react';
@@ -11,6 +14,7 @@ import { getPrefsSnapshot } from '../../lib/preferences';
 type Track = { id: number; label: string };
 type Props = {
   src: string; type: StreamType; poster?: string; title: string; isLive: boolean;
+  initialPositionSec?: number; onProgress?: (positionSec:number,durationSec:number)=>void;
   autoPlay?: boolean; onError?: (error: Error) => void; onQualityChange?: (quality: string) => void; onReady?: () => void;
 };
 type Status = 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'blocked' | 'error';
@@ -25,15 +29,21 @@ function sourceError(src: string): boolean {
 }
 
 /** Browser-native media element + on-demand MSE engines. No credentials, fake tracks or page reloads. */
-export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onError, onQualityChange, onReady }: Props) {
+export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, autoPlay, initialPositionSec=0, onProgress, onError, onQualityChange, onReady }: Props) {
+  const src=usePrivateMediaUrl(requestedSrc);
+  const privateResume=useRef<{input:string;time:number;paused:boolean}|null>(null);
+  useEffect(() => () => { if(src.startsWith('/api/external/'))void releaseMediaSession(src).catch(()=>{}); },[src]);
   const preferences = useContext(PlaybackPreferencesContext);
   const saved = getPrefsSnapshot();
   const shouldAutoPlay = autoPlay ?? (preferences.autoPlay && saved.playbackAuto);
   const videoRef = useRef<HTMLVideoElement>(null);
+  usePlaybackMetrics(src,videoRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const dashRef = useRef<MediaPlayerClass | null>(null);
-  const callbacks = useRef({ onError, onReady, onQualityChange });
+  const callbacks = useRef({ onError, onReady, onQualityChange, onProgress });
+  const initialPosition=useRef(initialPositionSec);
+  useEffect(()=>{initialPosition.current=initialPositionSec;},[initialPositionSec]);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<Status>('loading');
@@ -51,7 +61,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
   const [duration, setDuration] = useState(0);
   const [offline, setOffline] = useState(false);
   const statusRef = useRef(status);
-  useEffect(() => { callbacks.current = { onError, onReady, onQualityChange }; }, [onError, onReady, onQualityChange]);
+  useEffect(() => { callbacks.current = { onError, onReady, onQualityChange, onProgress }; }, [onError, onReady, onQualityChange, onProgress]);
   useEffect(() => { statusRef.current = status; }, [status]);
 
   const showControls = useCallback(() => {
@@ -108,7 +118,10 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video||!src) return;
+    const resume=privateResume.current?.input===requestedSrc?privateResume.current:null;
+    const restore=()=>{const position=resume?.time??initialPosition.current;if(!isLive&&Number.isFinite(position)&&position>0&&Number.isFinite(video.duration)&&position<video.duration)video.currentTime=position;};
+    video.addEventListener('loadedmetadata',restore);
     let cancelled = false;
     let hls: Hls | null = null;
     let dash: MediaPlayerClass | null = null;
@@ -120,7 +133,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
     const markReady = () => {
       if (cancelled || ready) return;
       ready = true; setStatus('ready'); callbacks.current.onReady?.();
-      if (shouldAutoPlay) void play();
+      if (shouldAutoPlay&&!resume?.paused) void play();
     };
     const timeout = setTimeout(() => { if (!cancelled && !ready) fail('انتهت مهلة الاتصال بالبث. تحقق من الشبكة ثم أعد المحاولة.'); }, 25000);
     const recoverNetwork = (retry: () => void) => {
@@ -130,6 +143,9 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
       else fail('تعذر الوصول إلى مصدر البث بعد عدة محاولات. قد يكون متوقفاً أو يمنع التشغيل من هذا الموقع.');
     };
     async function attach() {
+      if(src===PRIVATE_MEDIA_DENIED){fail('انتهت جلسة التشغيل أو تغيّر سياق الوصول. سجّل الدخول واختر المصدر مجدداً.');return;}
+      try { await prepareMediaSession(src); } catch { fail('يرجى تسجيل الدخول؛ التشغيل المحمي غير متاح.'); return; }
+      if (cancelled) return;
       if (!src || sourceError(src)) { fail('رابط البث غير صالح أو غير آمن.'); return; }
       if (type === 'mp4') { video!.src = src; video!.load(); return; }
       if (type === 'hls') {
@@ -162,7 +178,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
               if (cancelled || !hls) return;
               if (data.details === HlsEngine.ErrorDetails.BUFFER_STALLED_ERROR) { setStatus('buffering'); return; }
               if (!data.fatal) return;
-              if (data.type === HlsEngine.ErrorTypes.NETWORK_ERROR) recoverNetwork(() => hls?.startLoad());
+              if (data.type === HlsEngine.ErrorTypes.NETWORK_ERROR) recoverNetwork(() => { if(src.startsWith('/api/external/'))void prepareMediaSession(src).then(()=>hls?.loadSource(src),()=>fail('انتهت جلسة التشغيل أو لم تعد القناة متاحة.'));else hls?.startLoad(); });
               else if (data.type === HlsEngine.ErrorTypes.MEDIA_ERROR && mediaRetries++ < 1) hls.recoverMediaError();
               else fail(data.type === HlsEngine.ErrorTypes.KEY_SYSTEM_ERROR ? 'هذا المصدر محمي بحقوق DRM ولم يُفعّل تشغيله الآمن في المتصفح.' : 'تعذر تشغيل البث. المصدر قد يكون متوقفاً أو بترميز غير مدعوم.');
             });
@@ -208,11 +224,13 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
     }
     void attach();
     return () => {
+      if(requestedSrc.includes('&session=1'))privateResume.current={input:requestedSrc,time:video.currentTime,paused:video.paused};
+      video.removeEventListener('loadedmetadata',restore);
       cancelled = true; clearTimeout(timeout);
       hls?.destroy(); dash?.reset(); hlsRef.current = null; dashRef.current = null;
       video.pause(); video.removeAttribute('src'); video.load();
     };
-  }, [src, type, attempt, shouldAutoPlay, preferences.startMuted, fail, play]);
+  }, [src, requestedSrc, isLive, type, attempt, shouldAutoPlay, preferences.startMuted, fail, play]);
 
   useEffect(() => {
     const online = () => { setOffline(false); if (statusRef.current === 'error') setAttempt(value => value + 1); };
@@ -261,14 +279,14 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
   return <div ref={containerRef} className="cp-player media-player" dir="ltr" tabIndex={0} role="region" aria-label={`مشغل ${title}`} onKeyDown={onKeyDown} onPointerMove={showControls} onPointerDown={showControls} onFocusCapture={showControls} data-controls-hidden={!controlsVisible && status === 'playing' && !settingsOpen} data-playback-status={status}>
     <video ref={videoRef} poster={poster} playsInline preload="metadata" muted={muted} aria-label={title}
       onClick={() => { if (window.matchMedia('(pointer: coarse)').matches) showControls(); else togglePlay(); }}
-      onLoadedMetadata={() => { setDuration(videoRef.current?.duration ?? 0); if (type === 'mp4' || (type === 'hls' && !hlsRef.current)) { setStatus(current => current === 'blocked' || current === 'error' ? current : 'ready'); callbacks.current.onReady?.(); if (shouldAutoPlay) void play(); } }}
+      onLoadedMetadata={() => { setDuration(videoRef.current?.duration ?? 0); if (type === 'mp4' || (type === 'hls' && !hlsRef.current)) { setStatus(current => current === 'blocked' || current === 'error' ? current : 'ready'); callbacks.current.onReady?.(); if (shouldAutoPlay&&!(privateResume.current?.input===requestedSrc&&privateResume.current.paused)) void play(); } }}
       onPlay={() => { setStatus('playing'); showControls(); }}
       onPlaying={() => { setStatus('playing'); setOffline(false); showControls(); }}
       onPause={() => setStatus(current => current === 'error' ? current : 'paused')}
       onWaiting={() => setStatus(current => current === 'error' ? current : 'buffering')}
       onCanPlay={() => setStatus(current => current === 'playing' || current === 'error' || current === 'blocked' ? current : 'ready')}
       onVolumeChange={() => { const video = videoRef.current; if (video) { setMuted(video.muted); setVolume(video.volume); } }}
-      onTimeUpdate={() => setTime(videoRef.current?.currentTime ?? 0)}
+      onTimeUpdate={() => {const video=videoRef.current;setTime(video?.currentTime??0);if(video&&!isLive&&Number.isFinite(video.duration))callbacks.current.onProgress?.(Math.floor(video.currentTime),Math.floor(video.duration));}}
       onDurationChange={() => setDuration(videoRef.current?.duration ?? 0)}
       onEnded={() => setStatus('paused')}
       onError={() => fail('تعذر قراءة الفيديو. قد يكون المصدر متوقفاً أو غير مدعوم أو محظوراً بواسطة CORS.')}/>

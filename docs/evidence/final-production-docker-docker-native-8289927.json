@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "head_sha": "8289927b9fc199063710c7bd7dac5e263b4d981e",
+  "run": "https://github.com/aldaeny/Cloud-play/actions/runs/43020748821",
+  "job": "production-docker / docker-native",
+  "id": 130523050885,
+  "assertions": [
+    "{\"status\":\"PASS\",\"scope\":\"real Docker production image; isolated PostgreSQL17 only\",\"checks\":[\"runtime image is non-root; no baked credential env, root env/canary/git/docs files\",\"actual native Prisma engine loads in Debian/OpenSSL3 Node22 runtime image\",\"production startup fails closed without mandatory configuration\",\"startup rejects unreachable isolated database with native connection failure\",\"all current migrations applied to disposable PostgreSQL17 with ON_ERROR_STOP\",\"running production image executes actual native Prisma model query; explicit per-process pool3 budget\",\"actual native one-connection pool queues concurrent queries, returns P2024 under saturation and recovers\",\"health/readiness returns503 during actual DB outage\",\"real in-flight native transaction aborts during database outage\",\"same running application reconnects after isolated DB restart\",\"database restart preserves committed state and rolls back interrupted fixture transaction\",\"SIGTERM executes graceful app.close/disconnect and exits0 without forced kill\",\"production image restarts; native DB/health remains intact\"],\"pool_saturation\":{\"status\":\"PASS\",\"connection_limit\":1,\"concurrent_queries\":16,\"completed\":5,\"p2024_timeouts\":11,\"elapsed_ms\":1014,\"recovery_query_ms\":2.325,\"rss_bytes\":79118336},\"engine\":\"libquery_engine-debian-openssl-3.0.x.so.node\",\"node\":\"v22.23.4\",\"production_accessed\":false,\"secret_values_exported\":false}"
+  ]
+}

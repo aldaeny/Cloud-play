@@ -1,3 +1,5 @@
+import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
+import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import CastControls from './CastControls';
@@ -7,6 +9,7 @@ type State='loading'|'ready'|'playing'|'buffering'|'blocked'|'failed';
 type Track={label:string;id:number};
 type Props={language:Language;title:string;url:string;kind:'hls'|'mp4'|'dash';onClose:()=>void;className?:string;footer?:ReactNode;progressKey?:string};
 export default function MediaViewer({language,title,url,kind,onClose,className='',footer,progressKey}:Props){
+ useEffect(()=>()=>{if(url.startsWith('/api/external/'))void releaseMediaSession(url).catch(()=>{});},[url]);
  const preferences=useContext(PlaybackPreferencesContext);const preferencesRef=useRef(preferences);const [initialScroll]=useState(preferences.scrollToPlayer);
  useEffect(()=>{preferencesRef.current=preferences},[preferences]);
  const lastSaved=useRef(0);
@@ -14,6 +17,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  function restoreProgress(video:HTMLVideoElement){if(!progressKey)return;try{const p=JSON.parse(localStorage.getItem(`cloudplay-progress-v1-${progressKey}`)||'null');if(p&&Number.isFinite(p.position)&&p.position>=5&&Number.isFinite(video.duration)&&p.position<video.duration-10)video.currentTime=p.position;}catch{/* Ignore unavailable or invalid storage. */}}
  const hlsRef=useRef<import('hls.js').default|null>(null);const dashRef=useRef<import('dashjs').MediaPlayerClass|null>(null);const failTimerRef=useRef<number|null>(null);const [levels,setLevels]=useState<Track[]>([]);const [audio,setAudio]=useState<Track[]>([]);const [subtitles,setSubtitles]=useState<Track[]>([]);const [qualityChoice,setQualityChoice]=useState(-1);const [audioChoice,setAudioChoice]=useState(-1);const [subtitleChoice,setSubtitleChoice]=useState(-1);
  const ar=language==='ar';const videoRef=useRef<HTMLVideoElement>(null);const viewerRef=useRef<HTMLDivElement>(null);const [state,setState]=useState<State>('loading');const [slow,setSlow]=useState(false);const [attempt,setAttempt]=useState(0);
+ usePlaybackMetrics(url,videoRef);
  useEffect(()=>{if(initialScroll)viewerRef.current?.scrollIntoView({behavior:(viewerRef.current?.closest('.motion-off') || window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'instant':'smooth',block:'center'})},[initialScroll]);
  useEffect(()=>{
   const video=videoRef.current;if(!video)return;const {autoPlay,startMuted}=preferencesRef.current;video.muted=startMuted;let cancelled=false;let hls:import('hls.js').default|null=null;setState('loading');setSlow(false);setLevels([]);setAudio([]);setSubtitles([]);setQualityChoice(-1);setAudioChoice(-1);setSubtitleChoice(-1);
@@ -24,6 +28,8 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
   const retryNetwork=(retry:()=>void)=>{if(cancelled)return;if(!navigator.onLine){setState('failed');return}if(networkRetries++<2){setState('buffering');window.setTimeout(()=>{if(!cancelled)retry()},1000*networkRetries)}else setState('failed')};
   async function playAutomatically(){try{await video!.play()}catch(e){if(cancelled)return;const name=e instanceof Error?e.name:'';if(name==='AbortError')return;if(name==='NotAllowedError')setState('blocked');else if(video!.error)setState('failed');else setState('ready')}}
   async function attach(){
+   try{await prepareMediaSession(url)}catch{if(!cancelled)setState('failed');return}
+   if(cancelled)return;
    if(!video)return;
    if(kind==='mp4'||(kind==='hls'&&video.canPlayType('application/vnd.apple.mpegurl'))){video.src=url;setState('ready');if(autoPlay)void playAutomatically();return}
    if(kind==='dash'){try{const dashjs=await import('dashjs');if(cancelled)return;const dash=dashjs.MediaPlayer().create();dashRef.current=dash;dash.updateSettings({streaming:{retryAttempts:{MPD:2,MediaSegment:2}}});dash.on('streamInitialized',()=>{if(!cancelled){markRecovered();setState('ready');if(autoPlay)void playAutomatically()}});dash.on('error',()=>retryNetwork(()=>dash.attachSource(url)));dash.on('playbackNotAllowed',()=>{if(!cancelled)setState('blocked')});dash.initialize(video,url,autoPlay);return}catch{if(!cancelled)setState('failed');return}}
@@ -31,7 +37,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
    const updateLevels=()=>{if(!cancelled&&hls){setLevels(hls.levels.map((v,id)=>({id,label:v.height?`${v.height}p`:(v.name||`${Math.round(v.bitrate/1000)} kbps`)})));setQualityChoice(hls.manualLevel)}};
    const updateAudio=()=>{if(!cancelled&&hls){setAudio(hls.audioTracks.map((v,id)=>({id,label:v.name||v.lang||`Track ${id+1}`})));setAudioChoice(hls.audioTrack)}};
    const updateSubtitles=()=>{if(!cancelled&&hls){setSubtitles(hls.subtitleTracks.map((v,id)=>({id,label:v.name||v.lang||`Track ${id+1}`})));setSubtitleChoice(hls.subtitleTrack)}};
-   hls.on(Hls.Events.ERROR,(_event,data)=>{if(cancelled||!hls)return;if(data.details===Hls.ErrorDetails.BUFFER_STALLED_ERROR)return;if(!data.fatal)return;if(data.type===Hls.ErrorTypes.NETWORK_ERROR)retryNetwork(()=>hls?.startLoad());else if(data.type===Hls.ErrorTypes.MEDIA_ERROR&&mediaRetries++<1)hls.recoverMediaError();else setState('failed')});hls.on(Hls.Events.LEVELS_UPDATED,updateLevels);hls.on(Hls.Events.AUDIO_TRACKS_UPDATED,updateAudio);hls.on(Hls.Events.AUDIO_TRACK_SWITCHED,updateAudio);hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED,updateSubtitles);hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH,updateSubtitles);hls.on(Hls.Events.MANIFEST_PARSED,()=>{if(!cancelled){markRecovered();updateLevels();updateAudio();updateSubtitles();setState('ready');if(autoPlay)void playAutomatically()}});hls.loadSource(url);hls.attachMedia(video)}catch{if(!cancelled)setState('failed')}
+   hls.on(Hls.Events.ERROR,(_event,data)=>{if(cancelled||!hls)return;if(data.details===Hls.ErrorDetails.BUFFER_STALLED_ERROR)return;if(!data.fatal)return;if(data.type===Hls.ErrorTypes.NETWORK_ERROR)retryNetwork(()=>{if(url.startsWith('/api/external/'))void prepareMediaSession(url).then(()=>hls?.loadSource(url),()=>{if(!cancelled)setState('failed')});else hls?.startLoad()});else if(data.type===Hls.ErrorTypes.MEDIA_ERROR&&mediaRetries++<1)hls.recoverMediaError();else setState('failed')});hls.on(Hls.Events.LEVELS_UPDATED,updateLevels);hls.on(Hls.Events.AUDIO_TRACKS_UPDATED,updateAudio);hls.on(Hls.Events.AUDIO_TRACK_SWITCHED,updateAudio);hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED,updateSubtitles);hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH,updateSubtitles);hls.on(Hls.Events.MANIFEST_PARSED,()=>{if(!cancelled){markRecovered();updateLevels();updateAudio();updateSubtitles();setState('ready');if(autoPlay)void playAutomatically()}});hls.loadSource(url);hls.attachMedia(video)}catch{if(!cancelled)setState('failed')}
   }
   void attach();return()=>{cancelled=true;window.clearTimeout(slowTimer);window.clearTimeout(failTimer);if(hlsRef.current===hls)hlsRef.current=null;hls?.destroy();dashRef.current?.reset();dashRef.current=null;video.pause();video.removeAttribute('src');video.load()};
  },[url,kind,attempt]);

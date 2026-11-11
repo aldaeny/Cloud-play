@@ -24,7 +24,12 @@
     "test:search:browser": "node tests/search-csp-browser.mjs",
     "test:api-bridge": "node tests/api-bridge.test.mjs",
     "test:rate-limit": "node tests/rate-limit.test.mjs",
-    "test:recovery": "node tests/password-recovery.test.mjs"
+    "test:recovery": "node tests/password-recovery.test.mjs",
+    "test:protected-live": "node tests/protected-live.test.cjs",
+    "test:media-session": "node tests/media-session.test.cjs",
+    "test:playlist-socket": "node tests/playlist-socket-security.test.mjs",
+    "test:private-session": "node tests/private-media-session.test.mjs",
+    "test:vod": "node tests/vod-bridge.test.cjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",

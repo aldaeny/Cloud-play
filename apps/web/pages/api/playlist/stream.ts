@@ -1,3 +1,4 @@
+import {boundMediaProxy} from '../../../src/server/bound-media-proxy';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
@@ -24,6 +25,7 @@ export const config = {
 
 const PLAYLIST_MAX_BYTES = 2 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 25_000;
+const MEDIA_MAX_BYTES = 64 * 1024 * 1024;
 /** Off-origin references become this, so a token can never leak to another host. */
 const BLOCKED_REF = '/api/playlist/stream?t=off-origin';
 
@@ -36,6 +38,12 @@ function isPlaylist(url: URL, contentType: string): boolean {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if(process.env.NODE_ENV==='production')return boundMediaProxy(req,res,{
+    open:t=>openStream(t,playlistSecret()),
+    seal:g=>sealStream(g,playlistSecret(),Math.max(0,g.expiresAt-Date.now())),
+    route:'/api/playlist/stream',
+  });
+
   if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -81,6 +89,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       timeoutMs: UPSTREAM_TIMEOUT_MS,
       maxRedirects: 3,
       pinOrigin: true,
+      maxBytes: MEDIA_MAX_BYTES,
     });
   } catch (error) {
     const code = error instanceof SafeFetchError ? error.code : 'UPSTREAM_UNREACHABLE';
@@ -92,7 +101,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { response, url } = result;
   const contentType = response.headers.get('content-type') ?? '';
-  const ttl = Math.min(PLAYLIST_TOKEN_TTL_MS, Math.max(60_000, grant.expiresAt - Date.now()));
+  // Never extend a parent capability while rewriting a nested manifest.
+  if(grant.expiresAt<=Date.now()){await response.body?.cancel().catch(()=>{});return res.status(403).json({error:'BAD_TOKEN'});}
+  const ttl = Math.min(PLAYLIST_TOKEN_TTL_MS, Math.max(0, grant.expiresAt - Date.now()));
 
   /** Re-seal a playlist reference on the SAME origin, keeping forwarding headers. */
   const proxyRef = (reference: string): string => {
@@ -101,6 +112,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (absolute.origin !== url.origin) return BLOCKED_REF;
       const token = sealStream(
         {
+          expiresAt: grant.expiresAt,
           origin: absolute.origin,
           path: absolute.pathname + absolute.search,
           referrer: grant.referrer,
@@ -118,7 +130,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (isPlaylist(url, contentType)) {
     let body: string;
     try {
-      const buffer = await response.arrayBuffer();
+      const {readCapped}=await import('../../../src/server/safe-fetch');
+      const text=await readCapped(response,PLAYLIST_MAX_BYTES);
+      const buffer=Buffer.from(text);
       if (buffer.byteLength > PLAYLIST_MAX_BYTES) {
         return res.status(502).json({ error: 'UPSTREAM_ERROR' });
       }

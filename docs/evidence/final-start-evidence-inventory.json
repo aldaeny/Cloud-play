@@ -1,0 +1,389 @@
+{
+  "scope": "all 64 pre-existing evidence files read; historical evidence retained, not recertified",
+  "files": [
+    {
+      "path": "docs/evidence/auth-nest-39fc84f.json",
+      "bytes": 3736,
+      "sha256": "8ed86e9ee3c740fa96cb316cbe0550fc9dea82f4d54959a66eb170d244ae6d51",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/auth-smtp-975e354.json",
+      "bytes": 3336,
+      "sha256": "38ab6f593dc6404fd4bcb6b9d878554502f8ba314dae4089987c452c137154d1",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-application.json",
+      "bytes": 1797,
+      "sha256": "1e76cb74f02e46366912477f0348b0a1a653905d59356b2773619bf995775b63",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-auth.json",
+      "bytes": 8893,
+      "sha256": "e9c0e5f1bc0b2a2390d47bc361945172c5f92054f841070497ddca41d094c6cd",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-bounded-capacity.json",
+      "bytes": 731,
+      "sha256": "335dcfdccb24fec575a590651ab58db21b23a9fcb0d4d14c12ad85c22e5266db",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-ci.json",
+      "bytes": 263,
+      "sha256": "0ffcc9f750186cc66ff4c4b78a3283898c833e48afd26db8e4916323aa85318c",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-dependency-audit.json",
+      "bytes": 5014,
+      "sha256": "aadc1a96522b14c8aa381d9ea51e845f3aa9523df284bba4192eb6bf7552f676",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-jobs.json",
+      "bytes": 6361,
+      "sha256": "97d66483d2d553f659dec75606af14b889fd92f4dac490ba0915c7af4e973c22",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-load-initial-failure.json",
+      "bytes": 6604,
+      "sha256": "ec78d88498cab145064b5d250ab40efafdf6a8e2bb387972eff23f8b77a59884",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-logical-restore.json",
+      "bytes": 605,
+      "sha256": "faecdcdfbc9110d5aadab6e5e4409417b216824cab1140a02877ee5c329c7e2a",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-native-node22.json",
+      "bytes": 3864,
+      "sha256": "47f8387407facec0fdd7ef5a9769a5e24b918dbeb4c377477187d1ef86d8ac2f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-native-node24.json",
+      "bytes": 3864,
+      "sha256": "47f8387407facec0fdd7ef5a9769a5e24b918dbeb4c377477187d1ef86d8ac2f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-native-node26.json",
+      "bytes": 3864,
+      "sha256": "47f8387407facec0fdd7ef5a9769a5e24b918dbeb4c377477187d1ef86d8ac2f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-progressive-load.json",
+      "bytes": 5581,
+      "sha256": "a03c2fe2503c4e1fb925319207c6d99948c43b806bd6cb32d61720d72c409f55",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-source-inventory.json",
+      "bytes": 4030,
+      "sha256": "be643808e120234147b149ad29d33f92079ea1c099395d8b354fdae878246d0f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-staging.json",
+      "bytes": 580,
+      "sha256": "6150768bbbee17a6128c2fa4044e58afc0900bf516b2dc5e537089e0e0047508",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/certification-static-security.json",
+      "bytes": 242,
+      "sha256": "a82e0288b6cf769cb92711a9e29faffd3792ac83da719eb450e5fc52f785aa0e",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-application-regression-application-a827b17.json",
+      "bytes": 466,
+      "sha256": "80221e9a0c5df1912260aa0388d44249c56cede486c7adf4af340752399e7df3",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-ci-a827b17.json",
+      "bytes": 14658,
+      "sha256": "ffea9a6418fa70f870d3d32dc651f6d0a8cab896438cd512b0db3169dd0badea",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-docker-e074e58.json",
+      "bytes": 1790,
+      "sha256": "c12e4de6eedc77ae47461c021ab495dd88fb414414102a470766338e9068c584",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-isolated-auth-smtp-recovery-a827b17.json",
+      "bytes": 7880,
+      "sha256": "6af35671609705b8a121d6330fb295da0376069ca6a6b028c0390ad55f498895",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-local.json",
+      "bytes": 698,
+      "sha256": "8d794494179322b09afe4cd2ba6bb441807f2b3c9df60ba12b1e599475364a2c",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-native-postgres-22-a827b17.json",
+      "bytes": 3282,
+      "sha256": "3f5990b402da9e9fdb74e0743f53d4f6e020dbf21fbba1777a77554b57d61640",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-native-postgres-24-a827b17.json",
+      "bytes": 3282,
+      "sha256": "343c131dc4826930c58a75b85942bba67b2644dc7e8da2e5b249aecf5ac2e654",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-native-postgres-26-a827b17.json",
+      "bytes": 3282,
+      "sha256": "a9ecd5adc65df0bc7dc31c4a0ece46c6a36c9cbddc8bff9ac4c568d84ba0cc07",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/critical-blockers-production-docker-docker-native-a827b17.json",
+      "bytes": 1460,
+      "sha256": "536f6578e7492c7e79793c29056d2a327352bbae5c0f313f1609b42ca16ace46",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-acceptance-auth.json",
+      "bytes": 3752,
+      "sha256": "23f3d0040dd8db0eda65db3caf87f5f4fbd67e4ca6329a40e19dd2539ce951b8",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-acceptance-ci.json",
+      "bytes": 12467,
+      "sha256": "47f3285449e3d51bfc19eec48c417892ad7b49f7caa0c926078155c4caed9a07",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-acceptance-jobs.json",
+      "bytes": 12834,
+      "sha256": "9776f1550338d365afc766eb5f2d4c82530d3d3c7b675d54c1bdfe03af50f74a",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-acceptance-native-node22.json",
+      "bytes": 3864,
+      "sha256": "e7e518bb6171e387c0b7f9011f9b6d0baa7d680c8121b96460162e76307fe1bb",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-acceptance-native-node24.json",
+      "bytes": 3864,
+      "sha256": "e7e518bb6171e387c0b7f9011f9b6d0baa7d680c8121b96460162e76307fe1bb",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-final-auth.json",
+      "bytes": 3752,
+      "sha256": "d9c34c80b16ac1b20604c2d2f4a92dd2fd5f61e978cdf530f7f8af402369ff15",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-final-ci-c30ed04.json",
+      "bytes": 12463,
+      "sha256": "04610b227a14fb2efbb4aaa89721e7e87438e93973ab9d60eadf392feec89070",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-final-jobs-c30ed04.json",
+      "bytes": 12635,
+      "sha256": "fb97da83f902434a78cff221a08e57b55388adf46248b1a16226adb9f236714f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-final-native-node22.json",
+      "bytes": 3149,
+      "sha256": "a1b5dfbdfd35d606afcdb525d2fe755f08be90b0e1635def53ceee19f76427e2",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-final-native-node24.json",
+      "bytes": 3149,
+      "sha256": "a1b5dfbdfd35d606afcdb525d2fe755f08be90b0e1635def53ceee19f76427e2",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-manager-local-performance.json",
+      "bytes": 551,
+      "sha256": "c9f9577b02a81bd678c367b84cd9609c357013e670d739a35adfd555814a8ef2",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-native32-node22-501c263.json",
+      "bytes": 3149,
+      "sha256": "57bf4b8b7217833502eb4089d8a9ffa8753c35bfd218e191074fc614c9903159",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/external-native32-node24-501c263.json",
+      "bytes": 3149,
+      "sha256": "57bf4b8b7217833502eb4089d8a9ffa8753c35bfd218e191074fc614c9903159",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/master-auth-owner.json",
+      "bytes": 3752,
+      "sha256": "ed5cb29086172afb42639d6eaa6cf399134a0cc8e975e4b7ab525194bb15e291",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/master-ci-656b332.json",
+      "bytes": 12227,
+      "sha256": "36a5a1f905f3f4b2f14b161b6b0379b4e7a7381110b129195440d20f4ba1f45e",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/master-native27-node22.json",
+      "bytes": 2620,
+      "sha256": "06688b0f4a5453cc0916e83f09cc5100e043348c68a139c3763dadd9f2dc94ee",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/master-native27-node24.json",
+      "bytes": 2620,
+      "sha256": "06688b0f4a5453cc0916e83f09cc5100e043348c68a139c3763dadd9f2dc94ee",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native-prisma-current-run.json",
+      "bytes": 4954,
+      "sha256": "250f788b73e169a4e6b8f132a90addbac970b18cda463189e48673b3a333c5ca",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native-prisma-jobs.json",
+      "bytes": 3216,
+      "sha256": "0c71acc0081f09bf764e8c1745e697cf337b7c7f51d8689a03e6558278a68e75",
+      "format": "JSONL (historical .json suffix)"
+    },
+    {
+      "path": "docs/evidence/native-prisma-node22-assertions.json",
+      "bytes": 4059,
+      "sha256": "99c1c7fe7d1245f2ab1bf70a8597e1cde2ac39db97e6e1982ead3769b8ab02ac",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native-prisma-node24-assertions.json",
+      "bytes": 4059,
+      "sha256": "99c1c7fe7d1245f2ab1bf70a8597e1cde2ac39db97e6e1982ead3769b8ab02ac",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native-prisma-verified-jobs.json",
+      "bytes": 5322,
+      "sha256": "1e0572a146aca758df99598e52a0f63b643b15218a024e1b1a23bb7cc39cf76c",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native26-node22-39fc84f.json",
+      "bytes": 2523,
+      "sha256": "3392c133892f57ff5ac2a40d20107867e712aac2d409f1795ccaaf21ffd25183",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/native26-node24-39fc84f.json",
+      "bytes": 2523,
+      "sha256": "3392c133892f57ff5ac2a40d20107867e712aac2d409f1795ccaaf21ffd25183",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-auth.json",
+      "bytes": 3753,
+      "sha256": "e7cfc56473a8cbc750ad121dae0f8fc19a8ad26adc838ae7867a8b7470f6d63b",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-ci.json",
+      "bytes": 263,
+      "sha256": "1a45045b0e896118d3d999406ca4213e47326926b0d80685e3d8393695f3cd28",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-jobs.json",
+      "bytes": 6245,
+      "sha256": "8e78d1718c07054424c6c5bcd7a02adbc7c780e54b319e08e5f3cba0b151c565",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-native-node22.json",
+      "bytes": 3864,
+      "sha256": "a91bd61d279a98262908b7bd105490527f2512e3ee2c6220db2bd10602e28206",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-native-node24.json",
+      "bytes": 3864,
+      "sha256": "a91bd61d279a98262908b7bd105490527f2512e3ee2c6220db2bd10602e28206",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-native-node26.json",
+      "bytes": 3864,
+      "sha256": "a91bd61d279a98262908b7bd105490527f2512e3ee2c6220db2bd10602e28206",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-performance.json",
+      "bytes": 727,
+      "sha256": "ed965c86bbfc6133fe6211616380f11643a7cc2eea6653727b03607f60f228b9",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/production-readiness-staging.json",
+      "bytes": 715,
+      "sha256": "8b770db529a3e67ba7a7bfeebf8c1a34fc97a15d8f7d3ad118e39662690f35c2",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-auth.json",
+      "bytes": 2475,
+      "sha256": "037fcbed6336bf824663ea53f8f8b5136a0d0ff590a485ea51d942b2ddbb9ff8",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-ci.json",
+      "bytes": 263,
+      "sha256": "c22980e4d286b9a5fe51e54d6f9721cb7b669f4c86666870127b0f24b9df245c",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-jobs.json",
+      "bytes": 5285,
+      "sha256": "3389cdecf6fdb733ea7fac9eef135094f5b223aa5a4dc719b3482f8f746c7b5b",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-local.json",
+      "bytes": 1395,
+      "sha256": "7baa2a2d14c05a836eae22f42998dd900bf294313460efb685609f391643e34f",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-native-node22.json",
+      "bytes": 3864,
+      "sha256": "3f770e06f73bf656b1eeb2ddcd4a83f86aca734c29e228144b5240909273180a",
+      "format": "JSON"
+    },
+    {
+      "path": "docs/evidence/protected-playback-phase2-native-node24.json",
+      "bytes": 3864,
+      "sha256": "3f770e06f73bf656b1eeb2ddcd4a83f86aca734c29e228144b5240909273180a",
+      "format": "JSON"
+    }
+  ]
+}

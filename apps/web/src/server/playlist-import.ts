@@ -1,3 +1,4 @@
+import {type MediaBinding} from './private-media-session';
 /**
  * Owner-only M3U playlist import.
  *
@@ -11,9 +12,10 @@
  * Because the proxy runs on the server it can forward Referer and User-Agent,
  * so entries that the public tier must reject as unplayable can work here.
  *
- * Tokens are minted at import time rather than at play time on purpose: they are
- * self-contained, so playback keeps working across serverless instances with no
- * server-side playlist session to lose.
+ * Production imports mint encrypted non-playable selection descriptors bound to
+ * the original live Auth session/IP/country and absolute expiry. Existing players
+ * exchange them for120-second resource grants; every resource checks live Auth.
+ * Legacy self-contained playable tokens remain development-only.
  */
 import { createHash } from 'node:crypto';
 import { parsePublicUrl, readCapped, safeFetch, SafeFetchError } from './safe-fetch';
@@ -184,7 +186,7 @@ function safeLogo(value: string | undefined): string | undefined {
  * Only SYNCHRONOUS URL checks run here; the full DNS check happens per stream at
  * playback time, so importing a 3,000-channel list does not fire 3,000 lookups.
  */
-export function buildChannels(entries: RawEntry[], secret: string): {
+export function buildChannels(entries: RawEntry[], secret: string, binding?:MediaBinding): {
   channels: ImportedChannel[];
   skipped: number;
   total: number;
@@ -218,16 +220,21 @@ export function buildChannels(entries: RawEntry[], secret: string): {
       id: createHash('sha256').update(key).digest('hex').slice(0, 16),
       name: entry.name,
       group: entry.group,
-      logo: safeLogo(entry.logo),
+      logo: (()=>{const logo=safeLogo(entry.logo);if(!binding||!logo)return logo;
+        const target=new URL(logo);return streamUrl({origin:target.origin,path:target.pathname+target.search,binding,expiresAt:binding.expiresAt},secret,120000);})(),
       url: streamUrl(
         {
+          binding,
+          purpose:binding?'selection':undefined,
+          expiresAt:binding?.expiresAt,
           origin: url.origin,
           path: url.pathname + url.search,
           referrer: entry.referrer,
           userAgent: entry.userAgent,
         },
         secret,
-      ),
+        binding?Math.max(0,binding.expiresAt-Date.now()):undefined,
+      )+(binding?'&session=1':''),
       kind,
       container,
       risky: !['m3u8', 'm3u', 'mp4', 'm4v', 'webm'].includes(container),
@@ -275,7 +282,7 @@ export function resetPlaylistCaches(): void {
  * Fetch, parse and seal an owner-supplied playlist.
  * `owner` is the authenticated account id, used only for rate limiting.
  */
-export async function importPlaylist(rawUrl: string, owner: string): Promise<ImportResult> {
+export async function importPlaylist(rawUrl: string, owner: string, binding?:MediaBinding): Promise<ImportResult> {
   let secret: string;
   try {
     secret = playlistSecret();
@@ -294,7 +301,7 @@ export async function importPlaylist(rawUrl: string, owner: string): Promise<Imp
 
   const key = cacheKey(url.toString());
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.result;
+  if (!binding && hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.result;
 
   let text: string;
   let host: string;
@@ -325,7 +332,7 @@ export async function importPlaylist(rawUrl: string, owner: string): Promise<Imp
   const entries = parsePlaylist(text);
   if (entries.length === 0) throw new PlaylistError('EMPTY_PLAYLIST');
 
-  const { channels, skipped, total } = buildChannels(entries, secret);
+  const { channels, skipped, total } = buildChannels(entries, secret,binding);
   if (channels.length === 0) throw new PlaylistError('EMPTY_PLAYLIST');
 
   const result: ImportResult = {
@@ -339,7 +346,7 @@ export async function importPlaylist(rawUrl: string, owner: string): Promise<Imp
     fetchedAt: Date.now(),
   };
 
-  cache.set(key, { at: Date.now(), result });
+  if(!binding)cache.set(key, { at: Date.now(), result });
   if (cache.size > CACHE_MAX_ENTRIES) {
     const oldest = Array.from(cache.entries()).sort((a, b) => a[1].at - b[1].at)[0];
     if (oldest) cache.delete(oldest[0]);

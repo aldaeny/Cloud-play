@@ -1,0 +1,73 @@
+target,case,status,model,os_build,browser,tester,date,network,evidence_reference,reason
+iPhone/iPad — Safari iOS,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+iPhone/iPad — Safari iOS,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Mac — Safari macOS,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android phone/tablet — Chrome Android,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Android TV — TV browser/player,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Google TV — TV browser/player,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,Auth sign-in/refresh/logout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,RTL/LTR/theme/navigation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,Live/channel switch/EPG/favorites,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,M3U and Xtream live/movie/series/server switching,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,HLS manifest-to-final-segment and identity-key decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,DASH manifest-to-final-segment and decode,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,45s renewal with playback-position preservation,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,VOD seek/pause/resume,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,IP/country change and expired-session denial,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,Fullscreen/back/focus/physical remote,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,Offline/reconnect/timeout/recovery,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution
+Other supported televisions/browsers,Sanitized credential/origin exposure review,NOT RUN,,,,,,,,Physical devices unavailable; no emulator substitution

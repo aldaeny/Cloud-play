@@ -1,0 +1,9 @@
+{
+  "scope": "narrow runtime source pattern inspection; NOT a penetration test or proof of absence of SQLi/XSS",
+  "result": {
+    "unsafe_prisma_sql": [],
+    "raw_html_sink": [],
+    "dynamic_eval": []
+  },
+  "production_accessed": false
+}

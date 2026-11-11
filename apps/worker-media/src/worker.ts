@@ -1,3 +1,4 @@
+import { localMediaInput } from './local-media-input';
 /**
  * Media transcoding worker for Aether/Cloud Play
  *
@@ -44,7 +45,7 @@ class MediaProcessor {
     // Use the durable database job when dispatched from the API; manual jobs
     // receive their own record for diagnostics.
     const job = transcodeJobId
-      ? await this.prisma.transcodeJob.update({where: {id: transcodeJobId}, data: {status: 'PROCESSING', error: null}})
+      ? await this.prisma.transcodeJob.update({where: {id: transcodeJobId, mediaAssetId: asset.id}, data: {status: 'PROCESSING', error: null}})
       : await this.prisma.transcodeJob.create({data: {mediaAssetId: asset.id, status: 'PROCESSING', progress: 0}});
     if (job.mediaAssetId !== asset.id) throw new Error('Transcode job asset mismatch');
 
@@ -92,7 +93,7 @@ class MediaProcessor {
 
         await this.runFFmpeg(
           [
-            '-i', sourcePath,
+            ...localMediaInput(sourcePath),
             '-c:v', 'libx264',
             '-preset', 'fast',
             '-crf', '23',
@@ -155,12 +156,12 @@ class MediaProcessor {
       this.logger.log(`Transcoding complete for ${asset.id}. HLS manifest: ${hlsManifestKey}`);
 
     } catch (err: any) {
-      this.logger.error(`Transcoding failed for ${asset.id}: ${err.message}`);
+      this.logger.error(`Transcoding failed for ${asset.id}: TRANSCODE_FAILED`);
 
       // Update job with error
       await this.prisma.transcodeJob.update({
         where: { id: job.id },
-        data: { status: 'FAILED', error: err.message },
+        data: { status: 'FAILED', error: 'TRANSCODE_FAILED' },
       });
 
       // Update asset status
@@ -168,7 +169,7 @@ class MediaProcessor {
         where: { id: asset.id },
         data: { status: 'FAILED' },
       });
-      throw err;
+      throw new Error('TRANSCODE_FAILED');
     } finally {
       rmSync(outputDir, { recursive: true, force: true });
     }
@@ -181,25 +182,13 @@ class MediaProcessor {
   ): Promise<void> {
     return new Promise((resolve, reject) => {
       const ffmpegPath = this.config.get('FFMPEG_PATH') || 'ffmpeg';
-      const child: ChildProcess = spawn(ffmpegPath, args, { cwd });
-
-      let stderr = '';
-      child.stdout?.on('data', (data) => {
-        this.logger.debug(`FFmpeg[${label}] stdout: ${data}`);
-      });
-      child.stderr?.on('data', (data) => {
-        stderr = (stderr + data.toString()).slice(-4000);
-        this.logger.debug(`FFmpeg[${label}] stderr: ${data}`);
-      });
-
-      child.on('error', reject);
-      child.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`FFmpeg[${label}] exited with code ${code}: ${stderr.slice(-1500)}`));
-        }
-      });
+      const child: ChildProcess = spawn(ffmpegPath, args, { cwd, timeout: 30 * 60 * 1000, killSignal: 'SIGKILL' });
+      this.logger.debug(`FFmpeg[${label}] started`);
+      // Consume pipes to avoid deadlocks, but never log arbitrary media metadata
+      // or raw stderr (which may include paths, signed URLs or embedded secrets).
+      child.stdout?.resume(); child.stderr?.resume();
+      child.on('error', () => reject(new Error('MEDIA_PROCESS_FAILED')));
+      child.on('close', code => code === 0 ? resolve() : reject(new Error('MEDIA_PROCESS_FAILED')));
     });
   }
 
@@ -207,7 +196,7 @@ class MediaProcessor {
     const accessKeyId = this.config.get<string>('STORAGE_ACCESS_KEY');
     const secretAccessKey = this.config.get<string>('STORAGE_SECRET_KEY');
     if (!accessKeyId || !secretAccessKey) throw new Error('Storage credentials not configured');
-    return new S3Client({endpoint: this.config.get<string>('STORAGE_ENDPOINT') || 'http://localhost:9000', region: this.config.get<string>('STORAGE_REGION') || 'us-east-1', forcePathStyle: true, credentials: {accessKeyId, secretAccessKey}});
+    return new S3Client({endpoint: this.config.get<string>('STORAGE_ENDPOINT') || 'http://localhost:9000', region: this.config.get<string>('STORAGE_REGION') || 'us-east-1', forcePathStyle: true, maxAttempts: 3, requestHandler: { connectionTimeout: 5000, requestTimeout: 120000 }, credentials: {accessKeyId, secretAccessKey}});
   }
 
   private filesIn(dir: string): string[] {
@@ -216,9 +205,10 @@ class MediaProcessor {
 
   private async probeDimensions(source: string): Promise<{width: number; height: number}> {
     return new Promise((resolve, reject) => {
-      const child = spawn('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json', source]);
-      let output = ''; child.stdout.on('data', chunk => output += chunk.toString());
-      child.on('error', reject); child.on('close', code => {
+      const child = spawn(this.config.get<string>('FFPROBE_PATH') || 'ffprobe', ['-v', 'error', ...localMediaInput(source), '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'json'], { timeout: 15000, killSignal: 'SIGKILL' });
+      let output = ''; child.stdout.on('data', chunk => { output += chunk.toString(); if (output.length > 65536) child.kill('SIGKILL'); });
+      child.stderr.resume();
+      child.on('error', () => reject(new Error('MEDIA_PROBE_FAILED'))); child.on('close', code => {
         try {
           const data = JSON.parse(output) as {streams?: {width?: number; height?: number}[]};
           const width = data.streams?.[0]?.width, height = data.streams?.[0]?.height;
@@ -242,7 +232,7 @@ class MediaProcessor {
     // Generate thumbnails at 5s intervals
     await this.runFFmpeg(
       [
-        '-i', sourcePath,
+        ...localMediaInput(sourcePath),
         '-vf', "select='isnan(prev_selected_t)+gte(t-prev_selected_t,5)',scale=320:-2,format=yuvj420p",
         '-fps_mode', 'vfr',
         '-vframes', '10',
@@ -299,7 +289,7 @@ class WorkerMediaModule implements OnModuleInit, OnModuleDestroy {
     });
 
     this.worker.on('failed', (job: any, err: Error) => {
-      this.logger.error(`Job ${job?.id || 'unknown'} failed: ${err.message}`);
+      this.logger.error(`Job ${job?.id || 'unknown'} failed: TRANSCODE_FAILED`);
     });
 
     await this.dispatchQueued();
@@ -316,7 +306,7 @@ class WorkerMediaModule implements OnModuleInit, OnModuleDestroy {
         await this.queue.add('transcode', {mediaAssetId: job.mediaAssetId, transcodeJobId: job.id},
           {jobId: job.id, attempts: 3, backoff: {type: 'exponential', delay: 5000}, removeOnComplete: false, removeOnFail: false});
       }
-    } catch (error) { this.logger.error(`Queue dispatch failed: ${error instanceof Error ? error.message : String(error)}`); }
+    } catch (error) { this.logger.error('Queue dispatch failed: QUEUE_UNAVAILABLE'); }
     finally { this.dispatching = false; }
   }
 

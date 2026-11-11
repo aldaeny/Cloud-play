@@ -1,3 +1,4 @@
+import { publicFetch } from '../../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getPublicFilm } from '../../../../src/server/public-films';
 import { enforceRateLimit } from '../../../../src/server/rate-limit';
@@ -74,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await fetch(
+    const response = await publicFetch(
       `https://archive.org/metadata/${encodeURIComponent(film.archiveId)}`,
       { signal: controller.signal, redirect: 'follow', headers: { Accept: 'application/json' } },
     );

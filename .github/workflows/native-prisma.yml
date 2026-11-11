@@ -6,13 +6,19 @@ on:
 permissions:
   contents: read
 jobs:
+  production-docker:
+    uses: ./.github/workflows/docker-runtime.yml
+  application-regression:
+    uses: ./.github/workflows/regression.yml
+  isolated-auth-smtp:
+    uses: ./.github/workflows/auth-recovery.yml
   native-postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24]
+        node: [22, 24, 26]
     env:
       # Deliberately not a secret or production URL. Runner creates its own DB.
       DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
@@ -30,6 +36,16 @@ jobs:
         run: |
           set -o pipefail
           npm run test:postgres:native --workspace aether-api 2>&1 | tee native-postgres.log
+      - name: Publish sanitized native assertion evidence
+        if: always()
+        shell: bash
+        run: |
+          # Only our fixed PASS labels/counts, never raw URLs, environment or errors.
+          # Annotations remain readable via GitHub API when artifact hosts are blocked.
+          if [ -f native-postgres.log ]; then
+            evidence=$(grep -E '^(PASS |FAIL |NATIVE REAL POSTGRESQL:)' native-postgres.log | paste -sd '|' - || true)
+            printf '::notice title=Native PostgreSQL assertions::%s\n' "$evidence"
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

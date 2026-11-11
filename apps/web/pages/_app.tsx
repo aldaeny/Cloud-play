@@ -1,3 +1,4 @@
+import PagesBrandingProvider from '../src/components/brand/PagesBrandingProvider';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useEffect } from 'react';
@@ -23,5 +24,5 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     }).catch(() => {});
   }, []);
-  return <><Head><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" href="/cloudplay-icon.png" type="image/png"/></Head><PagesShell><AccountProvider><PageTransition><Component {...pageProps}/></PageTransition><GlobalNav/></AccountProvider></PagesShell></>;
+  return <><Head><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" href="/cloudplay-icon.png" type="image/png"/></Head><PagesBrandingProvider><PagesShell><AccountProvider><PageTransition><Component {...pageProps}/></PageTransition><GlobalNav/></AccountProvider></PagesShell></PagesBrandingProvider></>;
 }

@@ -11,7 +11,7 @@ describe('ProfilesService', () => {
     profile: {
       create: jest.fn(),
       findMany: jest.fn(),
-      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       updateMany: jest.fn(),
     },
   };
@@ -76,24 +76,32 @@ describe('ProfilesService', () => {
 
   describe('verifyPin', () => {
     it('should return true if profile has no pin', async () => {
-      mockPrisma.profile.findUnique.mockResolvedValue({
+      mockPrisma.profile.findFirst.mockResolvedValue({
         id: 'profile-id',
         pinHash: null,
       });
 
-      const result = await service.verifyPin('profile-id', 'any-pin');
+      const result = await service.verifyPin('owner-id', 'profile-id', 'any-pin');
       expect(result).toBe(true);
+      expect(mockPrisma.profile.findFirst).toHaveBeenCalledWith({ where: { id: 'profile-id', userId: 'owner-id' } });
+    });
+
+    it('rejects missing or cross-user profiles instead of treating them as no-PIN', async () => {
+      mockPrisma.profile.findFirst.mockResolvedValue(null);
+      await expect(service.verifyPin('owner-id', 'other-profile', '1234')).rejects.toMatchObject({ status: 404 });
+      expect(mockPrisma.profile.findFirst).toHaveBeenCalledWith({ where: { id: 'other-profile', userId: 'owner-id' } });
     });
 
     it('should verify pin correctly', async () => {
-      mockPrisma.profile.findUnique.mockResolvedValue({
+      mockPrisma.profile.findFirst.mockResolvedValue({
         id: 'profile-id',
         pinHash: 'hashed-pin',
       });
       jest.spyOn(argon2, 'verify').mockResolvedValue(true);
 
-      const result = await service.verifyPin('profile-id', '1234');
+      const result = await service.verifyPin('owner-id', 'profile-id', '1234');
       expect(result).toBe(true);
+      expect(mockPrisma.profile.findFirst).toHaveBeenCalledWith({ where: { id: 'profile-id', userId: 'owner-id' } });
     });
   });
 });

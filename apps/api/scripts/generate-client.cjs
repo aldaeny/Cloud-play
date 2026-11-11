@@ -143,6 +143,7 @@ async function generateTypesOffline() {
 
 (async () => {
   if (tryNativeGenerate()) return;
+  if (process.env.PRISMA_REQUIRE_NATIVE === 'true') throw new Error('Native Prisma generation required; offline type-only fallback is forbidden for this build.');
   await generateTypesOffline();
 })().catch((error) => {
   process.stderr.write(`[prisma-gen] FAILED: ${error.message}\n`);

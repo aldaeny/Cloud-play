@@ -27,7 +27,7 @@ export class RightsService {
           const territories = JSON.parse(w.territories);
           return territories.includes(territory);
         } catch {
-          return w.territories.includes(territory);
+          return w.territories.split(',').map(value => value.trim()).includes(territory);
         }
       });
       if (!matched) {

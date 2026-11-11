@@ -1,0 +1,59 @@
+{
+  "scope": "local checks; native image/Auth CI separate",
+  "start_head": "c61bc6b44efa60a5aca75a55453e00ff67e5124e",
+  "branch": "arena/d4593efb-cloud-play",
+  "api": {
+    "status": "PASS",
+    "suites": 41,
+    "tests": 669,
+    "command": "npm run test --workspace aether-api -- --runInBand"
+  },
+  "web_contracts": {
+    "status": "PASS",
+    "pass_labels": 347,
+    "private_production_route_cases": 42,
+    "command": "node scripts/test-web-contracts.mjs",
+    "limitations": "42 private route cases model Auth reply; actual GoTrue/native PG integration separately passed at8289927; final-HEAD CI rerun required"
+  },
+  "web_build": {
+    "status": "PASS",
+    "command": "npm run build --workspace aether-web"
+  },
+  "api_build": {
+    "status": "PASS",
+    "native_local_engine": "BLOCKED: engine download host inaccessible; type-only local build is not engine proof"
+  },
+  "typescript_api_web": {
+    "status": "PASS"
+  },
+  "lint_api": {
+    "status": "PASS"
+  },
+  "lint_web": {
+    "status": "PASS",
+    "warnings": 3,
+    "suppressed": false
+  },
+  "audit_runtime": {
+    "status": "PASS",
+    "findings": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "audit_full": {
+    "status": "FAIL",
+    "findings": {
+      "info": 0,
+      "low": 8,
+      "moderate": 10,
+      "high": 0,
+      "critical": 0,
+      "total": 18
+    }
+  }
+}

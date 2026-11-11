@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
 
@@ -39,6 +39,12 @@ export class EntitlementService {
   ): Promise<EntitlementCheckResult> {
     const now = new Date();
 
+    // Resolve ownership from the database, never caller-supplied tenant claims.
+    const user = await this.prisma.appUser.findUnique({ where: { id: userId }, select: { tenantId: true } });
+    const title = user && await this.prisma.title.findFirst({ where: { id: titleId, tenantId: user.tenantId, state: 'PUBLISHED' }, select: { id: true } });
+    if (!user || !title) throw new NotFoundException('Title not found');
+    if (episodeId && !await this.prisma.episode.findFirst({ where: { id: episodeId, titleId, state: 'PUBLISHED' }, select: { id: true } })) throw new NotFoundException('Episode not found');
+
     // Check active subscriptions. A subscription only grants access while its
     // paid period is still running: an ACTIVE row whose currentPeriodEnd has
     // passed must not allow playback (mirrors BillingService.getCurrentSubscription).
@@ -47,9 +53,10 @@ export class EntitlementService {
         userId,
         status: 'ACTIVE',
         currentPeriodEnd: { gt: now },
-        plan: { active: true },
+        plan: { active: true, tenantId: user.tenantId },
       },
       include: { plan: true },
+      orderBy: [{ plan: { maxStreams: 'desc' } }, { currentPeriodEnd: 'desc' }],
     });
     const subscriptionActive = subscriptions.length > 0;
     const plan = subscriptions[0]?.plan;
@@ -69,8 +76,8 @@ export class EntitlementService {
     const activeSessions = await this.prisma.playbackSession.count({
       where: {
         userId,
-        profileId,
         endedAt: null,
+        OR: [{ vodExpiresAt: null }, { vodExpiresAt: { gt: now } }],
       },
     });
     const maxStreams = plan?.maxStreams || 3;
@@ -80,7 +87,7 @@ export class EntitlementService {
     const devices = await this.prisma.device.count({
       where: { userId, revokedAt: null },
     });
-    const deviceLimit = devices < (plan?.maxDevices || 5);
+    const deviceLimit = devices <= (plan?.maxDevices || 5);
 
     // Get resume position from last session
     const lastSession = await this.prisma.playbackSession.findFirst({
@@ -116,19 +123,25 @@ export class EntitlementService {
     });
   }
 
-  async grantSubscription(userId: string, planId: string, expiresAt?: Date) {
+  async grantSubscription(tenantId: string, userId: string, planId: string, expiresAt?: Date) {
+    const user = await this.prisma.appUser.findFirst({ where: { id: userId, tenantId }, select: { id: true } });
+    const plan = await this.prisma.plan.findFirst({ where: { id: planId, tenantId, active: true }, select: { id: true } });
+    if (!user || !plan) throw new NotFoundException('User or plan not found');
+    if (expiresAt && (!Number.isFinite(expiresAt.getTime()) || expiresAt <= new Date())) throw new BadRequestException('Expiry must be in the future');
     return this.prisma.subscription.create({
       data: {
         userId,
         planId,
         status: 'ACTIVE',
         currentPeriodEnd: expiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        provider: 'aether',
+        provider: 'internal-manual',
       },
     });
   }
 
-  async revokeSubscription(subscriptionId: string) {
+  async revokeSubscription(tenantId: string, subscriptionId: string) {
+    const subscription = await this.prisma.subscription.findFirst({ where: { id: subscriptionId, user: { tenantId }, plan: { tenantId } }, select: { id: true } });
+    if (!subscription) throw new NotFoundException('Subscription not found');
     return this.prisma.subscription.update({
       where: { id: subscriptionId },
       data: { status: 'CANCELED' },

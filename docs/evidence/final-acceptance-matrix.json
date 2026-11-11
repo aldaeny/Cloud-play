@@ -1,0 +1,144 @@
+{
+  "decision": "NOT READY \u2014 BLOCKED",
+  "scope": "20 acceptance categories, not individual test counts; PASS CI evidence at8289927 plus local checks, final-HEAD rerun required",
+  "counts": {
+    "PASS": 12,
+    "FAIL": 1,
+    "BLOCKED": 4,
+    "NOT RUN": 3
+  },
+  "criteria": [
+    {
+      "criterion": "API units",
+      "status": "PASS",
+      "evidence_or_reason": "41 suites /669 tests, `npm run test --workspace aether-api -- --runInBand`; `evidence/final-local.json` and application CI"
+    },
+    {
+      "criterion": "Web offline contracts",
+      "status": "PASS",
+      "evidence_or_reason": "347 PASS-labelled cases including42 new private production route/socket cases; `node scripts/test-web-contracts.mjs`"
+    },
+    {
+      "criterion": "New42 private route cases",
+      "status": "PASS",
+      "evidence_or_reason": "Actual guarded HTTP/socket routes, modeled Auth reply; **not** live Auth or Vercel proof"
+    },
+    {
+      "criterion": "New live private Auth integration",
+      "status": "PASS",
+      "evidence_or_reason": "`final-isolated-auth-smtp-recovery-8289927.json`: actual GoTrue/native PG, production handlers/TLS sockets, last segment/key transport, session expiry during fetch; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Web production build / TS / lint",
+      "status": "PASS",
+      "evidence_or_reason": "Local build/tsc; lint0 errors,3 unsuppressed warnings"
+    },
+    {
+      "criterion": "API build / lint / TS",
+      "status": "PASS",
+      "evidence_or_reason": "Local build is type-only fallback because native engine host unavailable; native/image proof belongs to CI"
+    },
+    {
+      "criterion": "Native Prisma Node22/24/26",
+      "status": "PASS",
+      "evidence_or_reason": "`final-native-postgres-{22,24,26}-8289927.json`:38 checks each; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Actual Docker runtime + pool queue",
+      "status": "PASS",
+      "evidence_or_reason": "`final-production-docker-docker-native-8289927.json`:13 checks including native engine/query, outage, interrupted rollback, health/recovery/SIGTERM/restart and P2024 saturation; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Bounded10/25/50/100 load",
+      "status": "PASS",
+      "evidence_or_reason": "`final-progressive-load-8289927.json`: real Auth/native PG bounded waves, zero measured errors/timeouts; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Separate logical restore",
+      "status": "PASS",
+      "evidence_or_reason": "`final-logical-restore-8289927.json`:77 tables/1246 rows after successful workload; restore after an aborted fixture is not equivalent; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Application/browser/Admin regressions",
+      "status": "PASS",
+      "evidence_or_reason": "`final-application-regression-application-8289927.json` and Auth annotations: Chromium decode/UI/RTL/Admin/build; not hardware; final-HEAD rerun required"
+    },
+    {
+      "criterion": "Runtime dependency audit",
+      "status": "PASS",
+      "evidence_or_reason": "0 findings; final-local audit metadata; no dependency upgrades"
+    },
+    {
+      "criterion": "Full tooling audit",
+      "status": "FAIL",
+      "evidence_or_reason": "18 findings:8 low/10 moderate,0 high/critical; retained, not suppressed"
+    },
+    {
+      "criterion": "Real hosting Geo and deployed private playback",
+      "status": "BLOCKED",
+      "evidence_or_reason": "SSO/isolated runtime configuration/access unavailable"
+    },
+    {
+      "criterion": "Global Auth/general-API Geo requirement",
+      "status": "BLOCKED",
+      "evidence_or_reason": "Approved broader policy/deployment and implementation/verification needed"
+    },
+    {
+      "criterion": "Target sustained soak/distributed quota/DB telemetry",
+      "status": "BLOCKED",
+      "evidence_or_reason": "No approved SLO or equivalent target environment/aggregate pool budget"
+    },
+    {
+      "criterion": "Managed Supabase PITR/storage/config rollback",
+      "status": "BLOCKED",
+      "evidence_or_reason": "No authorized isolated managed recovery target/access"
+    },
+    {
+      "criterion": "Physical hardware matrix",
+      "status": "NOT RUN",
+      "evidence_or_reason": "Six target rows in `HARDWARE_VALIDATION.md`; no device/lab"
+    },
+    {
+      "criterion": "Full-duration private client45s renewal/pause/seek across engines",
+      "status": "NOT RUN",
+      "evidence_or_reason": "Implementation exists, but end-to-end duration/native Safari/TV evidence absent"
+    },
+    {
+      "criterion": "In-flight HTTP termination drain under load",
+      "status": "NOT RUN",
+      "evidence_or_reason": "Native transaction interruption is not HTTP/application drain proof"
+    }
+  ],
+  "hardware_subtargets": [
+    {
+      "target": "Safari iOS",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    },
+    {
+      "target": "Safari macOS",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    },
+    {
+      "target": "Chrome Android",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    },
+    {
+      "target": "Android TV",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    },
+    {
+      "target": "Google TV",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    },
+    {
+      "target": "Other supported TV/browser matrix",
+      "status": "NOT RUN",
+      "reason": "No physical device/authorized lab"
+    }
+  ]
+}

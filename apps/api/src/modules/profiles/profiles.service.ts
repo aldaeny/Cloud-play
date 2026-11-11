@@ -1,5 +1,5 @@
 import { publicProfileSelect } from '../../common/public-select';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import * as argon2 from 'argon2';
 
@@ -25,9 +25,10 @@ export class ProfilesService {
     return this.prisma.profile.findMany({ where: { userId }, select: publicProfileSelect });
   }
 
-  async verifyPin(profileId: string, pin: string) {
-    const profile = await this.prisma.profile.findUnique({ where: { id: profileId } });
-    if (!profile?.pinHash) return true;
+  async verifyPin(userId: string, profileId: string, pin: string) {
+    const profile = await this.prisma.profile.findFirst({ where: { id: profileId, userId } });
+    if (!profile) throw new NotFoundException('Profile not found');
+    if (!profile.pinHash) return true;
     return await argon2.verify(profile.pinHash, pin);
   }
 }

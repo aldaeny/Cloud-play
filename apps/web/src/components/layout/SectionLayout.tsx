@@ -1,3 +1,5 @@
+import { useBranding } from '../brand/BrandingProvider';
+import { brandingStyle } from '../brand/branding-style';
 import Head from 'next/head';
 import Link from 'next/link';
 import { readAppearance } from '../../lib/appearance';
@@ -20,6 +22,8 @@ export default function SectionLayout({ title, children, noIndex = false }: {
   children: (language: Language) => ReactNode;
   noIndex?: boolean;
 }) {
+  const brand = useBranding();
+  const brandName = brand?.displayName || 'Cloud Play Iraq';
   const router = useRouter();
   const [language, setLanguage] = useState<Language>('ar');
   const [theme, setTheme] = useState<Theme>('dark');
@@ -54,17 +58,18 @@ export default function SectionLayout({ title, children, noIndex = false }: {
   return (
     <div
       className={`site theme-${theme} section-site${opts.motionOff ? ' motion-off' : ''}${opts.noGlow ? ' no-glow' : ''}${opts.solid ? ' solid-panels' : ''}${opts.textLarge ? ' text-large' : ''}${opts.highContrast ? ' high-contrast' : ''}${opts.hideCover ? ' hide-cover' : ''}${opts.staticCover ? ' static-cover' : ''}`}
+      style={brandingStyle(brand,theme)}
       dir={ar ? 'rtl' : 'ltr'}
     >
       <Head>
-        <title>{`${title[language]} | Cloud Play Iraq`}</title>
+        <title>{`${title[language]} | ${brandName}`}</title>
         <meta name="description" content={ar ? 'اكتشف الأفلام المتاحة والبث المباشر على كلاود بلاي العراق.' : 'Explore available movies and live TV on Cloud Play Iraq.'} />
-        <link rel="canonical" href={`https://cloud-play-iraq.vercel.app${router.asPath.split('?')[0]}`} />
+        {!brand && <link rel="canonical" href={`https://cloud-play-iraq.vercel.app${router.asPath.split('?')[0]}`} />}
         {noIndex && <meta name="robots" content="noindex,follow" />}
       </Head>
       <AppHeader language={language} theme={theme} onToggleLanguage={toggleLang} onToggleTheme={toggleTheme} />
       <main className="section-main shell"><h1>{title[language]}</h1><OwnerPlayerLink language={language}/>{children(language)}</main>
-      <footer className="section-footer shell"><Link href="/">Cloud Play Iraq</Link> · {ar ? 'مجاني بالكامل. المفضلة والتقدم يُزامنان مع حسابك المجاني.' : 'Completely free. Favorites and progress sync to your free account.'}</footer>
+      <footer className="section-footer shell"><Link href="/library">{ar ? 'مكتبة المؤسسة' : 'Organization library'}</Link> · <Link href="/">{brandName}</Link> · {ar ? 'مجاني بالكامل — المفضلة والتقدم تُزامَن مع حسابك المجاني.' : 'Completely free — favorites and progress sync to your free account.'}</footer>
     </div>
   );
 }

@@ -34,7 +34,7 @@ const FAVORITES = 'cloudplay-tv-favorites-v1';
 const T = {
   ar: {
     heading: 'بث مباشر مجاني',
-    intro: 'قنوات يبثّها أصحابها مجاناً على الإنترنت — بدون تسجيل دخول وبدون اشتراك.',
+    intro: 'دليل القنوات — التشغيل يتطلب تسجيل الدخول وموافقة الحقوق والمصدر.',
     all: 'الكل', iraq: 'العراق', news: 'أخبار واقتصاد', gulf: 'الخليج', levant: 'بلاد الشام', sport: 'رياضة', world: 'عالمية',
     search: 'ابحث عن قناة…', favoritesOnly: 'المفضلة فقط',
     loading: 'جاري تحميل القنوات…', empty: 'لا توجد قنوات مطابقة.',
@@ -42,7 +42,7 @@ const T = {
     count: 'قناة', play: 'تشغيل', live: 'مباشر',
     addFav: 'إضافة للمفضلة', removeFav: 'إزالة من المفضلة',
     source: 'المصدر الرسمي', nowPlaying: 'يُشغّل الآن',
-    attribution: 'كل قناة هنا تُبثّ من سيرفر المالك نفسه ومتاحة مجاناً للعموم. التشغيل يتصل بالمصدر مباشرة ويعتمد على توفره.',
+    attribution: 'التشغيل يمر عبر الخادم المحمي بعد التحقق من الحساب والحقوق والتوفر.',
     playbackHelp: 'إذا لم تعمل قناة، قد يكون المصدر متوقفاً مؤقتاً أو يمنع التشغيل من مواقع أخرى — افتح صفحتها الرسمية.',
     favNote: 'المفضلة محفوظة على هذا الجهاز، وتُزامَن مع حسابك المجاني إذا سجّلت الدخول.',
     operator: 'قنوات المشغّل',
@@ -57,7 +57,7 @@ const T = {
     count: 'channels', play: 'Play', live: 'LIVE',
     addFav: 'Add favorite', removeFav: 'Remove favorite',
     source: 'Official source', nowPlaying: 'Now playing',
-    attribution: 'Every channel here is streamed from the owner’s own servers and published free to the public. Playback connects directly to the source and depends on its availability.',
+    attribution: 'Playback uses the protected backend and requires sign-in, source approval and valid rights.',
     playbackHelp: 'If a channel does not play, its source may be temporarily down or may block other sites — open its official page.',
     favNote: 'Favorites are stored on this device and sync to your free account if you sign in.',
     operator: 'Operator channels',

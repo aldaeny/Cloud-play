@@ -24,9 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
 
-  let owner: { email: string; userId: string };
+  let owner: Awaited<ReturnType<typeof requireOwner>>;
   try {
-    owner = await requireOwner(req);
+    owner = await requireOwner(req,res);
   } catch (error) {
     const code = error instanceof AccessError ? error.code : 'AUTH_UNAVAILABLE';
     return res.status(accessStatus(code)).json({ error: code });
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!url || url.length > 4096) return res.status(400).json({ error: 'INVALID_URL' });
 
   try {
-    const result = await importPlaylist(url, owner.userId);
+    const result = await importPlaylist(url, owner.userId, owner.media);
     return res.status(200).json({ data: result });
   } catch (error) {
     const code = error instanceof PlaylistError ? error.code : 'UPSTREAM_ERROR';

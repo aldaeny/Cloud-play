@@ -1,5 +1,6 @@
 import {
   Controller,
+  Req, Res, Header, Optional, ServiceUnavailableException,
   Post,
   Get,
   Put,
@@ -11,6 +12,9 @@ import {
   NotFoundException,
   ParseUUIDPipe,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import { SupabaseAuthGuard } from '../../common/supabase-auth.guard';
+import { VodDeliveryService } from './vod-delivery.service';
 import { PlaybackService } from './playback.service';
 import { PrismaService } from '../../prisma.service';
 import { randomUUID } from 'crypto';
@@ -25,12 +29,19 @@ export class PlaybackController {
   constructor(
     private readonly playbackService: PlaybackService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly vod?: VodDeliveryService,
   ) {}
+
+  @Get('devices')
+  async devices(@CurrentUser() user: UserRequest) {
+    return this.prisma.device.findMany({where:{userId:user.id,revokedAt:null},select:{id:true,deviceName:true,platform:true},take:50});
+  }
 
   @Post('sessions')
   async createSession(
     @CurrentUser() user: UserRequest,
     @Body() dto: CreatePlaybackDto,
+    @Req() request: Request,
   ) {
     if (!dto.titleId) {
       throw new BadRequestException('titleId is required');
@@ -49,7 +60,20 @@ export class PlaybackController {
       deviceId,
       dto.titleId,
       dto.episodeId,
+      request,
     );
+  }
+
+  @Get('sessions/:id/media')
+  @UseGuards(SupabaseAuthGuard)
+  @Header('Cache-Control','private, no-store')
+  async media(@CurrentUser() user: UserRequest, @Param('id', ParseUUIDPipe) id: string, @Req() req: Request, @Res() res: Response) {
+    if(!this.vod)throw new ServiceUnavailableException('VOD_DELIVERY_NOT_CONFIGURED');
+    const result = await this.vod.read(user.id,id,req);
+    res.setHeader('Cache-Control','private, no-store');
+    res.setHeader('Content-Type',result.contentType);
+    res.setHeader('X-Content-Type-Options','nosniff');
+    return res.send(result.data);
   }
 
   @Post('sessions/:id/heartbeat')

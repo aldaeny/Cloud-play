@@ -1,0 +1,107 @@
+name: Isolated application regression
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Offline operations plan and recovery evidence safety tests
+        run: node --test scripts/ops/ops-plan.test.mjs scripts/setup-local-env.test.mjs scripts/selfhost/policy.test.mjs
+      - name: Actual isolated mTLS ingress and spoofed forwarding rejection
+        run: node scripts/ingress/test-ingress.mjs
+      - name: Viewer white label validation
+        run: node apps/web/tests/site-branding.test.mjs
+      - name: API behavioral suites
+        run: npm run test --workspace aether-api -- --runInBand
+      - name: Web and Admin contract/socket tests
+        run: |
+          node scripts/test-web-contracts.mjs
+          node apps/web/tests/pinned-fetch.test.mjs
+          npm run test:bridge --workspace aether-admin
+      - name: TypeScript and lint
+        run: |
+          npm exec --workspace aether-api -- tsc --noEmit
+          npm exec --workspace aether-web -- tsc --noEmit
+          npm exec --workspace aether-admin -- tsc --noEmit
+          npm run lint --workspace aether-api
+          npm run lint --workspace aether-web
+          npm run lint --workspace aether-admin
+      - name: Production builds
+        run: npm run build --workspaces
+      - name: Inspect built browser assets for server-only stream URLs
+        run: node scripts/check-protected-media-assets.mjs
+      - name: Actual isolated HTTPS health transport and certificate rejection
+        run: node apps/api/scripts/test-external-tls.mjs
+      - name: Install isolated browser and original media fixture tooling
+        run: |
+          node scripts/fixture-tool-step.mjs browser_install node scripts/install-ci-browser.mjs
+          node scripts/fixture-tool-step.mjs ffmpeg_install bash scripts/install-ci-ffmpeg.sh
+          export PATH="$GITHUB_WORKSPACE/.cache/fixture-tools/ffmpeg:$PATH"
+          FFMPEG="$(command -v ffmpeg)" node scripts/fixture-tool-step.mjs media_generate node scripts/generate-media-fixtures.mjs .cache/media-fixtures
+      - name: Actual isolated HTTP and generated HLS DASH M3U transport
+        run: MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/api/scripts/test-external-http-protocols.mjs
+      - name: Worker rejects uploaded network playlists without connecting
+        run: FFMPEG="$(command -v ffmpeg)" MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/worker-media/tests/local-media-input.mjs
+      - name: Actual browser decoding, navigation, responsive and CSP regression
+        shell: bash
+        env:
+          BASE_URL: http://127.0.0.1:3001
+        run: |
+          set -euo pipefail
+          npm run start --workspace aether-web -- --hostname 0.0.0.0 > web-fixture.log 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for n in {1..30}; do
+            if curl --fail --silent "$BASE_URL" >/dev/null; then break; fi
+            sleep 1
+          done
+          export MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures"
+          npm run test:browser --workspace aether-web
+          npm run test:channels:browser --workspace aether-web
+          npm run test:layout --workspace aether-web
+          npm run test:search:browser --workspace aether-web
+          npm run test:popup --workspace aether-web
+          node apps/web/tests/white-label-browser.mjs
+      - name: Actual Admin browser provider and sync states (API fixtures)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run start --workspace aether-admin -- --hostname 0.0.0.0 > admin-fixture.log 2>&1 &
+          server=$!
+          trap 'kill "$server" || true' EXIT
+          for n in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3002 >/dev/null; then break; fi
+            sleep 1
+          done
+          BASE_URL=http://127.0.0.1:3002 node apps/web/tests/admin-providers-browser.mjs
+      - name: Audit report (tooling findings remain visible)
+        if: always()
+        shell: bash
+        run: |
+          npm audit --json > audit-full.json || result=$?
+          if [ "${result:-0}" -gt 1 ]; then exit "$result"; fi
+          # Production is a strict gate. Full tooling report is retained, not hidden.
+          npm audit --omit=dev --json > audit-production.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: application-regression-evidence
+          path: |
+            audit-full.json
+            audit-production.json
+            web-fixture.log
+            admin-fixture.log
+          retention-days: 14

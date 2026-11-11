@@ -1,3 +1,5 @@
+import { requireOrganization } from './organization-license';
+import {ApiGeoPolicyService} from './api-geo-policy.service';
 /**
  * Supabase-backed authentication guard for the Hybrid architecture (D1 Option C).
  *
@@ -21,10 +23,10 @@
  * business decision (it needs a tenant) and belongs in an explicit flow, not on
  * an authentication path. An unprovisioned caller gets a distinct, honest error.
  *
- * Additive by design: `JwtAuthGuard` is untouched, so nothing that works today
- * changes behaviour until a controller opts in to this guard.
+ * `JwtAuthGuard` delegates here when API_END_USER_AUTHORITY=supabase.
+ * Production bootstrap requires that setting; there is no denial fallback.
  */
-import { CanActivate, ExecutionContext, Injectable, HttpException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, HttpException, Optional } from '@nestjs/common';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma.service';
 import { UserRequest } from './permissions.decorator';
@@ -43,6 +45,7 @@ export class SupabaseAuthGuard implements CanActivate {
   constructor(
     private readonly supabaseAuth: SupabaseAuthService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly geo?:ApiGeoPolicyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -50,8 +53,12 @@ export class SupabaseAuthGuard implements CanActivate {
       Request & { user?: UserRequest; supabase?: SupabasePrincipal }
     >();
 
+    const deny=(code:string,status:number)=>{
+      if((request.path?.startsWith('/external-playback/')||request.path?.startsWith('/private-media/')))new Logger('ProtectedPlayback').warn(JSON.stringify({event:'authorization_failure',value:1,status}));
+      return new HttpException(code,status);
+    };
     const token = SupabaseAuthService.bearer(request.headers['authorization']);
-    if (!token) throw new HttpException('SIGN_IN_REQUIRED', 401);
+    if (!token) throw deny('SIGN_IN_REQUIRED', 401);
 
     let identity;
     try {
@@ -59,10 +66,12 @@ export class SupabaseAuthGuard implements CanActivate {
     } catch (error) {
       if (error instanceof SupabaseAuthError) {
         // 401 for a bad session, 503 when we cannot tell — never a false "allowed".
-        throw new HttpException(error.code, supabaseAuthStatus(error.code));
+        throw deny(error.code, supabaseAuthStatus(error.code));
       }
-      throw new HttpException('AUTH_UNAVAILABLE', 503);
+      throw deny('AUTH_UNAVAILABLE', 503);
     }
+
+    if(process.env.API_GEO_ALLOWED_COUNTRIES!==undefined){if(!this.geo)throw new HttpException('API_GEO_POLICY_UNAVAILABLE',503);await this.geo.require(request,identity.id,token);}
 
     // The verified Supabase id IS the business primary key.
     const account = await this.prisma.appUser.findUnique({
@@ -73,6 +82,7 @@ export class SupabaseAuthGuard implements CanActivate {
     if (!account) throw new HttpException('ACCOUNT_NOT_PROVISIONED' satisfies AccountCode, 403);
     if (account.status !== 'active') throw new HttpException('ACCOUNT_INACTIVE' satisfies AccountCode, 403);
 
+    await requireOrganization(this.prisma, account.tenantId);
     request.user = {
       id: account.id,
       tenantId: account.tenantId,

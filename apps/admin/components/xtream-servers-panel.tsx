@@ -191,6 +191,7 @@ export default function XtreamServersPanel({ token }: Props) {
         <div className="space-y-3">{servers.map(server => (
           <article key={server.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0a0a0c] p-4">
             <div className="min-w-0"><div className="font-bold">{server.name} <span className={server.enabled ? 'text-emerald-400 text-xs' : 'text-gray-500 text-xs'}>{server.enabled ? 'مفعّل' : 'متوقف'}</span>{server.isDefault && <span className="text-[#00e5ff] text-xs"> · الافتراضي</span>}</div><p dir="ltr" className="text-sm text-gray-400 truncate">{server.baseUrl}</p><p className="text-xs text-gray-500">الحساب: {server.username} · الأولوية: {server.priority ?? 100}</p><p className="text-xs mt-1"><span className={server.connectionStatus === 'healthy' ? 'text-emerald-400' : server.connectionStatus === 'unhealthy' ? 'text-amber-300' : 'text-gray-500'}>الاتصال: {STATUS_LABEL[server.connectionStatus] ?? 'لم يُفحص بعد'}</span>{server.lastCheckedAt && <span className="text-gray-500"> · آخر فحص: {new Date(server.lastCheckedAt).toLocaleString('ar-IQ')}</span>}</p></div>
+            <CatalogSyncControls id={server.id} token={token} enabled={server.enabled} />
             <div className="flex gap-2 shrink-0 flex-wrap"><button onClick={() => void checkServer(server)} disabled={checkingId === server.id} className="px-3 py-2 rounded-lg border border-white/15 text-sm disabled:opacity-50">{checkingId === server.id ? 'جاري الفحص…' : 'فحص الاتصال'}</button>{!server.isDefault && <button onClick={() => void makeDefault(server)} disabled={!server.enabled} title={server.enabled ? '' : 'فعّل السيرفر أولاً'} className="px-3 py-2 rounded-lg border border-white/15 text-sm disabled:opacity-40">تعيين افتراضي</button>}<button onClick={() => void changePriority(server, Math.max(1, (server.priority ?? 100) - 1))} disabled={(server.priority ?? 100) <= 1} className="px-3 py-2 rounded-lg border border-white/15 text-sm disabled:opacity-40" aria-label="رفع الأولوية">▲</button><button onClick={() => void changePriority(server, Math.min(1000, (server.priority ?? 100) + 1))} disabled={(server.priority ?? 100) >= 1000} className="px-3 py-2 rounded-lg border border-white/15 text-sm disabled:opacity-40" aria-label="خفض الأولوية">▼</button><button onClick={() => beginEdit(server)} className="px-3 py-2 rounded-lg border border-white/15 text-sm">تعديل</button><button onClick={() => void toggleServer(server)} className="px-3 py-2 rounded-lg border border-white/15 text-sm">{server.enabled ? 'تعطيل' : 'تفعيل'}</button><button onClick={() => void deleteServer(server)} className="px-3 py-2 rounded-lg border border-red-500/30 text-red-300 text-sm">حذف</button></div>
           </article>
         ))}</div>
@@ -199,4 +200,40 @@ export default function XtreamServersPanel({ token }: Props) {
       <p className="text-xs text-amber-300/80">تنبيه: كلمة المرور تُرسل إلى خادم الإدارة لتشفيرها قبل التخزين. لا تستخدم HTTP بين المتصفح والخادم في بيئة الإنتاج.</p>
     </section>
   );
+}
+
+/** Existing design tokens, no page/layout replacement. Metadata only; never
+ * renders provider response bodies, passwords or playback URLs. */
+function CatalogSyncControls({ id, token, enabled }: { id: string; token: string; enabled: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [state, setState] = useState<{ itemCount: number; lastSuccessAt: string | null; history: { status: string; reason: string; at: string }[] } | null>(null);
+  async function update(pull: boolean) {
+    if (pull && !window.confirm('أؤكد أن لدي تصريحاً لاستخدام هذا المزوّد وسحب بيانات الكتالوج منه. متابعة؟')) return;
+    setBusy(true); setMessage('');
+    const base = `/api/admin/xtream-servers/${encodeURIComponent(id)}/catalog-sync`;
+    try {
+      if (pull) {
+        const result = await fetch(`${base}/pull`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ authorizationConfirmed: true }) });
+        if (!result.ok) throw new Error('SYNC_FAILED');
+      }
+      const response = await fetch(base, { headers: { authorization: `Bearer ${token}` }, cache: 'no-store' });
+      const data: unknown = await response.json();
+      if (!response.ok || !data || typeof data !== 'object' || !('itemCount' in data) || typeof data.itemCount !== 'number' || !('history' in data) || !Array.isArray(data.history)) throw new Error('STATUS_FAILED');
+      const row = data as Record<string, unknown>;
+      const history = (row.history as unknown[]).slice(0, 20).flatMap(value => {
+        if (!value || typeof value !== 'object') return [];
+        const event = value as Record<string, unknown>;
+        return typeof event.status === 'string' && typeof event.reason === 'string' && typeof event.at === 'string'
+          ? [{ status: event.status, reason: event.reason, at: event.at }] : [];
+      });
+      setState({ itemCount: data.itemCount, lastSuccessAt: typeof row.lastSuccessAt === 'string' ? row.lastSuccessAt : null, history });
+    } catch { setMessage('تعذرت العملية. تحقق من التصريح والاتصال، ثم حدّث السجل لمعرفة النتيجة قبل إعادة المحاولة. آخر كتالوج ناجح محفوظ.'); }
+    finally { setBusy(false); }
+  }
+  return <div className="mt-2 text-xs text-gray-400">
+    <div className="flex gap-2"><button disabled={busy || !enabled} onClick={() => void update(true)} className="px-3 py-2 rounded-lg border border-white/15 disabled:opacity-40">{busy ? 'جاري العمل…' : 'مزامنة الكتالوج'}</button><button disabled={busy} onClick={() => void update(false)} className="px-3 py-2 rounded-lg border border-white/15 disabled:opacity-40">تحديث سجل المزامنة</button></div>
+    {message && <p role="alert" className="mt-2 text-amber-300">{message}</p>}
+    {state && <div className="mt-2"><p>عدد العناصر: {state.itemCount} · آخر نجاح: {state.lastSuccessAt ? new Date(state.lastSuccessAt).toLocaleString('ar-IQ') : 'لم تتم مزامنة ناجحة'}</p>{state.history.length === 0 ? <p>لا توجد عمليات سابقة.</p> : <ul>{state.history.map((event, index) => <li key={`${event.at}-${index}`}>{event.status === 'SUCCEEDED' ? 'نجاح' : 'فشل'} · {event.reason} · {new Date(event.at).toLocaleString('ar-IQ')}</li>)}</ul>}</div>}
+  </div>;
 }

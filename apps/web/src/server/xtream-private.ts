@@ -1,3 +1,6 @@
+import {createHash} from 'node:crypto';
+import {type MediaBinding} from './private-media-session';
+import { publicFetch } from './public-fetch';
 /**
  * Server-only Xtream adapter for the PRIVATE, owner-only player.
  *
@@ -68,7 +71,11 @@ function settings() {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new PrivateError('NOT_CONFIGURED');
   if (url.pathname !== '/' && url.pathname !== '') throw new PrivateError('NOT_CONFIGURED');
   if (url.protocol === 'http:' && process.env.XTREAM_ALLOW_HTTP !== 'true') throw new PrivateError('HTTP_DISABLED');
-  return { url, username, password, secret: process.env.XTREAM_PROXY_SECRET || password };
+  const secret=process.env.XTREAM_PROXY_SECRET||password;
+  // Production capabilities must not derive their encryption key from a
+  // potentially weak provider account password. No secret/settings mutation.
+  if(process.env.NODE_ENV==='production'&&(!process.env.XTREAM_PROXY_SECRET||secret.length<32))throw new PrivateError('NOT_CONFIGURED');
+  return { url, username, password, secret };
 }
 
 /** Throws if the private player is switched off or incompletely configured. */
@@ -126,7 +133,7 @@ async function apiJson(action: string, params: Record<string, string> = {}): Pro
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
+    const response = await publicFetch(url, {
       signal: controller.signal,
       redirect: 'error',
       cache: 'no-store',
@@ -284,14 +291,14 @@ export async function accountStatus(): Promise<AccountStatus> {
  * Build the provider-relative playback path and seal it into a token.
  * The raw path (which contains the credentials) never leaves this function.
  */
-export function playbackToken(kind: Kind, id: string, ext?: string): { token: string; container: string } {
+export function playbackToken(kind: Kind, id: string, ext?: string,binding?:MediaBinding): { token: string; container: string } {
   const config = settings();
   if (!/^\d{1,18}$/.test(id)) throw new PrivateError('INVALID_INPUT');
   const container = kind === 'live' ? 'm3u8' : cleanExt(ext) ?? 'mp4';
   const user = encodeURIComponent(config.username);
   const pass = encodeURIComponent(config.password);
   const path = `/${kind}/${user}/${pass}/${id}.${container}`;
-  return { token: sealPath(path, config.secret), container };
+  return { token: sealPath(path, config.secret,binding?Math.max(0,binding.expiresAt-Date.now()):undefined,binding?.expiresAt,binding,config.url.origin,undefined,binding?'selection':undefined,providerFingerprint()), container };
 }
 
 /** Seal an artwork path on the provider so http posters can be shown safely. */
@@ -314,3 +321,5 @@ export function providerOrigin(): string {
 export function proxySecret(): string {
   return settings().secret;
 }
+
+export function providerFingerprint():string {const c=settings();return createHash('sha256').update(JSON.stringify([c.url.origin,c.username,c.password])).digest('hex');}

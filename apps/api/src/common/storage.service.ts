@@ -11,7 +11,7 @@ export class StorageService {
     const accessKeyId = process.env.STORAGE_ACCESS_KEY;
     const secretAccessKey = process.env.STORAGE_SECRET_KEY;
     if (!accessKeyId || !secretAccessKey) throw new Error('Storage credentials are not configured');
-    return new S3Client({ endpoint, region: process.env.STORAGE_REGION || 'us-east-1', forcePathStyle: true,
+    return new S3Client({ endpoint, region: process.env.STORAGE_REGION || 'us-east-1', forcePathStyle: true, maxAttempts: 3, requestHandler: { connectionTimeout: 5000, requestTimeout: 120000 },
       credentials: { accessKeyId, secretAccessKey } });
   }
   private get bucket(): string { return process.env.STORAGE_BUCKET || 'cloudplay-video'; }
@@ -33,6 +33,19 @@ export class StorageService {
     const result = await this.client(this.internalEndpoint).send(new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }));
     if (!result.Body) throw new Error('Empty S3 response body');
     return Buffer.from(await result.Body.transformToByteArray());
+  }
+  async downloadBounded(objectKey: string, maxBytes: number): Promise<Buffer> {
+    const result = await this.client(this.internalEndpoint).send(new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }));
+    if (!result.Body || (result.ContentLength !== undefined && result.ContentLength > maxBytes)) {
+      if(result.Body){const stream=result.Body as unknown as {destroy?:()=>void};if(stream.destroy)stream.destroy();else await result.Body.transformToWebStream().cancel();}
+      throw new Error('OBJECT_TOO_LARGE');
+    }
+    const parts: Buffer[] = []; let size = 0;
+    for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+      size += chunk.length; if (size > maxBytes) throw new Error('OBJECT_TOO_LARGE');
+      parts.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(parts);
   }
   async objectExists(objectKey: string): Promise<boolean> {
     try {

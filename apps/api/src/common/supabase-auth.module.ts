@@ -1,3 +1,4 @@
+import {ApiGeoPolicyService} from './api-geo-policy.service';
 /**
  * Makes Supabase Auth verification available across the API.
  *
@@ -15,7 +16,7 @@ import { SupabaseAuthGuard } from './supabase-auth.guard';
 
 @Global()
 @Module({
-  providers: [SupabaseAuthService, SupabaseAuthGuard],
-  exports: [SupabaseAuthService, SupabaseAuthGuard],
+  providers: [ApiGeoPolicyService, SupabaseAuthService, SupabaseAuthGuard],
+  exports: [ApiGeoPolicyService, SupabaseAuthService, SupabaseAuthGuard],
 })
 export class SupabaseAuthModule {}

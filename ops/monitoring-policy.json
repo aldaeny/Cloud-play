@@ -1,0 +1,17 @@
+{
+  "status": "NOT RUN",
+  "activationApproved": false,
+  "targets": [],
+  "recipientReference": null,
+  "credentialTransport": "platform secret manager only; no tokens in this file",
+  "checks": [
+    {"name":"api-readiness","intervalSeconds":60,"timeoutSeconds":5,"alarmAfterFailures":3,"recoveryAfterSuccesses":2},
+    {"name":"auth-geo-synthetic-account","intervalSeconds":300,"requires":"approved staging/production scope and legitimate SSO service access"},
+    {"name":"quota-authority-503","windowMinutes":5,"alarm":"any sustained authority unavailability; do not fallback open"},
+    {"name":"pool-budget","alarmAtPercent":80,"requires":"measured DB connection/exporter metrics"},
+    {"name":"playback-synthetic-licensed","intervalSeconds":300,"requires":"controlled media and approved user/session; no provider credentials in logs"},
+    {"name":"backup-freshness-and-restore-drill","intervalHours":24,"requires":"provider backup/PITR inventory and separate Storage object backup"},
+    {"name":"billing","warningAtPercent":50,"criticalAtPercent":80,"freezeNewResourcesAtPercent":90,"ceilingAction":"operator decision; no automatic production shutdown or assumption of hard provider cap"}
+  ],
+  "alertAcceptance":"Trigger one approved synthetic outage, retain monitor event, receipt and recovery timestamps; policy/config existence is not delivered alert proof"
+}

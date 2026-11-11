@@ -14,6 +14,7 @@
  * Run: npm run test:private --workspace aether-web
  */
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
 import { Writable } from 'node:stream';
 import { execFileSync } from 'node:child_process';
@@ -51,6 +52,7 @@ function compile() {
     'src/server/xtream-access.ts',
     'src/server/xtream-private.ts',
     'pages/api/xtream/stream.ts',
+    'pages/api/xtream/play.ts',
     '--outDir', out,
     '--module', 'commonjs',
     '--target', 'es2022',
@@ -148,6 +150,13 @@ async function main() {
   const { server, port } = await startProvider();
   const base = `http://127.0.0.1:${port}`;
 
+  // Fixture transport only: exercise real local provider HTTP, never permit
+  // production networking to bypass public-IP rejection for loopback fixtures.
+  const fixtureRequire = createRequire(path.join(out, 'fixture.cjs'));
+  fixtureRequire('./src/server/public-fetch.js').publicFetch = (input, init) => {
+    assert.equal(new URL(input).origin, base);
+    return fetch(input, init);
+  };
   process.env.XTREAM_CATALOG_ENABLED = 'true';
   process.env.XTREAM_BASE_URL = base;
   process.env.XTREAM_ALLOW_HTTP = 'true';
@@ -155,6 +164,7 @@ async function main() {
   process.env.XTREAM_PASSWORD = PASSWORD;
   process.env.XTREAM_PROXY_SECRET = 'test-proxy-secret';
   delete process.env.XTREAM_OWNER_EMAILS;
+  delete process.env.XTREAM_OWNER_USER_IDS;
 
   const tokenMod = await import(pathToFileURL(path.join(out, 'src/server/xtream-token.js')).href);
   const accessMod = await import(pathToFileURL(path.join(out, 'src/server/xtream-access.js')).href);
@@ -170,6 +180,15 @@ async function main() {
   };
 
   console.log('\nPrivate player — security & integration\n');
+
+  await check('production private Xtream denies unauthenticated legacy delivery before outbound calls', async () => {
+    const old=process.env.NODE_ENV,origin=process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN;process.env.NODE_ENV='production';process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN='https://private.example';
+    try{for(const handler of [streamHandler,fixtureRequire('./pages/api/xtream/play.js').default]){const res=await invoke(handler,{t:tokenMod.sealPath('/live/u/p/5.m3u8',SECRET)});assert.equal(res.statusCode,401);assert.deepEqual(JSON.parse(res.payload()),{error:'SIGN_IN_REQUIRED'});}}
+    finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;if(origin===undefined)delete process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN;else process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN=origin;}
+  });
+  await check('nested Xtream capability cannot outlive its parent cap', () => {
+    const parent=Date.now()+1000;const child=tokenMod.sealPath('/seg.ts',SECRET,60000,parent);assert.equal(tokenMod.openToken(child,SECRET).expiresAt,parent);
+  });
 
   await check('token round-trips a provider path', () => {
     const sealed = tokenMod.sealPath('/live/u/p/5.m3u8', SECRET, 60_000);
@@ -213,16 +232,20 @@ async function main() {
   await check('owner allow-list parses, normalises and de-duplicates', () => {
     process.env.XTREAM_OWNER_EMAILS = ' Me@Example.com , me@example.com , bad@@x , second@example.com ';
     assert.deepEqual(accessMod.ownerEmails(), ['me@example.com', 'second@example.com']);
+    assert.equal(accessMod.ownerConfigured(), false, 'legacy email alone must never authorize');
+    process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111, BAD,11111111-1111-4111-8111-111111111111';
+    assert.deepEqual(accessMod.ownerUserIds(), ['11111111-1111-4111-8111-111111111111']);
     assert.equal(accessMod.ownerConfigured(), true);
+    delete process.env.XTREAM_OWNER_USER_IDS;
     delete process.env.XTREAM_OWNER_EMAILS;
   });
 
   await check('owner gate denies without a bearer token', async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
-    process.env.XTREAM_OWNER_EMAILS = 'me@example.com';
+    process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111';
     await assert.rejects(() => accessMod.requireOwner({ headers: {} }), error => error.code === 'SIGN_IN_REQUIRED');
-    delete process.env.XTREAM_OWNER_EMAILS;
+    delete process.env.XTREAM_OWNER_USER_IDS;
   });
 
   await check('owner gate reports OWNER_NOT_SET before checking the session', async () => {
@@ -333,7 +356,14 @@ async function main() {
     const res = await invoke(streamHandler, { t: token });
     assert.equal(res.statusCode, 503);
     assert.ok(!leaks(res.payload()));
-    process.env.XTREAM_CATALOG_ENABLED = 'true';
+    // Fixture transport only: exercise real local provider HTTP, never permit
+  // production networking to bypass public-IP rejection for loopback fixtures.
+  const fixtureRequire = createRequire(path.join(out, 'fixture.cjs'));
+  fixtureRequire('./src/server/public-fetch.js').publicFetch = (input, init) => {
+    assert.equal(new URL(input).origin, base);
+    return fetch(input, init);
+  };
+  process.env.XTREAM_CATALOG_ENABLED = 'true';
   });
 
   server.close();

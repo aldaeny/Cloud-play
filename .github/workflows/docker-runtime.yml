@@ -1,0 +1,41 @@
+name: Isolated production Docker runtime
+on:
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  docker-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build actual production API image (native Prisma mandatory)
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'SYNTHETIC_DOCKER_CONTEXT_CANARY=not-a-secret\n' > .env.docker-canary
+          docker build --file apps/api/Dockerfile --tag cloudplay-api:isolated-verification .
+          rm .env.docker-canary
+      - name: Run production image with native Prisma and isolated PostgreSQL
+        run: node apps/api/scripts/test-docker-runtime.mjs
+      - name: Shipped self-hosted install and complete local database-object restore drill
+        run: node scripts/selfhost/runtime-test.mjs
+      - name: Validate opt-in Compose overlay and private nginx TLS configuration
+        run: node scripts/ingress/test-compose.mjs
+      - name: Build opt-in private mTLS gateway image
+        run: docker build -f infra/docker/Dockerfile.ingress -t cloudplay-ingress:verification .
+      - name: Inventory storage Go binaries and runtime OS vulnerabilities plus SBOM
+        run: bash scripts/security/scan-runtime.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-docker-runtime
+          path: |
+            docker-runtime-evidence.json
+            selfhost-runtime-evidence.json
+            security-evidence/
+          retention-days: 14

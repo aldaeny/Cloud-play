@@ -164,7 +164,7 @@ try {
 
   await check('the import endpoint stays owner-only and POST-only', () => {
     const src = readFileSync(path.join(webRoot, 'pages/api/playlist/import.ts'), 'utf8');
-    assert.ok(/requireOwner\(req\)/.test(src), 'owner gate must remain');
+    assert.ok(/requireOwner\(req,\s*res\)/.test(src), 'owner gate must remain');
     assert.ok(/req\.method !== 'POST'/.test(src), 'must stay POST so credentials avoid logs');
     assert.ok(/no-store/.test(src), 'response must not be cached');
   });

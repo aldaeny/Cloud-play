@@ -1,0 +1,12 @@
+{
+  "head_sha": "a827b171c704aa8e898ae825621179a94fdbb320",
+  "run": "https://github.com/aldaeny/Cloud-play/actions/runs/43015632385",
+  "job": "application-regression / application",
+  "status": "PASS",
+  "assertions": [
+    {
+      "message": "35 PASS; actual HTTP route and sockets; TLS hostname/SNI, all-answer DNS validation, rebinding, mixed A/AAAA, unsafe redirects, port/IP denial, nested TTL cap, production legacy gate.",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,3 +1,43 @@
+# Latest External Manager acceptance checkpoint
+
+Runtime `955e4e2` on `arena/d4593efb-cloud-play`. Details and evidence boundaries: [docs/EXTERNAL_SERVER_FINAL_ACCEPTANCE.md](docs/EXTERNAL_SERVER_FINAL_ACCEPTANCE.md). No production changes, merge or deployment.
+
+|Capability|Status|Boundary|
+|---|---|---|
+|Groups/channel multi-provider sources and atomic priority order|VERIFIED|Real disposable PostgreSQL/Nest; disabled defaults; tenant/composite uniqueness|
+|Failover, retry/hold-down/stable return and source disable|VERIFIED|Real DB race/synthetic observations; no unlicensed fallback; production/physical continuity unverified|
+|Runtime rights-enforced opaque playback|VERIFIED|Actual Nest/DB/localTLS with explicit identity fixture; real GoTrue gate tested separately; trusted edge/player integration NOT IMPLEMENTED; verified geo setup BLOCKED|
+|Durable weekly/daily reports and leased retry outbox|VERIFIED|Empty/unchanged weeks and fixture recipient retry tested; real recipient setup/delivery BLOCKED|
+|Encrypted evidence quarantine, scan adapter, audited removal|VERIFIED|Missing/error/infected deny; synthetic scanner fixture; real antivirus/signatures BLOCKED|
+|Admin groups/channels/ranking/report/evidence controls|VERIFIED|Chromium with API fixtures; backend security tested independently|
+|Universal protocol/player/device compatibility|NOT IMPLEMENTED|Strict HLS/DASH/M3U/HTTP profiles only; no RTMP/DRM/cross-codec smooth-switch claim|
+|Full production acceptance|BLOCKED|Trusted geo context, AV, recipient, actual licensed provider/viewer/device/load and explicit deployment approval required|
+
+The older inventories below are preserved as historical checkpoints, not current assertions that newly implemented features are absent.
+
+---
+# Current execution status — External Server Manager
+
+Branch `arena/d4593efb-cloud-play`; runtime source `c30ed04`. This section supersedes historical branch/status claims below; the older inventory is retained, not deleted. No deployment or merge authorized/performed.
+
+|Area|Status|Evidence / limitation|
+|---|---|---|
+|Encrypted candidate CRUD and tenant isolation|VERIFIED|Actual isolated PostgreSQL/Nest HTTP; all new sources disabled candidates|
+|Separate rights scope, review/revoke/history|VERIFIED|Real DB + fixture policy matrix; no legal validity claim|
+|Confidential evidence attachment/reviewer access|VERIFIED|Actual encrypted DB roundtrip/cross-tenant/type denial;48KiB/20file limit; no scanner|
+|Safe bounded HTTPS/HLS check|VERIFIED|Pinned socket tests, real loopback policy denial, HTTP/manifest fixtures; not external provider certification|
+|Durable manual/15min/hour/day/week schedules|VERIFIED|Real PostgreSQL competing replicas/expired lease recovery/disable; runtime worker opt-in|
+|Admin candidate/schedule/empty/retry UI|VERIFIED|Actual local Chromium with API fixtures,390/820/1280; separate actual Nest/DB RBAC|
+|Daily/weekly on-demand reports|VERIFIED|Tenant aggregates and no-result weekly report test; not delivery|
+|Full requested multi-channel/failover system|NOT IMPLEMENTED|ChannelSource/provider groups/production publication/runtime failover missing|
+|Automatic weekly unchanged-report delivery|NOT IMPLEMENTED|Only on-demand endpoint, no scheduled delivery/outbox|
+|DASH/RTMP/HTTP/general M3U playback validation|NOT IMPLEMENTED|HTTPS candidate storage is not validation; HLS syntax only; existing Xtream adapter reused|
+|Production licensing/provider approval|BLOCKED|Requires actual rights scope/issuer and authorized provider; no external probes|
+|Production readiness|NOT IMPLEMENTED|See docs/EXTERNAL_SERVER_MANAGER.md and FINAL_PROJECT_STATUS.md|
+
+---
+## Historical inventory (not current release acceptance)
+
 # FEATURE_STATUS.md — Cloud Play Iraq
 
 **Date:** 2026-11-08 · **Branch:** `arena/4974524d-cloud-play` · **Base:** `b125cbe` (PR #21, live in production)

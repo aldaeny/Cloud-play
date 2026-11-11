@@ -37,6 +37,19 @@ enum SubscriptionStatus {
 }
 
 model Tenant {
+  licenseEnforced Boolean @default(false)
+  licenseTier String?
+  licenseStatus String @default("unlicensed")
+  licenseExpiresAt DateTime? @db.Timestamptz
+  maxUsers Int @default(0)
+  maxStaff Int @default(0)
+  maxServers Int @default(0)
+  maxTitles Int @default(0)
+  playbackLeases ExternalPlaybackLease[]
+  externalServers ExternalServer[]
+  contentLicenses ContentLicense[]
+  providerGroups ProviderGroup[]
+  externalReportSchedules ExternalReportSchedule[]
   id          String @id @default(uuid()) @db.Uuid
   branding    TenantBranding?
   featureFlags FeatureFlag[]
@@ -54,6 +67,8 @@ model Tenant {
 }
 
 model TenantBranding {
+  displayName String @default("Cloud Play")
+  logoUrl     String?
   id          String @id @default(uuid()) @db.Uuid
   tenantId    String @db.Uuid
   tenant      Tenant @relation(fields: [tenantId], references: [id])
@@ -78,6 +93,7 @@ model FeatureFlag {
 }
 
 model AppUser {
+  playbackLeases ExternalPlaybackLease[]
   id              String @id @default(uuid()) @db.Uuid
   tenantId        String @db.Uuid
   tenant          Tenant @relation(fields: [tenantId], references: [id])
@@ -230,6 +246,7 @@ model Episode {
 }
 
 model MediaAsset {
+  vodSessions PlaybackSession[] @relation("VodPlaybackAssets")
   id              String @id @default(uuid()) @db.Uuid
   ownerType       String
   ownerId         String @db.Uuid
@@ -263,6 +280,11 @@ model TranscodeJob {
 }
 
 model PlaybackSession {
+  vodCountry String?
+  vodAssetId String? @db.Uuid
+  vodAsset MediaAsset? @relation("VodPlaybackAssets", fields: [vodAssetId], references: [id])
+  authBinding String?
+  vodExpiresAt DateTime? @db.Timestamptz
   id              String @id @default(uuid()) @db.Uuid
   userId          String @db.Uuid
   user            AppUser @relation(fields: [userId], references: [id])
@@ -465,6 +487,7 @@ model CouponRedemption {
 }
 
 model XtreamServer {
+  externalCandidates ExternalServer[]
   catalogSnapshot XtreamCatalogSnapshot?
   id                 String   @id @default(uuid()) @db.Uuid
   tenantId           String   @db.Uuid
@@ -498,4 +521,272 @@ model XtreamCatalogSnapshot {
   history       Json @default("[]")
   lastSuccessAt DateTime? @db.Timestamptz
   lastFailureAt DateTime? @db.Timestamptz
+}
+
+/// Candidate intake only; existing Xtream credentials/adapters are reused by reference.
+model ExternalServer {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  name String
+  providerName String
+  protocol String
+  endpointEncrypted String @db.Text
+  xtreamServerId String? @db.Uuid
+  xtreamServer XtreamServer? @relation(fields: [xtreamServerId], references: [id])
+  country String
+  category String
+  priority Int @default(100)
+  notes String @default("")
+  status String @default("candidate")
+  enabled Boolean @default(false)
+  licenseId String? @db.Uuid
+  license ContentLicense? @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  lastCheckedAt DateTime? @db.Timestamptz
+  lastSuccessfulCheck DateTime? @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  checks ServerHealthCheck[]
+  schedule ServerSchedule?
+  channelSources ChannelSource[]
+  @@unique([tenantId, id])
+  @@unique([tenantId, name])
+  @@index([tenantId, status, priority])
+}
+
+model ContentLicense {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  provider String
+  contentOwner String
+  authorizedContact String
+  authorizationType String
+  allowedPlatforms String[]
+  allowedCountries String[]
+  commercialUse Boolean @default(false)
+  redistributionPermission Boolean @default(false)
+  territoryRestrictions String
+  startDate DateTime @db.Timestamptz
+  expiryDate DateTime @db.Timestamptz
+  status String @default("licensing_unverified")
+  verificationNotes String @default("")
+  reviewedBy String? @db.Uuid
+  reviewDate DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  servers ExternalServer[]
+  reviews LicenseReview[]
+  documents LicenseDocument[]
+  @@unique([tenantId, id])
+  @@index([tenantId, status, expiryDate])
+}
+
+model LicenseReview {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  licenseId String @db.Uuid
+  license ContentLicense @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  reviewedBy String @db.Uuid
+  status String
+  notes String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, licenseId, createdAt])
+}
+
+model ServerHealthCheck {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  serverId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId, serverId], references: [tenantId, id])
+  startedAt DateTime @db.Timestamptz
+  finishedAt DateTime @db.Timestamptz
+  result String
+  details Json
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, serverId, startedAt])
+}
+
+model ServerAuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  actorId String @db.Uuid
+  entityId String @db.Uuid
+  action String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, entityId, createdAt])
+}
+
+/// Small confidential rights evidence; not rendered inline, not automatic approval.
+model LicenseDocument {
+  scanStatus String @default("quarantine")
+  scannedAt DateTime? @db.Timestamptz
+  deletedAt DateTime? @db.Timestamptz
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  licenseId String @db.Uuid
+  license ContentLicense @relation(fields: [tenantId, licenseId], references: [tenantId, id])
+  mimeType String
+  byteLength Int
+  sha256 String
+  contentEncrypted String @db.Text
+  uploadedBy String @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId, licenseId, createdAt])
+}
+
+/// Durable technical monitoring schedule; never publishes or changes content rights.
+model ServerSchedule {
+  serverId String @id @db.Uuid
+  tenantId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId, serverId], references: [tenantId, id])
+  actorId String @db.Uuid
+  intervalSeconds Int
+  timezone String @default("Asia/Baghdad")
+  enabled Boolean @default(false)
+  nextRunAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@unique([tenantId, serverId])
+  @@index([enabled, nextRunAt])
+}
+
+model ProviderGroup {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  name String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  channels ExternalChannel[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,name])
+}
+model ExternalChannel {
+  playbackLeases ExternalPlaybackLease[]
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  groupId String @db.Uuid
+  group ProviderGroup @relation(fields: [tenantId,groupId], references: [tenantId,id])
+  name String
+  country String
+  platform String
+  enabled Boolean @default(false)
+  autoFailover Boolean @default(false)
+  failureThreshold Int @default(2)
+  retrySeconds Int @default(60)
+  holdDownSeconds Int @default(120)
+  stabilitySeconds Int @default(180)
+  freshnessSeconds Int @default(900)
+  activeSourceId String? @db.Uuid
+  activeSource ChannelSource? @relation("SelectedSource", fields: [tenantId,id,activeSourceId], references: [tenantId,channelId,id])
+  lastSwitchAt DateTime? @db.Timestamptz
+  lastEvaluationAt DateTime? @db.Timestamptz
+  outageStartedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  sources ChannelSource[] @relation("ChannelSources")
+  switches ExternalFailoverEvent[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,groupId,name])
+  @@index([tenantId,enabled])
+}
+model ChannelSource {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  channelId String @db.Uuid
+  channel ExternalChannel @relation("ChannelSources", fields: [tenantId,channelId], references: [tenantId,id])
+  serverId String @db.Uuid
+  server ExternalServer @relation(fields: [tenantId,serverId], references: [tenantId,id])
+  priority Int
+  role String
+  enabled Boolean @default(false)
+  consecutiveFailures Int @default(0)
+  healthySince DateTime? @db.Timestamptz
+  lastObservedAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  selectedBy ExternalChannel[] @relation("SelectedSource")
+  switchFrom ExternalFailoverEvent[] @relation("SwitchFrom")
+  switchTo ExternalFailoverEvent[] @relation("SwitchTo")
+  @@unique([tenantId,channelId,id])
+  @@unique([tenantId,channelId,serverId])
+  @@unique([tenantId,channelId,priority])
+}
+model ExternalFailoverEvent {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  channelId String @db.Uuid
+  channel ExternalChannel @relation(fields: [tenantId,channelId], references: [tenantId,id])
+  fromSourceId String? @db.Uuid
+  fromSource ChannelSource? @relation("SwitchFrom", fields:[tenantId,channelId,fromSourceId], references:[tenantId,channelId,id])
+  toSourceId String? @db.Uuid
+  toSource ChannelSource? @relation("SwitchTo", fields:[tenantId,channelId,toSourceId], references:[tenantId,channelId,id])
+  reason String
+  outageDurationMs Int?
+  createdAt DateTime @default(now()) @db.Timestamptz
+  @@index([tenantId,channelId,createdAt])
+}
+model ExternalReportSchedule {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  actorId String @db.Uuid
+  period String @default("weekly")
+  enabled Boolean @default(false)
+  deliveryApproved Boolean @default(false)
+  nextRunAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  deliveries ExternalReportDelivery[]
+  @@unique([tenantId,id])
+  @@unique([tenantId,period])
+  @@index([enabled,nextRunAt])
+}
+model ExternalReportDelivery {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @db.Uuid
+  scheduleId String @db.Uuid
+  schedule ExternalReportSchedule @relation(fields: [tenantId,scheduleId], references: [tenantId,id])
+  periodStart DateTime @db.Timestamptz
+  payload Json
+  status String @default("pending")
+  attempts Int @default(0)
+  nextAttemptAt DateTime @db.Timestamptz
+  leaseUntil DateTime? @db.Timestamptz
+  lastError String?
+  deliveredAt DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+  @@unique([scheduleId,periodStart])
+  @@index([status,nextAttemptAt])
+}
+
+// Backend-only media leases. Supabase remains the identity/session authority.
+model ExternalPlaybackLease {
+  user AppUser @relation(fields:[userId],references:[id])
+  tenant Tenant @relation(fields:[tenantId],references:[id])
+  channel ExternalChannel @relation(fields:[tenantId,channelId],references:[tenantId,id])
+  id String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  tenantId String @db.Uuid
+  channelId String @db.Uuid
+  authBinding String
+  country String
+  platform String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  expiresAt DateTime @db.Timestamptz
+  absoluteExpiresAt DateTime @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+model ExternalGeoNonce {
+  id String @id
+  expiresAt DateTime @db.Timestamptz
+  @@index([expiresAt])
 }

@@ -1,7 +1,14 @@
+'use client';
+import { useBranding } from './BrandingProvider';
 import Image from 'next/image';
 
 /** The symbol is kept at its source aspect ratio; the wordmark is live text. */
 export default function CloudPlayBrand() {
+  const brand = useBranding();
+  if (brand) return <span className="cloudplay-brand" dir="auto">
+    {brand.logoUrl && <Image src={brand.logoUrl} width={48} height={48} alt="" unoptimized />}
+    <span className="cloudplay-type"><span className="cloudplay-name">{brand.displayName}</span></span>
+  </span>;
   return <span className="cloudplay-brand" dir="ltr">
     <span className="cloudplay-symbol">
       <Image className="cloudplay-symbol-dark" src="/art/mark-dark.png" width={157} height={160} alt="" unoptimized/>

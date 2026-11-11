@@ -70,3 +70,24 @@ docker-compose.override.yml
 apps/web/.private-test-*
 apps/web/.public-test-*
 apps/web/.playlist-test-*
+
+# Disposable compiled Admin HTTP regression fixtures
+apps/admin/.http-test-*/
+
+# Disposable Auth lifecycle result (CI artifact, not application data)
+auth-recovery-evidence.txt
+
+# Disposable synthetic test measurements (sanitized copies live in docs/evidence).
+/progressive-load-evidence.json
+/logical-restore-evidence.json
+/production-readiness-performance.json
+/docker-runtime-evidence.json
+
+/soak-evidence.json
+
+# Local lifecycle archives contain secrets and customer data; never commit.
+.selfhost*/
+selfhost-runtime-evidence.json
+
+# Generated runtime vulnerability inventory (CI artifact, not source)
+/security-evidence/

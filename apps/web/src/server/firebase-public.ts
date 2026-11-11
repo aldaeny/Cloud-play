@@ -1,3 +1,4 @@
+import { publicFetch } from './public-fetch';
 /** Read-only catalog; no arbitrary URLs or server-side stream proxy. Approved URLs are visible to viewers. */
 const SOURCE = 'https://digite-bda04-default-rtdb.firebaseio.com/channels.json';
 const ALLOWED_HLS_HOSTS = new Set(['partneta.cdn.mgmlcdn.com']);
@@ -22,7 +23,7 @@ export async function getPublicChannels(): Promise<PublicChannel[]> {
   pending = (async () => {
     const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const r = await fetch(SOURCE, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
+      const r = await publicFetch(SOURCE, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { Accept: 'application/json' } });
       if (!r.ok || !r.body || Number(r.headers.get('content-length')) > MAX_BYTES) throw new Error('SOURCE_UNAVAILABLE');
       const reader = r.body.getReader(); const chunks: Uint8Array[] = []; let total = 0;
       for (;;) { const part = await reader.read(); if (part.done) break; total += part.value.byteLength; if (total > MAX_BYTES) { await reader.cancel(); throw new Error('SOURCE_UNAVAILABLE'); } chunks.push(part.value); }

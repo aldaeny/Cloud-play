@@ -1,3 +1,4 @@
+import type {MediaBinding} from './private-media-session';
 /**
  * Capability tokens for imported playlists.
  *
@@ -20,10 +21,18 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 const PREFIX = 'cloudplay-playlist-proxy:v1:';
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
+// Legacy development default only. Production selection descriptors need live
+// Auth exchange; playable resources are capped at120 seconds.
 export const PLAYLIST_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_TOKEN_CHARS = 8192;
 
 export type StreamGrant = {
+  binding?: MediaBinding;
+  role?: 'key';
+  purpose?:'selection';
+  depth?:number;
+  /** Parent cap when re-sealing nested resources; never extend authorization. */
+  expiresAt?: number;
   origin: string;
   path: string;
   referrer?: string;
@@ -42,7 +51,7 @@ export class PlaylistTokenError extends Error {
  */
 export function playlistSecret(): string {
   const secret = (process.env.PLAYLIST_PROXY_SECRET || process.env.XTREAM_PROXY_SECRET || '').trim();
-  if (secret.length < 16) throw new PlaylistTokenError();
+  if (secret.length < (process.env.NODE_ENV==='production'?32:16)) throw new PlaylistTokenError();
   return secret;
 }
 
@@ -75,11 +84,15 @@ export function sealStream(
 ): string {
   const payload = Buffer.from(
     JSON.stringify({
+      b: grant.binding,
+      k: grant.role,
+      s: grant.purpose,
+      d:grant.depth,
       o: grant.origin,
       p: grant.path,
       r: grant.referrer ?? '',
       u: grant.userAgent ?? '',
-      e: Date.now() + ttlMs,
+      e: Math.min(Date.now() + ttlMs, grant.expiresAt ?? Infinity),
     }),
     'utf8',
   );
@@ -116,7 +129,7 @@ export function openStream(
     throw new PlaylistTokenError();
   }
   if (!parsed || typeof parsed !== 'object') throw new PlaylistTokenError();
-  const record = parsed as { o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
+  const record = parsed as { b?:MediaBinding; k?:'key';s?:'selection';d?:number; o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
   if (typeof record.o !== 'string' || typeof record.p !== 'string' || typeof record.e !== 'number') {
     throw new PlaylistTokenError();
   }
@@ -138,6 +151,10 @@ export function openStream(
   if (/[\u0000-\u001f\u007f]/.test(referrer + userAgent)) throw new PlaylistTokenError();
 
   return {
+    binding: record.b,
+    role:record.k,
+    purpose:record.s,
+    depth:record.d,
     origin,
     path,
     referrer: referrer || undefined,

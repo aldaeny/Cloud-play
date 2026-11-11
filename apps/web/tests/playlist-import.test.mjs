@@ -98,6 +98,12 @@ console.log('\nOwner-only playlist import\n');
 const out = compile();
 const req = createRequire(path.join(out, 'noop.js'));
 const guard = req('./src/server/safe-fetch.js');
+// Route behavior uses a fixture transport, not real sockets; pinned transport
+// security is exercised independently in pinned-fetch.test.mjs.
+req('./src/server/pinned-get.js').pinnedGet = async (url, options) => {
+  await new Promise((resolve, reject) => options.lookup(url.hostname, {}, error => error ? reject(error) : resolve()));
+  return globalThis.fetch(url, options);
+};
 const tokens = req('./src/server/playlist-token.js');
 const importer = req('./src/server/playlist-import.js');
 const xtreamTokens = req('./src/server/xtream-token.js');
@@ -121,6 +127,11 @@ globalThis.fetch = (input, init) => {
 };
 
 try {
+  await check('production import fails closed when the trusted bridge is unconfigured, without provider calls',async()=>{
+    const old=process.env.NODE_ENV;process.env.NODE_ENV='production';const before=fetchCalls.length;
+    try{const res=await invoke(importRoute,{method:'POST',body:{url:'https://list.example.com/a.m3u'}});assert.equal(res.statusCode,503);assert.equal(fetchCalls.length,before);}
+    finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;}
+  });
   // --- SSRF guard ---------------------------------------------------------
   await check('private, loopback, link-local and reserved IPv4 are blocked', () => {
     for (const ip of [
@@ -208,7 +219,7 @@ try {
   await check('a redirect to an internal host is refused', async () => {
     guard.resetHostVerdicts();
     lookupImpl = async host => [{ address: String(host).includes('internal') ? '127.0.0.1' : PUBLIC_IP, family: 4 }];
-    fetchImpl = async () => new Response(null, { status: 302, headers: { location: 'http://internal.example.com/x' } });
+    fetchImpl = async () => new Response(null, { status: 302, headers: { location: 'https://internal.example.com/x' } });
     await assert.rejects(() => guard.safeFetch('https://ok.example.com/list.m3u'), /BLOCKED_ADDRESS/);
     lookupImpl = async () => [{ address: PUBLIC_IP, family: 4 }];
   });
@@ -423,12 +434,12 @@ try {
     try {
       process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-test-key';
-      process.env.XTREAM_OWNER_EMAILS = 'owner@example.com';
+      process.env.XTREAM_OWNER_USER_IDS = '11111111-1111-4111-8111-111111111111';
       const res = await invoke(importRoute, { method: 'POST', body: { url: 'https://list.example.com/a.m3u' } });
       assert.equal(res.statusCode, 401);
       assert.equal(JSON.parse(res.body()).error, 'SIGN_IN_REQUIRED');
     } finally {
-      for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'XTREAM_OWNER_EMAILS']) {
+      for (const key of ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'XTREAM_OWNER_USER_IDS']) {
         if (previous[key] === undefined) delete process.env[key]; else process.env[key] = previous[key];
       }
     }

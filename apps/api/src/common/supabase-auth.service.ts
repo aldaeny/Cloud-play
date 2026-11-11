@@ -6,8 +6,9 @@
  * Supabase-issued access token and never issues, stores or verifies a password.
  *
  * Why call Supabase instead of verifying the JWT locally?
- *  - It is authoritative: a revoked/signed-out session is rejected immediately,
- *    which a locally-verified JWT cannot detect until it expires.
+ *  - It checks the token with Auth, rather than trusting locally decoded claims.
+ *    Do not assume every GoTrue version revokes access JWTs at logout: protected
+ *    external playback additionally checks the original auth.sessions row.
  *  - It works regardless of how the project signs tokens (legacy HS256 secret or
  *    the newer asymmetric signing keys), so no signing secret is copied into
  *    this service and none can leak from it.

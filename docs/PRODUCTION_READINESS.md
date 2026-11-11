@@ -1,85 +1,78 @@
-# Phase 2 production-readiness gate — NOT PRODUCTION READY
+# Cloud Play — final master readiness evaluation
 
-## Repository and scope
+## Final project completion directive — current status
 
-Existing PR #23, branch `arena/c5c3c018-cloud-play`. Starting reported/remote commit `ccb365b` was verified. The sandbox had returned to PR #22 with recovered files: staged comparison against the fetched remote was empty, a recovery stash was retained, then a fast-forward merge restored the exact existing branch history. No reset, force-push, branch recreation, merge of PR #23 or production deployment.
+**NOT READY — BLOCKED.** The current implementation and acceptance scope are in [FINAL_PROJECT_COMPLETION_REPORT.md](FINAL_PROJECT_COMPLETION_REPORT.md), with [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md) and `docs/evidence/final-*.json`. Older “legacy M3U/Xtream production routes disabled” statements below describe the prior remediation, not the current code: those blanket503 gates have been replaced with live Supabase-session/Geo/IP-bound selection exchange and120-second resource grants. Positive production-handler/live Auth integration is required, not only denial tests. New private-media policy/configuration was not applied to production. Actual hosted Geo/SSO and broader Auth/API Geo policy, long-duration client/device behavior, target soak/distributed quota and managed recovery remain open release gates. No production certificate, merge or deployment is authorized.
 
-Implementation commits in this phase:
 
-- `9d9ba9f`: native-only disposable database gate and reproduction instructions.
-- `b91549d`: same-major transitive tooling security remediation.
-- `2c17001`: auth inventory, malformed-subject rejection, real JWT boundary tests, isolated RLS tests.
-- `d45bc04`: provider-scoped durable metadata import/history/locking and migration.
-- `cd088c9`: DNS/address preflight and streaming response limits for provider health.
+## Critical blockers remediation update
 
-Final documentation/test follow-up commit is identified by `git log`; all implementation commits are pushed to this same branch. No UI style/component was redesigned.
+**NOT READY — BLOCKED.** Current remediation results and open release gates are authoritative in [CRITICAL_BLOCKERS_REMEDIATION.md](CRITICAL_BLOCKERS_REMEDIATION.md). New tests use **PASS / FAIL / BLOCKED / NOT RUN**; earlier status terminology below is historical, not a replacement for this update. Actual Docker runtime at `e074e58` passed after fixing omitted API workspace dependencies; final-HEAD workflow must additionally prove enhanced outage/transaction cases. Production legacy M3U/Xtream routes are explicitly fail-closed pending session-bound migration. Trusted hosting Geo and physical-device acceptance remain unproven. No production release is authorized.
 
-## Fresh verification (after clean npm ci)
 
-| Check | Executed outcome | What it does NOT prove |
+## Decision: **NOT READY — BLOCKED**
+
+No production certificate, deployment, migration, source activation or main merge is authorized. This decision is unchanged by successful CI: actual hosting Geo, physical devices, target capacity/operations and managed recovery still need direct evidence.
+
+Authoritative full acceptance matrix: [PRODUCTION_CERTIFICATION.md](PRODUCTION_CERTIFICATION.md). Priority register: [RELEASE_ISSUES.md](RELEASE_ISSUES.md). Executable isolated recovery guidance: [RELEASE_RECOVERY_RUNBOOK.md](RELEASE_RECOVERY_RUNBOOK.md).
+
+Only **VERIFIED**, **FAILED**, **BLOCKED** are used for current criteria. Historical Phase 2 evidence remains in `EXTERNAL_SERVER_FINAL_ACCEPTANCE.md` and `docs/evidence/protected-playback-phase2-*.json`; it is not relabelled as a new production certificate.
+
+## Git / changes
+
+- Branch `arena/d4593efb-cloud-play`, started clean at `0687a44` after status/history/remotes inspection.
+- `193ac9e`: production requires explicit Supabase user authority and explicit bounded Prisma pool URL settings.
+- `84a1eb2`: reject legacy end-user credential issuance/mutation alongside selected Supabase; preserve staff administration and existing UI/router/features.
+- `2386e20`: retain sanitized failed-load diagnostics, refresh 130-route inventory and rehearse expiration index rollback/reapply.
+- `f9f695d`: persistent load HTTP listener/drain correction; real API SQL/markup literal and actual browser hostile-search DOM regression.
+- `3ebf2c1`: independent labeled-container logical restore rehearsal, separate created database ownership guard, truncated archive rejection and safe cleanup.
+- Completion evidence in the certification report records final tested SHA/run and final clean pushed documentation commit. A report cannot embed the hash of its own commit.
+
+## Executed test summary
+
+| Criterion | Status | Exact scope |
 |---|---|---|
-| npm ci | exit 0, lockfile accepted | no deployment |
-| API lint | exit 0 | not an endpoint penetration test |
-| API Jest | **29 suites, 295 tests, all passed** | fixture providers remain explicitly mocked where stated |
-| API real PostgreSQL | **20 checks passed**, PG17.11, all 33 models, six Prisma migrations, real RLS/HTTP/locks/outage | WASM engine, not native; auth.uid/users fixture not hosted Supabase |
-| Native Prisma command | **exit 1 / BLOCKED**, engine download TLS fails before DB operations | not a pass, no native operation claimed |
-| API/Web/Admin tsc --noEmit | all exit 0 | runtime not inferred from types |
-| Web non-browser tests | **13 suites, 251 checks, all passed** | recovery email not sent |
-| API/Web/Admin builds | all exit 0; web 53 static pages | not production verification; native client still required |
-| Web lint | exit 0, 3 warnings (virtualizer compiler + two image notices) | warnings not suppressed |
-| Admin lint | exit 0 | no standalone admin test script exists |
-| Chromium smoke | **16 passed**, desktop/mobile/tablet/TV viewport checks | media decoding skipped without MEDIA_FIXTURES; not physical-device testing |
-| Chromium Arabic search/CSP | **19 passed** | no broadcaster stream decoding claim |
-| Chromium layout matrix | **120 passed**, phone widths 375/390/430, tablet820, desktop1440, Arabic/English, light/dark | Chromium emulation, not actual iOS Safari/Android/TV firmware |
-| npm audit | **31 → 21**; high **4 → 0**; critical **0 → 0**; 8 low/13 moderate remain | not zero vulnerabilities or zero runtime exposure |
+| Local API regression | VERIFIED | 40 suites / 635 tests; unit/fixture tests are identified as such, not production identity proof |
+| Local Web contracts | VERIFIED | 15 suites / 267 checks |
+| Local pinned transport | VERIFIED | 19 real controlled HTTP/socket checks, no external origin |
+| Local real WASM PostgreSQL | VERIFIED | 36 checks; cold clone restore and rollback/reapply; not native-engine substitute |
+| API/Web/Admin types and lint | VERIFIED | No errors; three visible existing Web warnings (one virtualizer compiler compatibility, two image warnings), no suppression |
+| Native Prisma matrix | VERIFIED | Real engine/query/lifecycle/migration/RLS/constraint tests on Node 22/24/26; final job annotations recorded separately |
+| Production build/final full CI | VERIFIED | [43009599466](https://github.com/aldaeny/Cloud-play/actions/runs/43009599466), exact tested SHA `3ebf2c1b203e82ae0fb4dbe6c5942899ecf26863`, five of five jobs SUCCESS; durable exact jobs/annotations exported |
+| Real isolated Auth/SMTP/playback | VERIFIED | Actual GoTrue/native PG/Next/Nest/TLS fixture; signatures/replays/user/session/channel binding, cap2, refresh/logout/revocation/expiry; final candidate Auth job also succeeded (18 groups, 9 playback groups) |
+| Actual hosting Geo and staging journey | BLOCKED | Read-only actual preview inspection at `0687a44` READY; application GET redirected to Vercel SSO/login before handler; `certification-staging.json` |
+| Progressive 10/25/50/100-user run | VERIFIED | Initial failures retained; listener/drain repair followed by all four levels successful in `43009599466`: three waves/level, zero measured errors/timeouts, DB connections5 before/max/after, recovery query succeeds. Not main.ts ingress or long soak |
+| Production-equivalent soak/DB envelope | BLOCKED | Approved SLO, replica/pooler aggregate budget, DB CPU/IO/memory telemetry and isolated equivalent capacity absent |
+| Isolated logical backup/restore | VERIFIED | Separate PostgreSQL17 database, 77 tables/1207 synthetic rows; matching data/index/FK/RLS/policy/grants; truncated archive rejected; restored FK enforced. `certification-logical-restore.json`; no production connection accepted |
+| Managed recovery / hosted app rollback | BLOCKED | Isolated managed target and authorized artifact/config pairing absent; runbook is not execution evidence |
+| Runtime dependency audit | VERIFIED | Zero runtime advisories; `certification-dependency-audit.json` |
+| Full tooling audit | VERIFIED | 18 findings retained (10 moderate, 8 low; 0 high/critical); no major/forced audit upgrades, no concealment; NOT all tooling findings remediated |
+| Bounded security regressions | VERIFIED | Existing auth/IDOR/RBAC/tenant/CSRF/SSRF/TLS/cookie tests, actual HTTP forged-XFF rejection, production configuration regressions; source-pattern inspection found no unsafe Prisma SQL/raw React HTML/eval in reviewed runtime folders |
+| Comprehensive deployed security/quotas/runtime logs | BLOCKED | Actual protected ingress, production topology/audit/alerting/runtime inspection unavailable; narrow tests do not establish vulnerability absence |
+| Safari/iOS, Chrome/Android, Chrome/Firefox/Edge desktop, supported TVs | BLOCKED | Physical fleet/authorized device lab absent; Linux Chromium and a mobile viewport do not establish these platforms |
+| Final Git clean/pushed evidence | VERIFIED | Final documentation/ignore-only commit pushed; empty porcelain status and local HEAD equals remote branch at handoff. Exact report commit resolves via Git history; no self-referential SHA |
 
-Browser binary was installed only in ignored `.cache/browser-tools` and extracted to temporary paths. First launch failed for missing libnspr4.so; loading the packaged runtime libraries resolved that environment failure. All three browser suites then ran successfully. The temporary web server was stopped. No test was disabled or relabeled as a pass.
+## What was actually changed in the platform
 
-## Requirement status and precise blockers
+Two independently fixable production risks were closed: implicit user-auth authority/pool defaults, and legacy credential issuance when Supabase is selected. Production validation is fail-closed, with static errors that never print DSNs. No production settings were changed; an operator must explicitly review the stricter configuration before deployment. A per-replica bound does not certify aggregate production capacity.
 
-| Requirement | Status | Missing / why / evidence / completion gate |
-|---|---|---|
-| Native Prisma | BLOCKED | Official binaries.prisma.sh is outside outbound allowlist. Native-only runner fails explicitly. Run documented command on trusted CI using approved backend Node/OS and official verified engine. |
-| Real PostgreSQL mappings/operations | COMPLETED AND VERIFIED (isolated scope) | 20-check suite; production compatibility and data restore remain separate. Now 33 models due to one added staging model. |
-| Hybrid single auth authority | IN PROGRESS | Only additive profiles read uses Supabase; legacy user/staff HS256 routes remain. No safe fully tested all-module cutover yet. See 90-route matrix. |
-| AuthZ / IDOR | IN PROGRESS | Real JWT tests, fixture profiles HTTP and real-DB sync tenant/permission checks pass. Not all 90 endpoints have route-specific ownership/security tests. Staff disable/status not modeled; token replay until expiry remains possible. |
-| Recovery + SMTP E2E | BLOCKED | No isolated GoTrue/Supabase Auth service or SMTP sink/provider configured. Docker, Podman and gotrue executables unavailable; only migration SQL exists in local supabase directory. GOTRUE_API_HOST, GOTRUE_DB_DATABASE_URL, SMTP_HOST and GOTRUE_SMTP_HOST are absent (values not printed). Current 12 web recovery tests cover static/render contracts, NOT email/token lifecycle. Need isolated auth endpoint/key, isolated DB and SMTP inbox, then expiry/reuse/new-login/old-password rejection/session tests. No production email/settings/account modifications. |
-| Hosted Supabase RLS | IMPLEMENTED BUT NOT VERIFIED in this phase | Checked-in policy SQL passed real isolated PG tests with two local auth users and non-BYPASSRLS authenticated/anon roles. Hosted policies/default grants were not queried/changed in this phase. |
-| New snapshot RLS | COMPLETED AND VERIFIED (isolated scope) | RLS enabled, PUBLIC privileges revoked, no browser policy. Local anon/authenticated SELECT rejected. Actual production roles/default grants require approval review. |
-| Dependency remediation | IN PROGRESS | All starting high-severity nodes removed using focused same-major overrides. 21 remaining findings, including Nest runtime moderate advisories, require reviewed upgrades/retests. See SECURITY_AUDIT. |
-| SSRF / outbound safety | IN PROGRESS | Added reserved-IP/IPv6 rejection, all-answer DNS preflight and streaming cap. Fetch re-resolves: DNS rebinding remains. Require pinned transport/egress review. Legacy HTTP opt-in retained, not used as secure transport fallback. |
-| Provider management | IMPLEMENTED BUT NOT VERIFIED in deployed environment | Existing CRUD/default/priority/health and tests preserved; no production backend interaction claimed. |
-| Metadata import synchronization | COMPLETED AND VERIFIED (isolated scope) | Durable snapshots, success/failure/history, diffs, cross-process lock, malformed failure preservation, two-provider isolation, actual admin HTTP/DB-role tests. Operator-authorized full-export import only. |
-| Online/scheduled provider synchronization | NOT IMPLEMENTED | No direct provider adapter/scheduler/worker/retry queue/notifications or seasons/episodes ingestion. Import re-submission is manual retry, not scheduled sync. |
-| redchicks.xyz | BLOCKED | ORIGIN UNAVAILABLE / AUTHORIZATION UNVERIFIED. Not probed in this phase. Requires authorized provider/rights evidence; never bypass restrictions. |
-| Credentials | IMPLEMENTED BUT NOT VERIFIED in this phase | Prior metadata showed both variables Sensitive. No fresh metadata/decryption/rotation/runtime-availability check; current values not read. Rotation needs explicit approval and provider access. |
-| Frontend integration | IN PROGRESS | Profiles proxy exists, visual UI not cut over; no design changes. Existing UI regression checks pass; no claim all business operations reach Nest. |
-| Playback / Series | BLOCKED for private provider verification | Media decoding skipped (no local fixtures); no provider playback verified. Series honest empty state retained without rights-cleared series data. |
-| Migration readiness | IN PROGRESS | Six migrations apply to fresh isolated PG17. Snapshot rollback/reapply preserves provider rows. No production migration, verified managed backup/restore or production schema diff in this phase. |
-| Production deployment | BLOCKED by approval and verification | No merge/deployment/promote or production configuration change performed. |
+Previously implemented bounded cleanup and stale-client recovery were preserved. Index rollback/reapply and new controlled security/load/restore tests were added, without rebuilding the player, changing themes/layout/navigation, replacing Pages/App Router or removing account/catalog/library/admin functionality.
 
-## Remaining severity/priorities
+## Exact external requirements to close release
 
-1. **Release-blocking:** native Prisma runtime on exact backend deployment image; unified Supabase authentication/authorization coverage; recovery/email E2E; verified backups and production RLS/grants review.
-2. **High security priority:** residual DNS rebinding/egress gap, staff-disablement model, full endpoint-specific tenant/IDOR tests, review runtime dependency advisories.
-3. **Functional completion:** online/scheduled provider sync and diagnostics UI; broader module-to-frontend integration; authorized playback/media fixtures and rights-cleared series catalog.
-4. **Compatibility:** React18 deprecation warning under Next16, remaining tooling vulnerabilities, real Safari/Android/TV browser/device regression.
+1. Authorized SSO access to isolated synthetic-only Vercel staging, including backend/Auth/DB wiring, genuine Geo overwrite and no alternate ingress. Do not paste secrets or disable protection.
+2. Actual representative devices/OS/browser versions and TV remote-control lab; test complete account/session/navigation/playback/reconnect/expiry journeys.
+3. Approved load SLO, sustained duration, replica/pooler connection budget and DB telemetry on isolated target-equivalent infrastructure. Short developer/CI bursts remain bounded evidence only.
+4. Approved managed backup/PITR/storage restore target, RPO/RTO and hosted artifact/config rollback exercise; actual operational monitoring/alert/audit validation.
 
-## Reproduce
+All essential FAILED or BLOCKED criteria continue to prevent **READY FOR PRODUCTION**. No production/source/provider action was used to compensate for missing evidence.
 
-```sh
-npm ci --no-audit --no-fund
-npm run lint --workspace aether-api
-npm run test --workspace aether-api -- --runInBand
-npm run test:postgres --workspace aether-api
-# A separate mandatory gate; EXPECTED TO FAIL in this restricted sandbox:
-npm run test:postgres:native --workspace aether-api
-node apps/api/scripts/auth-matrix.cjs
-npm run lint --workspace aether-web
-npm run lint --workspace aether-admin
-npm run build --workspace aether-web
-npm run build --workspace aether-admin
-npm audit
-```
+## Final evidence
 
-See existing web package scripts for the 13 unit/contract suites and Chromium browser/layout/search suites. Browser tests need a local built web server and browser executable/runtime libraries. Do not point mutation tests at production.
+Final tested candidate **`3ebf2c1b203e82ae0fb4dbe6c5942899ecf26863`**, final run **43009599466 completed SUCCESS**, all five jobs. Native22/24/26 each38 checks; real Auth18 groups including9 playback groups. Exact jobs/assertions and load/restore measurements are committed under `docs/evidence/certification-*.json`. Subsequent report/ignore-only commit changes no tested runtime/test/workflow code.
+
+At100 synthetic users: measured error/timeout rate0, manifest p95 **5200.281ms**, renewal p95 **4237.717ms**, segment p95 **3224.389ms**. Observed connections5 before/max/after. Node RSS rises to **526,979,072 bytes**; no long-run stability claim. The load bypasses main.ts ingress middleware: backend100/min/socket-IP can coalesce legitimate clients behind a shared proxy, so actual ingress quota/topology approval and validation remain **BLOCKED**, not closed by the100-user result.
+
+Logical restore **VERIFIED** for the isolated custom archive/separate database (77tables/1207fixture rows, data+schema/security metadata equality, corrupt archive and FK rejection). Managed Supabase/PITR/storage and hosted rollback remain **BLOCKED**.
+
+**Final: NOT READY — BLOCKED.** No production/source/provider action was taken.

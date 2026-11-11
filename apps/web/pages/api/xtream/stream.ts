@@ -1,8 +1,11 @@
+import {boundMediaProxy} from '../../../src/server/bound-media-proxy';
+import {readCapped} from '../../../src/server/safe-fetch';
+import { publicFetch } from '../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import { openToken, sealPath, TokenError, TOKEN_TTL_MS } from '../../../src/server/xtream-token';
-import { PrivateError, providerOrigin, proxySecret } from '../../../src/server/xtream-private';
+import { PrivateError, providerFingerprint, providerOrigin, proxySecret } from '../../../src/server/xtream-private';
 import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
@@ -37,18 +40,18 @@ function isPlaylistUrl(url: URL, contentType: string): boolean {
 }
 
 /** Turn a playlist reference into a same-origin proxy URL, or a dead reference. */
-function proxyRef(reference: string, base: URL, secret: string, ttl: number): string {
+function proxyRef(reference: string, base: URL, secret: string, ttl: number, expiresAt: number): string {
   try {
     const absolute = new URL(reference, base);
     if (absolute.origin !== base.origin) return BLOCKED_REF;
-    const token = sealPath(absolute.pathname + absolute.search, secret, ttl);
+    const token = sealPath(absolute.pathname + absolute.search, secret, ttl, expiresAt);
     return `/api/xtream/stream?t=${encodeURIComponent(token)}`;
   } catch {
     return BLOCKED_REF;
   }
 }
 
-function rewritePlaylist(body: string, base: URL, secret: string, ttl: number): string {
+function rewritePlaylist(body: string, base: URL, secret: string, ttl: number, expiresAt: number): string {
   return body
     .split(/\r?\n/)
     .map(line => {
@@ -56,9 +59,9 @@ function rewritePlaylist(body: string, base: URL, secret: string, ttl: number): 
       if (!trimmed) return line;
       if (trimmed.startsWith('#')) {
         // EXT-X-KEY / EXT-X-MAP / EXT-X-MEDIA carry their target in URI="...".
-        return line.replace(/URI="([^"]*)"/g, (_match, uri: string) => `URI="${proxyRef(uri, base, secret, ttl)}"`);
+        return line.replace(/URI="([^"]*)"/g, (_match, uri: string) => `URI="${proxyRef(uri, base, secret, ttl, expiresAt)}"`);
       }
-      return proxyRef(trimmed, base, secret, ttl);
+      return proxyRef(trimmed, base, secret, ttl, expiresAt);
     })
     .join('\n');
 }
@@ -72,7 +75,7 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
     try {
       const headers: Record<string, string> = { Accept: '*/*', 'User-Agent': 'CloudPlayPrivate/1.0' };
       if (range) headers.Range = range;
-      response = await fetch(target, { signal: controller.signal, redirect: 'manual', cache: 'no-store', headers });
+      response = await publicFetch(target, { signal: controller.signal, redirect: 'manual', cache: 'no-store', headers });
     } catch {
       clearTimeout(timer);
       throw new Error('UPSTREAM_UNREACHABLE');
@@ -101,6 +104,12 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if(process.env.NODE_ENV==='production')return boundMediaProxy(req,res,{
+    open:t=>{const g=openToken(t,proxySecret());if(g.origin!==providerOrigin()||g.source!==providerFingerprint())throw new TokenError();return {...g,origin:g.origin};},
+    seal:g=>sealPath(g.path,proxySecret(),Math.max(0,g.expiresAt-Date.now()),g.expiresAt,g.binding,g.origin,g.role,undefined,g.source,g.depth),
+    route:'/api/xtream/stream',
+  });
+
   if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -156,7 +165,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (isPlaylistUrl(url, contentType)) {
     let body: string;
     try {
-      const buffer = await response.arrayBuffer();
+      const buffer = Buffer.from(await readCapped(response,PLAYLIST_MAX_BYTES));
       if (buffer.byteLength > PLAYLIST_MAX_BYTES) return res.status(502).json({ error: 'UPSTREAM_ERROR' });
       body = Buffer.from(buffer).toString('utf8');
     } catch {
@@ -166,10 +175,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Provider returned an error page instead of a playlist.
       return res.status(502).json({ error: 'UPSTREAM_ERROR' });
     }
-    const ttl = Math.min(TOKEN_TTL_MS, Math.max(60_000, expiresAt - Date.now()));
+    if(expiresAt<=Date.now())return res.status(403).json({error:'BAD_TOKEN'});
+    const ttl = Math.min(TOKEN_TTL_MS, Math.max(0, expiresAt - Date.now()));
     res.setHeader('Content-Type', 'application/vnd.apple.mpegurl; charset=utf-8');
     if (req.method === 'HEAD') return res.status(200).end();
-    return res.status(200).send(rewritePlaylist(body, url, secret, ttl));
+    return res.status(200).send(rewritePlaylist(body, url, secret, ttl, expiresAt));
   }
 
   // Binary media (segments, posters, progressive video): stream it straight through.

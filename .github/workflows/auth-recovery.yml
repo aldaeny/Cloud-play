@@ -1,0 +1,95 @@
+name: Isolated Auth SMTP lifecycle
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Start disposable Auth PostgreSQL and SMTP capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create auth-fixture
+          docker run -d --name auth-db --label cloudplay.fixture=auth-isolated --network auth-fixture -p 127.0.0.1:5439:5432 -e POSTGRES_PASSWORD=isolated-fixture-only postgres:17
+          docker run -d --name mailpit --network auth-fixture -p 127.0.0.1:8025:8025 axllent/mailpit:v1.33.1
+          for n in {1..30}; do
+            if docker exec auth-db pg_isready -U postgres; then break; fi
+            sleep 1
+          done
+          docker exec auth-db psql -U postgres -c 'CREATE SCHEMA IF NOT EXISTS auth;'
+          docker run -d --name auth --network auth-fixture -p 127.0.0.1:9999:9999 \
+            -e GOTRUE_API_HOST=0.0.0.0 -e GOTRUE_API_PORT=9999 \
+            -e API_EXTERNAL_URL=http://127.0.0.1:9999 -e GOTRUE_SITE_URL=http://127.0.0.1:3000 \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e 'GOTRUE_DB_DATABASE_URL=postgres://postgres:isolated-fixture-only@auth-db:5432/postgres?search_path=auth' \
+            -e GOTRUE_JWT_SECRET=isolated-fixture-signing-key-not-for-any-production-use \
+            -e GOTRUE_JWT_AUD=authenticated -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated \
+            -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true -e GOTRUE_MAILER_AUTOCONFIRM=false \
+            -e GOTRUE_MAILER_OTP_EXP=10 -e GOTRUE_SMTP_HOST=mailpit -e GOTRUE_SMTP_PORT=1025 \
+            -e GOTRUE_SMTP_ADMIN_EMAIL=auth@example.invalid -e GOTRUE_SMTP_SENDER_NAME=CloudPlayFixture \
+            -e GOTRUE_SMTP_MAX_FREQUENCY=0s -e GOTRUE_RATE_LIMIT_EMAIL_SENT=100 \
+            -e GOTRUE_MAILER_URLPATHS_CONFIRMATION=/verify -e GOTRUE_MAILER_URLPATHS_RECOVERY=/verify \
+            supabase/gotrue:v2.197.0
+      - name: Build actual API and isolated TLS bridge certificate
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/unused
+        run: |
+          npm run build --workspace aether-api
+          mkdir -p .cache/auth-fixture
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=127.0.0.1' \
+            -addext 'subjectAltName=IP:127.0.0.1' -keyout .cache/auth-fixture/key.pem -out .cache/auth-fixture/cert.pem
+      - name: Install isolated playback browser and generate synthetic media
+        run: |
+          node scripts/fixture-tool-step.mjs browser_install node scripts/install-ci-browser.mjs
+          node scripts/fixture-tool-step.mjs ffmpeg_install bash scripts/install-ci-ffmpeg.sh
+          export PATH="$GITHUB_WORKSPACE/.cache/fixture-tools/ffmpeg:$PATH"
+          FFMPEG="$(command -v ffmpeg)" node scripts/fixture-tool-step.mjs media_generate node scripts/generate-media-fixtures.mjs .cache/media-fixtures
+      - name: Execute actual Auth and SMTP lifecycle
+        env:
+          ISOLATED_SOAK_MS: 600000
+          MEDIA_FIXTURES: ${{ github.workspace }}/.cache/media-fixtures
+          AUTH_FIXTURE_CERT_DIR: ${{ github.workspace }}/.cache/auth-fixture
+          AUTH_TEST_DATABASE_URL: postgresql://postgres:isolated-fixture-only@127.0.0.1:5439/postgres
+        run: node apps/api/scripts/test-auth-recovery.mjs
+      - name: Restore real custom backup into separate disposable database
+        if: always()
+        run: node apps/api/scripts/test-logical-restore.mjs
+      - name: Publish sanitized fixture assertions
+        if: always()
+        run: |
+          if [ -f auth-recovery-evidence.txt ]; then
+            evidence=$(paste -sd '|' auth-recovery-evidence.txt)
+            printf '::notice title=Isolated Auth assertions::%s\n' "$evidence"
+          fi
+          for file in soak-evidence.json progressive-load-evidence.json; do
+            if [ -f "$file" ]; then
+              evidence=$(node -e 'const f=require("fs"); const v=JSON.parse(f.readFileSync(process.argv[1])); if(v.samples)delete v.samples; console.log(JSON.stringify(v))' "$file")
+              printf '::notice title=Isolated workload evidence::%s\n' "$evidence"
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-auth-recovery
+          path: |
+            auth-recovery-evidence.txt
+            production-readiness-performance.json
+            progressive-load-evidence.json
+            soak-evidence.json
+            logical-restore-evidence.json
+          retention-days: 14
+      - name: Remove disposable fixtures
+        if: always()
+        run: |
+          docker rm -f auth mailpit auth-db || true
+          docker network rm auth-fixture || true

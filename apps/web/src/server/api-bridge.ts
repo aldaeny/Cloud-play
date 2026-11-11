@@ -1,3 +1,5 @@
+import type {NextApiRequest} from 'next';
+import {apiGeoHeaders} from './playback-geo';
 /**
  * Server-side bridge from Next.js to the NestJS API (Hybrid, D1 Option C).
  *
@@ -99,6 +101,7 @@ export function bearerFrom(header: string | string[] | null | undefined): string
 }
 
 export interface BridgeRequest {
+  geoRequest?:NextApiRequest;
   /** Root-relative API path, e.g. `/profiles`. */
   path: string;
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -142,11 +145,14 @@ export async function callApi<T>(request: BridgeRequest): Promise<BridgeResult<T
     }
   }
 
+  let geoHeaders:Record<string,string>={};
+  if(process.env.API_GEO_ENFORCEMENT==='true'&&request.requireAuth!==false){try{if(!request.geoRequest||!token)throw new Error();geoHeaders=apiGeoHeaders(request.geoRequest,method,path,token);}catch{return {ok:false,code:'UPSTREAM_REJECTED',status:403};}}
   let response: Response;
   try {
     response = await fetch(new URL(path, resolved.origin), {
       method,
       headers: {
+        ...geoHeaders,
         Accept: 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(payload !== undefined ? { 'Content-Type': 'application/json' } : {}),

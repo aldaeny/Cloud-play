@@ -15,14 +15,14 @@ function contextWith(headers: Record<string, string | undefined>) {
 
 describe('SupabaseAuthGuard', () => {
   let auth: { verifyAccessToken: jest.Mock };
-  let prisma: { appUser: { findUnique: jest.Mock } };
+  let prisma: { tenant: { findUnique: jest.Mock }; appUser: { findUnique: jest.Mock } };
   let guard: SupabaseAuthGuard;
 
   const activeAccount = { id: USER_ID, status: 'active', tenantId: TENANT_ID, profiles: [{ id: 'p1' }, { id: 'p2' }] };
 
   beforeEach(() => {
     auth = { verifyAccessToken: jest.fn().mockResolvedValue({ id: USER_ID, email: 'owner@example.com', emailConfirmed: true }) };
-    prisma = { appUser: { findUnique: jest.fn().mockResolvedValue(activeAccount) } };
+    prisma = { tenant: { findUnique: jest.fn().mockResolvedValue({ licenseEnforced: false }) }, appUser: { findUnique: jest.fn().mockResolvedValue(activeAccount) } };
     guard = new SupabaseAuthGuard(auth as unknown as SupabaseAuthService, prisma as never);
   });
 
