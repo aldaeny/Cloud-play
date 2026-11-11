@@ -48,3 +48,15 @@ cluster, generated native client, two child processes and independent pools. No
 production DATABASE_URL is accepted. Worker routes isolate production quota
 middleware with controlled204 handlers; business Auth handlers, load balancer and
 hosted ingress are not part of this proof. Existing full application CI remains.
+
+### Execution history
+
+Run `43041733949`, commit `d196abf9a421e8384f5582fe647d722b9f95124b`:
+shared-quota native checks FAIL (all three Node jobs), observed503 rather than429.
+The post-restart assertion incorrectly assumed the first native stale-pool query
+must recover immediately. The corrected test allows503 only while retrying for
+at most15s after DB restart; it must reach429, and **never204**. No exhausted
+allowance is reset and no error is treated as an admission. Browser tooling
+installation also failed in both application/Auth jobs before playback execution;
+raw logs could not be fetched from restricted results hosts. Docker passed.
+No production readiness/Shared Quota PASS is inferred from this failed run.

@@ -29,7 +29,13 @@ export async function testSharedQuota(client,databaseUrl,check,clientPath,databa
    try{for(const port of [b.port,restarted.port]){const denied=await hit(port);assert.equal(denied.status,503);assert.equal((await denied.json()).code,'RATE_LIMIT_AUTHORITY_UNAVAILABLE');}}
    finally{await database.start();}
    // Retry after ambiguous store failure/recovery MUST NOT reset consumption.
-   for(const port of [b.port,restarted.port])assert.equal((await hit(port)).status,429);
+   for(const port of [b.port,restarted.port]){
+    // A stale native connection may still fail closed after DB readiness. Retry
+    // to a bounded recovery deadline; never accept204 or reset the allowance.
+    let status=503;const deadline=performance.now()+15000;
+    while(status===503&&performance.now()<deadline){status=(await hit(port)).status;if(status===503)await wait(100);}
+    assert.equal(status,429);
+   }
    const [{now:resetNow}]=await client.$queryRaw`SELECT clock_timestamp() AS now`;
    await wait(60000-(resetNow.getTime()%60000)+50);
    assert.equal((await hit(b.port)).status,204);assert.equal((await hit(restarted.port)).status,204);
