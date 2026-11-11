@@ -21,8 +21,8 @@
  * business decision (it needs a tenant) and belongs in an explicit flow, not on
  * an authentication path. An unprovisioned caller gets a distinct, honest error.
  *
- * Additive by design: `JwtAuthGuard` is untouched, so nothing that works today
- * changes behaviour until a controller opts in to this guard.
+ * `JwtAuthGuard` delegates here when API_END_USER_AUTHORITY=supabase.
+ * Production bootstrap requires that setting; there is no denial fallback.
  */
 import { CanActivate, ExecutionContext, Injectable, Logger, HttpException } from '@nestjs/common';
 import type { Request } from 'express';

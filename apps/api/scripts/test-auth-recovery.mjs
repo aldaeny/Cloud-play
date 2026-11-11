@@ -89,6 +89,7 @@ try {
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
   }).catch(error=>{
     for(const line of String(error.stdout||'').split('\n').filter(line=>/^::error title=Protected playback stage::[a-z_]+(?:; expected \d{3} got \d{3})?$/.test(line)))console.log(line);
+    for(const line of String(error.stdout||'').split('\n').filter(line=>line.startsWith('LOAD_FAILURE ')))console.log('::error title=Isolated load failure::'+line.slice('LOAD_FAILURE '.length));
     const safeLines=String(error.stdout||'').split('\n').filter(line=>/^PASS protected authenticated playback:/.test(line));
     for(const line of safeLines)console.log('::notice title=Protected playback completed stage::'+line);
     const details=String(error.stderr||'');

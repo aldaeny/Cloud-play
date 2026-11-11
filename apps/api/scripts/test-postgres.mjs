@@ -353,6 +353,11 @@ try {
   await check('new channel/report and quarantine migrations rollback/reapply on isolated empty feature state preserve existing users', async()=>{
     const before=await client.appUser.count();
     const leaseMigration=path.join(api,'prisma/migrations/202611120004_external_playback_leases');
+    const expirationIndexes=path.join(api,'prisma/migrations/202611120005_playback_expiration_indexes');
+    await pool.query(await readFile(path.join(expirationIndexes,'rollback.sql'),'utf8'));
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM pg_indexes WHERE indexname IN ('ExternalPlaybackLease_expiresAt_idx','ExternalGeoNonce_expiresAt_idx')")).rows[0].n,0);
+    await pool.query(await readFile(path.join(expirationIndexes,'migration.sql'),'utf8'));
+    assert.equal((await pool.query("SELECT count(*)::int AS n FROM pg_indexes WHERE indexname IN ('ExternalPlaybackLease_expiresAt_idx','ExternalGeoNonce_expiresAt_idx')")).rows[0].n,2);
     await pool.query(await readFile(path.join(leaseMigration,'rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/external-channel-failover-rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(api,'prisma/migrations/202611120001_external_channel_failover/migration.sql'),'utf8'));

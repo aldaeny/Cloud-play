@@ -11,7 +11,7 @@ const require=createRequire(import.meta.url),request=require('supertest');
 export async function progressiveLoad({app,prisma,tenant,base,geo}){
  const url=new URL(process.env.AUTH_TEST_DATABASE_URL||'http://invalid');
  assert.equal(url.hostname,'127.0.0.1');assert.equal(url.port,'5439');
- const users=[],phases=[],started=performance.now();let maxRss=0,minFree=Infinity;
+ const users=[],phases=[],started=performance.now();let checkpoint='initial';let maxRss=0,minFree=Infinity;
  const safety=()=>{maxRss=Math.max(maxRss,process.memoryUsage().rss);minFree=Math.min(minFree,freemem());assert.ok(maxRss<768*1024**2,'RSS safety stop');assert.ok(minFree>256*1024**2,'free memory safety stop');assert.ok(performance.now()-started<240000,'total duration safety stop');};
  const adminPart=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')+'.'+Buffer.from(JSON.stringify({role:'service_role',aud:'authenticated',exp:Math.floor(Date.now()/1000)+600})).toString('base64url');
  const admin=adminPart+'.'+createHmac('sha256','isolated-fixture-signing-key-not-for-any-production-use').update(adminPart).digest('base64url');
@@ -26,7 +26,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
  const call=(u,method,path)=>request(app.getHttpServer())[method](path).timeout({response:10000,deadline:15000}).set('Authorization','Bearer '+u.token).set('x-playback-session',u.lease||'');
  try{
   for(const count of [10,25,50,100]){
-   safety();const login=[];
+   checkpoint='provision_'+count;safety();const login=[];
    while(users.length<count){
     await Promise.all(Array.from({length:Math.min(5,count-users.length)},async()=>{
      const email='load-'+randomUUID()+'@example.invalid',password=randomUUID()+'Aa1!';
@@ -35,7 +35,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
      const signed=await auth('/token?grant_type=password',{email,password});u.token=signed.data.access_token;login.push(signed.ms);
     }));safety();
    }
-   const phaseStart=performance.now(),cpu=process.cpuUsage(),samples={login,create:[],renew:[],channels:[],manifest:[],segment:[]};let errors=0,timeouts=0,total=0,connections=0;
+   checkpoint='requests_'+count;const phaseStart=performance.now(),cpu=process.cpuUsage(),samples={login,create:[],renew:[],channels:[],manifest:[],segment:[]};let errors=0,timeouts=0,total=0,connections=0;
    const timed=async(kind,fn)=>{const t=performance.now();total++;try{return await fn();}catch(e){errors++;if(e.timeout||e.name==='TimeoutError')timeouts++;throw e;}finally{samples[kind].push(performance.now()-t);}};
    await Promise.all(users.map(async u=>{
     const r=await timed('create',()=>call(u,'post',base+'/session').set('x-external-geo',geo(channel,u.token)).expect(201));u.lease=r.body.id;
@@ -57,9 +57,13 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
    const used=process.cpuUsage(cpu);safety();
    phases.push({status:'VERIFIED',users:count,duration_ms:Math.round(performance.now()-phaseStart),waves:3,requests_measured:total,error_rate:errors/total,timeout_rate:timeouts/total,latency:Object.fromEntries(Object.entries(samples).map(([k,v])=>[k==='channels'?'authenticated_profiles_api':k,stats(v)])),process_cpu_ms:(used.user+used.system)/1000,rss_bytes:process.memoryUsage().rss,observed_db_connections_max:connections});
   }
-  await wait(2000);await prisma.$queryRaw`SELECT 1`;const recoveryConnections=await db();assert.ok(recoveryConnections<=initialConnections+5,'connection recovery budget');
+  checkpoint='recovery';await wait(2000);await prisma.$queryRaw`SELECT 1`;const recoveryConnections=await db();assert.ok(recoveryConnections<=initialConnections+5,'connection recovery budget');
   const result={status:'VERIFIED',scope:'synthetic isolated GoTrue/native PG/Nest/controlled TLS; main.ts ingress middleware excluded',certifies_production_capacity:false,phases,safety_limits:{rss_bytes:768*1024**2,min_free_bytes:256*1024**2,total_ms:240000,request_deadline_ms:15000},max_rss_bytes:maxRss,min_free_bytes:minFree,initial_db_connections:initialConnections,recovery_db_connections:recoveryConnections,recovery_query:'VERIFIED',limitations:['three sustained bursts per level, not long soak','process CPU/RSS not DB CPU/IO/RSS','authenticated profiles API read is not Web channel-directory load','all users same controlled tenant/stream; no physical concurrent decoders','no production ingress/distributed rate limit certification']};
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Progressive synthetic load::'+JSON.stringify(result));return result;
+ }catch(error){
+  const code=typeof error?.code==='string'&&/^[A-Z0-9_]{1,32}$/.test(error.code)?error.code:'LOAD_CHECK_FAILED';
+  const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null};
+  await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('LOAD_FAILURE '+JSON.stringify(result));throw error;
  }finally{
   // Disposable identities only. Never print tokens, emails or passwords.
   for(const u of users){
