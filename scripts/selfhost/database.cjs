@@ -12,6 +12,7 @@ async function main() {
     const p = new PrismaClient(); try { await p.$executeRawUnsafe('CREATE SCHEMA IF NOT EXISTS auth'); } finally { await p.$disconnect(); }
     return;
   }
+  if (action === 'demo-import') { const p=new PrismaClient();try{await require('./demo.cjs')(p);}finally{await p.$disconnect();}return; }
   if (action === 'organization-license') {
     const tiers = { Starter: {maxUsers:20,maxStaff:2,maxServers:1,maxTitles:100}, Professional: {maxUsers:100,maxStaff:5,maxServers:5,maxTitles:1000}, Business: {maxUsers:1000,maxStaff:20,maxServers:20,maxTitles:10000} };
     const tenantId = process.env.ORGANIZATION_TENANT_ID;

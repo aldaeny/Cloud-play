@@ -1,5 +1,6 @@
 'use client';
 
+import { useBranding } from '../../../src/components/brand/BrandingProvider';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -30,6 +31,8 @@ export default function ChannelDetailPage() {
   const [shareNotice, setShareNotice] = useState('');
   const { favorites, toggle } = useChannelFavorites();
   const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
+  const brand = useBranding();
+  const brandName = brand?.displayName || 'Cloud Play Iraq';
   const ar = prefs.language === 'ar';
   const channel = channels.find(item => item.id === id);
   useEffect(() => {
@@ -38,7 +41,7 @@ export default function ChannelDetailPage() {
     return () => controller.abort();
   }, [attempt]);
   useEffect(() => { if (channel) WatchHistory.add(channel); }, [channel]);
-  useEffect(() => { document.title = channel ? `${channel.name} | Cloud Play Iraq` : ar ? 'القناة | Cloud Play Iraq' : 'Channel | Cloud Play Iraq'; }, [channel, ar]);
+  useEffect(() => { document.title = channel ? `${channel.name} | ${brandName}` : `${ar ? 'القناة' : 'Channel'} | ${brandName}`; }, [channel, ar, brandName]);
   useEffect(() => {
     if (!channel?.epgId) return;
     const controller = new AbortController();
@@ -48,7 +51,7 @@ export default function ChannelDetailPage() {
   const share = async () => {
     const url = window.location.href;
     try {
-      if (navigator.share) await navigator.share({ title: channel?.name ?? 'Cloud Play Iraq', url });
+      if (navigator.share) await navigator.share({ title: channel?.name ?? brandName, url });
       else if (navigator.clipboard) { await navigator.clipboard.writeText(url); setShareNotice(ar ? 'نُسخ رابط القناة.' : 'Channel link copied.'); }
       else setShareNotice(ar ? 'انسخ رابط القناة من شريط العنوان.' : 'Copy the channel link from the address bar.');
     } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) setShareNotice(ar ? 'تعذرت المشاركة. يمكنك نسخ الرابط من شريط العنوان.' : 'Sharing failed. Copy the link from the address bar.'); }

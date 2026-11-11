@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { projectName, releaseName, localDocker, archivePath } from './policy.mjs';
+import { projectName, releaseName, localDocker, archivePath, parseEnvironment } from './policy.mjs';
 test('projects cannot select production/default names or inject flags', () => {
   for (const value of ['production','cloudplay','--project','cloudplay-local-../prod','cloudplay-local-X','']) assert.throws(()=>projectName(value));
   assert.equal(projectName('cloudplay-local-fixture'),'cloudplay-local-fixture');
@@ -17,4 +17,10 @@ test('remote Docker and overridden contexts are denied', () => {
 test('archive path must be explicit and not the filesystem root', () => {
   assert.throws(()=>archivePath('')); assert.throws(()=>archivePath('/'));
   assert.match(archivePath('.selfhost-backup/one'), /one$/);
+});
+
+test('environment parsing is deterministic, dependency-free and never evaluates input',()=>{
+  assert.deepEqual(parseEnvironment('# comment\nDATABASE_URL="postgresql://u:p@postgres/db"\nTOKEN=abc.def\nEMPTY=""'),{DATABASE_URL:'postgresql://u:p@postgres/db',TOKEN:'abc.def',EMPTY:''});
+  for(const text of ['KEY="unterminated','KEY=a\nKEY=b','export KEY=x'])assert.throws(()=>parseEnvironment(text));
+  assert.equal(parseEnvironment('KEY=$(dangerous-command)').KEY,'$(dangerous-command)');
 });

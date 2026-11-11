@@ -1,3 +1,5 @@
+> Historical baseline at 997fcd1. Follow-up implementation is documented in SELF_HOSTED_PACKAGE.md, CUSTOMER_DEMO.md and the final verified report; incomplete statements below describe that baseline, not newer code.
+
 # Zero-budget commercial remediation — evidence and remaining gates
 
 ## Scope and safety

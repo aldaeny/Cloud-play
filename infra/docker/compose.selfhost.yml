@@ -40,9 +40,12 @@ services:
     env_file: [../../.env]
     environment:
       SELFHOST_LOCAL_ONLY: 'true'
+      NODE_EXTRA_CA_CERTS: /tls/cert.pem
+      STORAGE_ENDPOINT: http://minio:9000
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       DEFAULT_TENANT_ID: ${DEFAULT_TENANT_ID:?Set DEFAULT_TENANT_ID}
     networks: [internal]
+    volumes: ["../../.selfhost/tls/cert.pem:/tls/cert.pem:ro"]
     profiles: [tools]
   auth:
     image: supabase/gotrue:v2.197.0

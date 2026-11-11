@@ -57,9 +57,9 @@ export class VodDeliveryService {
       if(!access.allowed)throw new ConflictException('PLAYBACK_ENTITLEMENT_DENIED');
       // Creation assertions are single-use across replicas.
       await tx.externalGeoNonce.create({data:{id:context.geo.nonce,expiresAt:new Date(context.geo.expiresAt)}});
-      return tx.playbackSession.create({data:{userId,profileId,deviceId,titleId,episodeId,vodAssetId:asset.id,vodCountry:context.geo.country,authBinding:context.binding,vodExpiresAt:new Date(Date.now()+4*3600000)}});
+      return tx.playbackSession.create({data:{userId,profileId,deviceId,titleId,episodeId,vodAssetId:asset.id,vodCountry:context.geo.country,authBinding:context.binding,vodExpiresAt:new Date(Date.now()+4*3600000),positionSec:access.resumeAtSec}});
     });
-    return { sessionId:session.id, manifestUrl:this.sign(session.id,'master.m3u8',session.vodExpiresAt!.getTime()), expiresAt:session.vodExpiresAt, nextHeartbeatInSec:30 };
+    return { sessionId:session.id, manifestUrl:this.sign(session.id,'master.m3u8',session.vodExpiresAt!.getTime()), expiresAt:session.vodExpiresAt, nextHeartbeatInSec:30, resumeAtSec:session.positionSec };
   }
   async read(userId:string,id:string,req:Request) {
     const session=await this.prisma.playbackSession.findFirst({where:{id,userId,endedAt:null}});

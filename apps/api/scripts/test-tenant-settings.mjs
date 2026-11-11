@@ -60,6 +60,22 @@ export async function testTenantSettings(client, api, check) {
       assert.equal((await client.subscription.findUnique({ where: { id: license.id } })).status, 'CANCELED');
       assert.equal(await client.invoice.count({ where: { subscriptionId: license.id } }), 0);
     });
+    await check('public branding resolves only operator-configured tenant and exposes no tenant/license fields',async()=>{
+      const previous=process.env.PUBLIC_BRANDING_TENANT_ID;
+      try {
+        process.env.PUBLIC_BRANDING_TENANT_ID=tenants[0].id;
+        const response=await request(app.getHttpServer()).get('/branding/public').query({tenantId:tenants[1].id}).expect(200);
+        assert.equal(response.body.displayName,'Tenant A');
+        assert.ok(!('tenantId' in response.body));assert.ok(!('licenseStatus' in response.body));
+      } finally {if(previous===undefined)delete process.env.PUBLIC_BRANDING_TENANT_ID;else process.env.PUBLIC_BRANDING_TENANT_ID=previous;}
+    });
+    await check('expired organization license blocks authenticated admin reads; other tenant unaffected; renewal restores access',async()=>{
+      await client.tenant.update({where:{id:tenants[0].id},data:{licenseEnforced:true,licenseStatus:'active',licenseExpiresAt:new Date(0)}});
+      await call('get','branding').expect(403);
+      await call('get','branding',1).expect(200);
+      await client.tenant.update({where:{id:tenants[0].id},data:{licenseExpiresAt:new Date(Date.now()+86400000)}});
+      await call('get','branding').expect(200);
+    });
     await check('live permission removal denies settings despite valid admin JWT', async () => {
       await client.role.update({ where: { id: roles[0].id }, data: { permissions: '[]' } });
       await call('put', 'branding').send({ displayName: 'Denied' }).expect(403);

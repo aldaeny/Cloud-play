@@ -1,5 +1,6 @@
 'use client';
 
+import { useBranding } from '../../src/components/brand/BrandingProvider';
 import { useDeferredValue, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Star, RotateCcw } from 'lucide-react';
@@ -38,6 +39,8 @@ export default function LivePage() {
   const { favorites, toggle } = useChannelFavorites();
   const { view, sort, setView, setSort } = useChannelView();
   const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
+  const brand = useBranding();
+  const brandName = brand?.displayName || 'Cloud Play Iraq';
   const ar = prefs.language === 'ar';
   useEffect(() => {
     const controller = new AbortController();
@@ -47,7 +50,7 @@ export default function LivePage() {
     }).catch(() => { if (!controller.signal.aborted) { setFailed(true); setLoading(false); } });
     return () => controller.abort();
   }, [attempt]);
-  useEffect(() => { document.title = ar ? 'تلفزيون | Cloud Play Iraq' : 'TV | Cloud Play Iraq'; }, [ar]);
+  useEffect(() => { document.title = `${ar ? 'تلفزيون' : 'TV'} | ${brandName}`; }, [ar, brandName]);
   const filtered = useMemo(() => {
     const matched = filterChannels(channels, favorites, deferredSearch, onlyFavorites ? 'favorites' : category, country, quality);
     return applyChannelSort(matched, sort, favorites, prefs.language);

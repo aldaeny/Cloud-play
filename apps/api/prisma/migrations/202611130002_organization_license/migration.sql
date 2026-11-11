@@ -17,7 +17,8 @@ BEGIN
  -- Moving objects between tenants would bypass both accounting and ownership.
  IF TG_OP='UPDATE' THEN
   IF NEW."tenantId" IS DISTINCT FROM OLD."tenantId" THEN RAISE EXCEPTION 'TENANT_REASSIGNMENT_FORBIDDEN' USING ERRCODE='23514'; END IF;
-  RETURN NEW;
+  IF TG_TABLE_NAME <> 'ExternalServer' THEN RETURN NEW; END IF;
+  IF OLD."deletedAt" IS NULL OR NEW."deletedAt" IS NOT NULL THEN RETURN NEW; END IF;
  END IF;
  -- One lock across every quota table, on every replica, held to commit/rollback.
  PERFORM pg_advisory_xact_lock(hashtextextended(NEW."tenantId"::text, 837201630));
@@ -43,4 +44,4 @@ CREATE TRIGGER organization_users BEFORE INSERT OR UPDATE OF "tenantId" ON "AppU
 CREATE TRIGGER organization_staff BEFORE INSERT OR UPDATE OF "tenantId" ON "StaffUser" FOR EACH ROW EXECUTE FUNCTION cloudplay_organization_quota();
 CREATE TRIGGER organization_titles BEFORE INSERT OR UPDATE OF "tenantId" ON "Title" FOR EACH ROW EXECUTE FUNCTION cloudplay_organization_quota();
 CREATE TRIGGER organization_xtream BEFORE INSERT OR UPDATE OF "tenantId" ON "XtreamServer" FOR EACH ROW EXECUTE FUNCTION cloudplay_organization_quota();
-CREATE TRIGGER organization_external BEFORE INSERT OR UPDATE OF "tenantId" ON "ExternalServer" FOR EACH ROW EXECUTE FUNCTION cloudplay_organization_quota();
+CREATE TRIGGER organization_external BEFORE INSERT OR UPDATE OF "tenantId", "deletedAt" ON "ExternalServer" FOR EACH ROW EXECUTE FUNCTION cloudplay_organization_quota();

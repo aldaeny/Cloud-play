@@ -15,3 +15,19 @@ export function archivePath(value) {
   if (!value || absolute === path.parse(absolute).root) throw new Error('Explicit non-root archive directory required');
   return absolute;
 }
+/** Strict generated .env subset: no interpolation, evaluation or host overrides. */
+export function parseEnvironment(text) {
+  const result={};
+  for(const line of text.split(/\r?\n/)){
+    if(!line.trim()||line.trimStart().startsWith('#'))continue;
+    const match=line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/);if(!match)throw new Error('Unsupported environment syntax');
+    const raw=match[2].trim();
+    let value;
+    if(raw.startsWith('"')){try{value=JSON.parse(raw);}catch{throw new Error('Invalid quoted environment value');}if(typeof value!=='string')throw new Error('Invalid environment value');}
+    else if(raw.startsWith("'")){if(!raw.endsWith("'"))throw new Error('Invalid environment value');value=raw.slice(1,-1);}
+    else value=raw.replace(/\s+#.*$/,'').trim();
+    if(Object.hasOwn(result,match[1]))throw new Error('Duplicate environment key');
+    result[match[1]]=value;
+  }
+  return result;
+}

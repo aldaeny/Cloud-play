@@ -3,12 +3,11 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync, existsSync, copyFileSync, chmodSync, openSync, closeSync, readSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { projectName, releaseName, localDocker, archivePath } from './policy.mjs';
+import { projectName, releaseName, localDocker, archivePath, parseEnvironment } from './policy.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const [action, projectArg, releaseArg, archiveArg] = process.argv.slice(2);
-const docker = (args, options = {}) => execFileSync('docker', args, { cwd: root, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...options });
+const docker = (args, options = {}) => execFileSync('docker', ['--context','default',...args], { cwd: root, maxBuffer: 64 * 1024 * 1024, stdio: ['pipe', 'pipe', 'pipe'], ...options });
 const archiveDescriptors=[];
 const openArchive=file=>{const fd=openSync(file,'r');archiveDescriptors.push(fd);return fd;};
 const toFile=(file,args)=>{const fd=openSync(file,'wx',0o600);try{docker(args,{stdio:['pipe',fd,'pipe']});}finally{closeSync(fd);}};
@@ -20,7 +19,7 @@ try {
   if (!existsSync(path.join(root, '.env'))) throw new Error('Run setup-local-env.js and configure local Supabase first');
   // Reject any supplied database URI which is not this Compose service.
   const envText = readFileSync(path.join(root, '.env'), 'utf8');
-  const localEnv = createRequire(import.meta.url)('dotenv').parse(envText);
+  const localEnv = parseEnvironment(envText);
   const database = localEnv.DATABASE_URL;
   if (new URL(database).hostname !== 'postgres') throw new Error('Only the local postgres service is authorized');
   const compose = args => { console.log('Local lifecycle step: '+args[0]); return docker(['compose','--project-name',project,'--env-file','.env',
@@ -43,6 +42,11 @@ try {
     // Operator credentials are passed through environment, never command-line values.
     compose(['run','--rm','--no-deps','-e','BOOTSTRAP_ADMIN_EMAIL','-e','BOOTSTRAP_ADMIN_PASSWORD','tools','bootstrap']);
     compose(['up','-d','--wait','api','worker-media','web','admin','mailpit','auth','auth-gateway']);
+  } else if (action === 'demo-import') {
+    if(existsSync(path.join(root,'.selfhost/demo')))throw new Error('Demo output already exists; refusing duplicate import');
+    mkdirSync(path.join(root,'.selfhost/demo'),{mode:0o700});
+    // Tools run as node; output dir ownership is assigned explicitly by the operator.
+    compose(['run','--rm','--no-deps','--user',`${process.getuid()}:${process.getgid()}`,'-v',`${path.join(root,'.cache/media-fixtures')}:/synthetic:ro`,'-v',`${path.join(root,'.selfhost/demo')}:/demo-output`,'tools','demo-import']);
   } else if (action === 'organization-license') {
     compose(['run','--rm','--no-deps',...['ORGANIZATION_TENANT_ID','ORGANIZATION_TIER','ORGANIZATION_STATUS','ORGANIZATION_EXPIRES_AT'].flatMap(k=>['-e',k]),'tools','organization-license']);
   } else if (action === 'migrate') {

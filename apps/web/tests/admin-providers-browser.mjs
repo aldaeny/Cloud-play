@@ -7,14 +7,21 @@ const browser = await chromium.launch({ executablePath, headless: true, env: pro
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 let denied = true, pulls = 0, failPull = false, empty = false;
 let external = []; let scheduled = false;
+let branding={displayName:'White Label Fixture',logoUrl:null,brandDark:'#0a0a0c',cyanGlow:'#00e5ff'};
 let groups = [], channels = [], orderChanges = 0;
 const id = '11111111-1111-4111-8111-111111111111';
 const provider = { id, name: 'Authorized Fixture', baseUrl: 'https://provider.fixture', username: 'fixture-user', enabled: true, priority: 100, isDefault: true, connectionStatus: 'unknown', lastCheckedAt: null };
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 await page.route('**/api/admin/**', async route => {
   const req = route.request(), url = new URL(req.url());
+  if (url.pathname.endsWith('/public-branding')) { assert.equal(req.headers().authorization,undefined); return route.fulfill({json:branding}); }
   if (url.pathname.endsWith('/login')) return route.fulfill({ status: denied ? 401 : 200, json: denied ? { error: 'denied' } : { accessToken: 'isolated-browser-fixture-token' } });
   assert.equal(req.headers().authorization, 'Bearer isolated-browser-fixture-token');
+  if(url.pathname.endsWith('/tenant-settings')) {
+    if(url.searchParams.get('action')==='branding'){if(req.method()==='PUT')branding={...branding,...req.postDataJSON()};return route.fulfill({json:branding});}
+    if(url.searchParams.get('action')==='plans')return route.fulfill({json:{financial:false,plans:[]}});
+    return route.fulfill({json:[]});
+  }
   if (url.pathname.startsWith('/api/admin/external-channels')) {
     if(url.pathname.endsWith('/groups')) { if(req.method()==='POST')groups=[{id,...req.postDataJSON()}];return route.fulfill({json:groups}); }
     if(req.method()==='POST'&&url.pathname.endsWith('/sources')) { const body=req.postDataJSON();channels[0].sources.push({id:body.serverId,serverId:body.serverId,priority:body.priority,role:body.priority===1?'primary':'secondary',enabled:false,consecutiveFailures:0,healthySince:null});return route.fulfill({json:channels[0].sources.at(-1)}); }
@@ -41,6 +48,7 @@ await page.route('**/api/admin/**', async route => {
 });
 try {
   await page.goto(base, { waitUntil: 'networkidle' });
+  await page.getByRole('heading',{name:'White Label Fixture Admin',exact:false}).waitFor();
   await page.getByLabel('البريد الإلكتروني').fill('fixture@example.invalid');
   await page.getByLabel('كلمة المرور', { exact: true }).fill('fixture-password');
   await page.getByRole('button', { name: 'دخول', exact: true }).click();
@@ -48,6 +56,10 @@ try {
   denied = false;
   await page.getByRole('button', { name: 'دخول', exact: true }).click();
   await page.getByText('Authorized Fixture', { exact: false }).waitFor();
+  await page.getByLabel('اسم المؤسسة',{exact:true}).fill('Renamed Fixture');
+  await page.getByRole('button',{name:'حفظ الهوية',exact:true}).click();
+  await page.getByText('تم حفظ الهوية البصرية في قاعدة البيانات.',{exact:true}).waitFor();
+  assert.equal(await page.title(),'Renamed Fixture — الإدارة');
   const pull = page.getByRole('button', { name: 'مزامنة الكتالوج', exact: true });
   page.once('dialog', dialog => dialog.dismiss()); await pull.click();
   assert.equal(pulls, 0, 'cancelled authorization confirmation must never send pull');

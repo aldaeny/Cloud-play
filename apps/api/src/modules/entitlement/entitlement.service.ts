@@ -56,6 +56,7 @@ export class EntitlementService {
         plan: { active: true, tenantId: user.tenantId },
       },
       include: { plan: true },
+      orderBy: [{ plan: { maxStreams: 'desc' } }, { currentPeriodEnd: 'desc' }],
     });
     const subscriptionActive = subscriptions.length > 0;
     const plan = subscriptions[0]?.plan;

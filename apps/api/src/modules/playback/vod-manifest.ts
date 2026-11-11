@@ -14,6 +14,8 @@ export function rewriteVod(text: string, from: string, sign: (key: string) => st
     if(!value) return line;
     if(!value.startsWith('#')) { count++; return sign(vodRelative(value,from)); }
     if(/URI\s*=/i.test(value)) {
+      const all=value.match(/URI\s*=/gi)||[];
+      if((value.match(/URI="[^"]+"/g)||[]).length!==all.length)throw new Error('UNSUPPORTED_VOD_URI');
       if(!/^#EXT-X-(MAP|MEDIA|I-FRAME-STREAM-INF):/i.test(value)) throw new Error('UNSUPPORTED_VOD_URI');
       return value.replace(/URI="([^"]+)"/g,(_all,ref)=>{count++;return `URI="${sign(vodRelative(ref,from))}"`;});
     }
