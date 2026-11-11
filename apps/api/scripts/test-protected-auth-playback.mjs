@@ -70,6 +70,13 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   await prisma.externalPlaybackLease.update({where:{id:lease.body.id},data:{expiresAt:new Date(0)}});
   await get(base+'/manifest').expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id)).expect(403);
+  const sessions=app.get(require('../dist/modules/admin/external-playback-session.service.js').ExternalPlaybackSessionService);
+  const expiredNonce='expired-'+randomUUID();await prisma.externalGeoNonce.create({data:{id:expiredNonce,expiresAt:new Date(0)}});
+  const swept=await sessions.expireBatch();assert.ok(swept.expired>=1);assert.ok(swept.nonces>=1);
+  assert.ok((await prisma.externalPlaybackLease.findUnique({where:{id:lease.body.id}})).revokedAt,'expired history retained, not deleted');
+  assert.equal(await prisma.externalGeoNonce.findUnique({where:{id:expiredNonce}}),null);
+  for(const active of races.filter(row=>row.status===201))assert.equal((await prisma.externalPlaybackLease.findUnique({where:{id:active.body.id}})).revokedAt,null);
+  pass('bounded housekeeping marks expired leases revoked without deleting history, prunes expired nonces, and preserves active leases');
   await prisma.externalPlaybackLease.updateMany({where:{userId},data:{revokedAt:new Date()}});
   pass('real GoTrue/PG: cross-user and same-user cross-session reuse denied; unsigned/expired/replayed geo denied; four racing creates enforce limit; renewal, expiry and cross-channel denial');
   stage='next_https_startup';
@@ -93,6 +100,8 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
    await page.locator('#'+name+' .ptv-open').click();
    const video=page.locator('video').first();await video.waitFor();await video.evaluate(v=>{v.muted=true;void v.play().catch(()=>{});});
    await page.waitForFunction(()=>{const v=document.querySelector('video');return v&&v.currentTime>1&&v.videoWidth>0;},null,{timeout:60000});
+   await video.evaluate(v=>{v.currentTime=8;void v.play();});await page.waitForFunction(()=>document.querySelector('video')?.currentTime>8.1,null,{timeout:20000});
+   await video.evaluate(v=>v.pause());const resumeAt=await video.evaluate(v=>v.currentTime);await video.evaluate(v=>v.play());await page.waitForFunction(value=>document.querySelector('video')?.currentTime>value+.1,resumeAt,{timeout:20000});
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
    assert.equal(transientDrops,1,'actual dropped TLS segment request recovered by bounded backend retry');
    const cookie=await context.cookies();assert.ok(cookie.some(c=>c.name==='__Host-cloudplay-lease'&&c.httpOnly&&c.secure));
@@ -144,6 +153,11 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   pass('actual GoTrue-backed entitlement revocation blocks subsequent DASH init/media requests');
   const dashCookie=(await dashContext.cookies()).find(c=>c.name==='__Host-cloudplay-lease');
   // Actual token rotation, same Supabase session_id preserves an active lease.
+  stage='isolated_bounded_capacity';
+  const {measurePlaybackCapacity}=await import('./test-playback-capacity.mjs');
+  const capacity=await measurePlaybackCapacity({app,prisma,base,token,geo});
+  console.log('PERFORMANCE_EVIDENCE '+JSON.stringify(capacity));
+  pass('bounded real Auth/native PG benchmark: 20 creates, 20 renewals at concurrency four, 32 synthetic segments at concurrency eight; connection and size samples recorded');
   stage='real_refresh_rotation_and_logout';
   const rotated=await fetch('http://127.0.0.1:9999/token?grant_type=refresh_token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({refresh_token:refreshToken})});assert.equal(rotated.status,200);const fresh=await rotated.json();
   assert.equal(JSON.parse(Buffer.from(fresh.access_token.split('.')[1],'base64url')).session_id,JSON.parse(Buffer.from(token.split('.')[1],'base64url')).session_id);

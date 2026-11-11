@@ -361,6 +361,7 @@ try {
     await pool.query(await readFile(path.join(evidence,'rollback.sql'),'utf8'));
     await pool.query(await readFile(path.join(evidence,'migration.sql'),'utf8'));
     await pool.query(await readFile(path.join(leaseMigration,'migration.sql'),'utf8'));
+    await pool.query(await readFile(path.join(api,'prisma/migrations/202611120005_playback_expiration_indexes/migration.sql'),'utf8'));
     assert.equal(await client.externalPlaybackLease.count(),0);
     assert.equal(await client.providerGroup.count(),0);assert.equal(await client.appUser.count(),before);
   });

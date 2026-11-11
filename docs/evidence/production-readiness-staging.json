@@ -1,0 +1,17 @@
+{
+  "source": "Vercel connector list_projects (read-only), followed by unauthenticated GET via fetch_page",
+  "project_id": "prj_zxlqaeLb1EvuMDFcnHHvRAelbHad",
+  "deployment_id": "dpl_C8PPHGc246LuL6kb3wCJybwBoqWj",
+  "environment": "preview",
+  "commit": "0259edc76b6cd7299922e5d38c20917406d451eb",
+  "ready_state": "READY",
+  "configured_node_version": "26.x",
+  "git_preview_deployments": "enabled by existing integration",
+  "probe_path": "/api/external/session",
+  "probe_result": "Vercel SSO/login protection; application/Geo handler not reached",
+  "geo_provenance_verified": false,
+  "protection_bypassed": false,
+  "settings_changed": false,
+  "secret_values_saved": false,
+  "production_accessed": false
+}

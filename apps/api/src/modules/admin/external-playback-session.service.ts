@@ -1,5 +1,5 @@
 import {playbackMetric} from './external-playback-metrics';
-import { ForbiddenException, HttpException, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpException, Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { Request } from 'express';
 import { PrismaService } from '../../prisma.service';
@@ -29,7 +29,29 @@ function binding(req:Request):{token:string;binding:string;sessionId:string}{
   }catch{throw new ForbiddenException('SUPABASE_SESSION_REQUIRED');}
 }
 @Injectable()
-export class ExternalPlaybackSessionService {
+export class ExternalPlaybackSessionService implements OnModuleInit, OnModuleDestroy {
+ private timer?:ReturnType<typeof setInterval>;
+ private running?:Promise<unknown>;
+ onModuleInit(){
+  if(process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED!=='true')return;
+  this.timer=setInterval(()=>{if(!this.running)this.running=this.expireBatch().catch(()=>{new Logger('ProtectedPlayback').error('PLAYBACK_CLEANUP_FAILED');}).finally(()=>{this.running=undefined;});},60000);
+  this.timer.unref?.();
+ }
+ async onModuleDestroy(){clearInterval(this.timer);await this.running;}
+ /** Retain lease history; mark expired grants revoked instead of deleting it.
+  * Nonces are ephemeral anti-replay state, not audit records. Both batches are
+  * bounded and a DB lock prevents duplicate housekeeping across replicas. */
+ async expireBatch(now=new Date()){
+  return this.prisma.$transaction(async tx=>{
+   const [lock]=await tx.$queryRaw<Array<{locked:boolean}>>`SELECT pg_try_advisory_xact_lock(837201629182374::bigint) AS locked`;
+   if(!lock.locked)return {expired:0,nonces:0,skipped:true};
+   const expired=await tx.externalPlaybackLease.findMany({where:{revokedAt:null,expiresAt:{lte:now}},select:{id:true},orderBy:{expiresAt:'asc'},take:500});
+   const updated=await tx.externalPlaybackLease.updateMany({where:{id:{in:expired.map(row=>row.id)},revokedAt:null,expiresAt:{lte:now}},data:{revokedAt:now}});
+   const nonces=await tx.externalGeoNonce.findMany({where:{expiresAt:{lte:now}},select:{id:true},orderBy:{expiresAt:'asc'},take:500});
+   const removed=await tx.externalGeoNonce.deleteMany({where:{id:{in:nonces.map(row=>row.id)},expiresAt:{lte:now}}});
+   return {expired:updated.count,nonces:removed.count,skipped:false};
+  },{timeout:10000});
+ }
  constructor(private readonly prisma:PrismaService){}
  /** Supabase /user can accept an access JWT after logout. Check the authoritative
   * session row too; deployment role must have narrowly scoped read access. */
@@ -45,7 +67,6 @@ export class ExternalPlaybackSessionService {
   return this.prisma.$transaction(async tx=>{
    // Same per-user lock across all workers: no count-then-create race.
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
-   await tx.externalGeoNonce.deleteMany({where:{expiresAt:{lt:new Date()}}});
    try{await tx.externalGeoNonce.create({data:{id:geo.nonce,expiresAt:new Date(geo.expiresAt)}});}catch{throw new ForbiddenException('GEO_REPLAY_DENIED');}
    const active=await tx.externalPlaybackLease.count({where:{userId:user.id,revokedAt:null,expiresAt:{gt:new Date()}}});
    const limit=Number(process.env.EXTERNAL_PLAYBACK_CONCURRENT_LIMIT||2);

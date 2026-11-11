@@ -767,8 +767,10 @@ model ExternalPlaybackLease {
   absoluteExpiresAt DateTime @db.Timestamptz
   revokedAt DateTime? @db.Timestamptz
   @@index([userId, expiresAt])
+  @@index([expiresAt])
 }
 model ExternalGeoNonce {
   id String @id
   expiresAt DateTime @db.Timestamptz
+  @@index([expiresAt])
 }

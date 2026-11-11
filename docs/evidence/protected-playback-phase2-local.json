@@ -1,0 +1,72 @@
+{
+  "runtime_sha": "0259edc76b6cd7299922e5d38c20917406d451eb",
+  "note": "Local isolated results; production schema/configuration unchanged.",
+  "api_jest": {
+    "suites": 40,
+    "tests": 630,
+    "passed": true
+  },
+  "web_contracts": {
+    "checks": 260,
+    "passed": true
+  },
+  "wasm_postgresql": {
+    "checks": 36,
+    "passed": true,
+    "native": false
+  },
+  "browser_asset_scan": {
+    "files": 43,
+    "known_upstream_address_leaks": 0
+  },
+  "web_lint": {
+    "errors": 0,
+    "existing_warnings": 3
+  },
+  "browser": {
+    "browser": {
+      "checks": 23,
+      "passed": true
+    },
+    "channels-browser": {
+      "checks": 25,
+      "passed": true
+    },
+    "layout": {
+      "checks": 120,
+      "passed": true
+    },
+    "search-browser": {
+      "checks": 19,
+      "passed": true
+    },
+    "popup": {
+      "checks": 18,
+      "passed": true
+    },
+    "total_checks": 205,
+    "built_runtime_sha": "8b146c92aa1e7edb38bad83e1f11b8a81c75855e"
+  },
+  "admin_browser": {
+    "passed": true,
+    "viewports": [
+      390,
+      820,
+      1280
+    ],
+    "identity_fixture": true,
+    "note": "Fresh built server 3004; older preview 3002 timed out and is not counted as success."
+  },
+  "pinned_fetch": {
+    "checks": 19,
+    "passed": true
+  },
+  "production_audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  }
+}

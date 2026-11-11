@@ -31,3 +31,19 @@ describe('declared unsupported media codecs',()=>{
   const {parseHls}=await import('./external-policy');expect(parseHls(`#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=200000,CODECS="${codec}"\nvariant.m3u8`,new URL('https://fixture.example/a.m3u8')).result).toBe('unsupported_codec');
  });
 });
+
+describe('playback cleanup scheduler safety',()=>{
+ let original:string|undefined;
+ beforeEach(()=>{original=process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED;jest.useFakeTimers();});
+ afterEach(()=>{if(original===undefined)delete process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED;else process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED=original;jest.useRealTimers();jest.restoreAllMocks();});
+ it('does not start housekeeping without explicit operator opt-in',async()=>{
+  delete process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED;
+  const {ExternalPlaybackSessionService}=await import('./external-playback-session.service');
+  const service=new ExternalPlaybackSessionService({} as never),tick=jest.spyOn(service,'expireBatch');service.onModuleInit();jest.advanceTimersByTime(120000);expect(tick).not.toHaveBeenCalled();await service.onModuleDestroy();
+ });
+ it('runs bounded housekeeping automatically and stops on shutdown',async()=>{
+  process.env.EXTERNAL_PLAYBACK_CLEANUP_ENABLED='true';
+  const {ExternalPlaybackSessionService}=await import('./external-playback-session.service');
+  const service=new ExternalPlaybackSessionService({} as never),tick=jest.spyOn(service,'expireBatch').mockResolvedValue({expired:1,nonces:1,skipped:false});service.onModuleInit();await jest.advanceTimersByTimeAsync(60000);expect(tick).toHaveBeenCalledTimes(1);await service.onModuleDestroy();await jest.advanceTimersByTimeAsync(60000);expect(tick).toHaveBeenCalledTimes(1);
+ });
+});

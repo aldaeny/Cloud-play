@@ -1,5 +1,279 @@
 # External Server Manager — final implementation acceptance
 
+## Current checkpoint — Protected Playback Phase 2
+
+**PRODUCTION ACCEPTANCE: NOT GRANTED.** This section supersedes older playback,
+edge and session statements below; historical evidence is retained unchanged.
+Starting commit: `604b43d`. Latest tested runtime: `0259edc76b6cd7299922e5d38c20917406d451eb`.
+No deployment, merge, production migration, external streaming-provider probe,
+real candidate activation or external report delivery was performed. Only
+explicit synthetic fixtures in disposable databases were approved inside tests.
+
+### Implementation and security findings
+
+1. **Session creation is now verified before setting cookies.** Next delegates
+   creation/renewal/revocation to Nest under the existing Supabase bearer. The
+   backend resolves the active account and tenant; it does not accept browser
+   identity/role/tenant fields. A PostgreSQL media lease is an authorization grant,
+   not a second login or refresh-token issuer. Lease lifetime is 120 seconds,
+   renewal is scheduled at 45 seconds, and absolute lifetime is four hours.
+   Supabase SDK refresh-token rotation/locking is retained; refresh tokens never
+   enter media cookies or the Nest media API.
+2. **Immediate checks and concurrency.** Each manifest/resource requires the
+   actual Supabase token, the owning lease, matching channel/tenant, and the
+   original Supabase `auth.sessions` row (including `not_after`). Logout can reject
+   through Auth (401) or the absent session row (403); either denies playback.
+   Lease revocation, account disablement and source/right revocation deny
+   subsequent requests. Source/rights, lease and Supabase session are rechecked
+   before returning fetched bytes. Previously buffered bytes cannot be recalled.
+   Creation uses a per-user PostgreSQL transaction advisory lock across replicas;
+   default cap is two leases, configurable 1–10. This is NOT a plan-specific
+   subscription/device entitlement implementation or a production load proof.
+3. **Trusted request context.** The Next issuer reads only Vercel's ingress-owned
+   `x-vercel-ip-country`, requires actual runtime opt-in (`VERCEL=1` plus
+   `EXTERNAL_TRUST_VERCEL_GEO=true`), and fails closed otherwise. HMAC assertions
+   bind country, web platform, channel, SHA-256 of the bearer, a fresh nonce and a
+   maximum 30-second window. Nest validates them; a PostgreSQL unique nonce ledger
+   prevents successful replay across workers. Unsigned browser assertions are not
+   forwarded. Session mutations require an explicitly configured HTTPS browser
+   origin, not a client-controlled Host/Forwarded origin. **Actual Vercel ingress
+   provenance/no-bypass behavior remains unverified:** CI uses a clearly labelled
+   controlled HTTPS ingress fixture that overwrites the country header. Do not
+   enable the trust flag on an arbitrary/custom server. No IP/UA country fallback.
+4. **All media objects remain protected.** Master/variant manifests, segments,
+   fMP4 initialization, and subtitles use the same authenticated lease/rights
+   gates. Opaque encrypted addresses bind user, tenant, channel, source and lease;
+   another authenticated user's token, another Supabase session of the same user,
+   another channel or another lease cannot reuse them. Addresses live at most to
+   the four-hour absolute lease limit; renewing the short lease therefore does not
+   strand a long-running stream with five-minute resource URLs. Repeated reads
+   within the same authorized live lease are intentionally allowed (HLS retry,
+   reload and byte ranges), not advertised as single-use media tokens.
+5. **URI/range delivery.** Same-origin relative and absolute HLS references and
+   supported DASH templates are rewritten. A per-manifest address cache preserves
+   identical URIs for implicit HLS byte-range offsets. Single HTTP byte ranges,
+   suffix/open ranges, 206/Content-Range and 416 are implemented over bounded
+   buffered resources. No provider redirect is followed. Full objects are still
+   fetched from the provider (8 MiB maximum); this is not large-file streaming or
+   upstream Range forwarding. Multipart/conditional If-Range and live byte-range
+   profiles depending on previous manifest windows are not certified.
+6. **Browser lifecycle and failure recovery.** Existing VideoPlayer/MediaViewer
+   prepare and renew the session, respond to Supabase refresh/logout and online
+   events, serialize lifecycle operations, and release leases on unmount/channel
+   change. Retries are bounded; HLS recovery reloads the protected manifest rather
+   than repeatedly fetching a stale source ticket. Session POST/PUT/DELETE and
+   media errors return safe codes; 401/403/404/416/429 are preserved where relevant,
+   and upstream auth/redirect/other failures are not confused with viewer identity
+   failures. One shared media cookie/lease is active per browser profile; independent
+   browsers can use separate leases up to the backend cap. Concurrent different
+   channels in multiple tabs of the same browser are not certified.
+7. **Closed a real bundle leakage path.** Home/about previously imported the raw
+   curated list to render its length, embedding upstream addresses in browser JS.
+   Counts are now calculated in static server props. The actual production build
+   is scanned for all curated stream addresses; none were found in 43 JS files.
+   Catalog metadata returns only protected addresses. Names, IDs, EPG, favorites,
+   categories, themes, navigation and the existing player/UI structure are retained.
+8. **Safe observations.** Fixed-vocabulary JSON events record post-auth manifest
+   and resource request durations/status, startup, buffering/failures, provider
+   failures, source switches, session operations/expiration and auth denials.
+   Client observations are untrusted telemetry, not provider-health authority.
+   Existing provider-health/failover history and Admin diagnostics remain intact.
+   No identities, headers, credentials, signed tickets, raw exceptions or private
+   provider URLs are serialized into these events. Next incoming request logging
+   is disabled to avoid logging media-ticket query strings. Central retention,
+   aggregation, alert routing and operational dashboards still require acceptance.
+
+### Files, schema and rollback
+
+- Nest: `external-playback.controller.ts`, new
+  `external-playback-session.service.ts`, `external-media-range.ts`,
+  `external-playback-metrics.ts`, existing channels/manifest policy and Auth guard.
+- Next: `pages/api/external/session.ts`, `[id]/[action].ts`,
+  `src/server/playback-geo.ts`, `protected-live.ts`,
+  `src/lib/media-session.ts`, `use-playback-metrics.ts`, existing player and
+  Public/Community components, SSR home/about counts. DASH metadata uses the
+  protected `manifest.mpd` alias; no component replacement.
+- Tests: actual Auth/Nest browser harness
+  `apps/api/scripts/test-protected-auth-playback.mjs`, existing isolated Auth/PG
+  runners, new session/range/security specs, Web contracts, built asset scanner.
+- **One new additive migration file:**
+  `202611120004_external_playback_leases/{migration.sql,rollback.sql}`.
+  Two backend-only tables (`ExternalPlaybackLease`, `ExternalGeoNonce`), RLS
+  default-deny, browser-role grants revoked, tenant/channel/user FKs and index.
+  Current inventory: 48 Prisma models / 50 backend tables. Isolated rollback and
+  reapply passed; no production migration was executed.
+- Production API database role must have reviewed narrow read access to the
+  authoritative Supabase session fields used by the read-only query. Missing
+  schema/permission fails closed with `AUTH_SESSION_CHECK_UNAVAILABLE` (503).
+  CI's disposable database uses its isolated owner role; it does not prove the
+  production role is correctly provisioned. No production grant was made.
+- Defaults in `.env.example` deny playback. Required server-only settings:
+  `EXTERNAL_PUBLIC_ORIGIN`, `EXTERNAL_GEO_SIGNING_KEY`, approved
+  `EXTERNAL_CHANNEL_BINDINGS`, optional `EXTERNAL_CHANNEL_FORMATS`, and the
+  concurrency limit. Mapping a directory ID is not publication/rights approval.
+  The legacy `EXTERNAL_PLAYBACK_CONTEXT_KEY` alone no longer grants access.
+- Rollback is by ordinary revert commits on this branch, without resets or history
+  deletion. Keep protected Live disabled during rollback; do not re-enable direct
+  provider paths. The SQL rollback is for controlled empty fixture state, not
+  permission to drop production leases/audit data. No production rollback action
+  is currently necessary because nothing was deployed/migrated.
+
+### Exact verification and CI evidence
+
+**Final CI: SUCCESS**, runtime `0259edc76b6cd7299922e5d38c20917406d451eb`:
+https://github.com/aldaeny/Cloud-play/actions/runs/42924580153
+All four jobs passed: native PostgreSQL Node 22, native PostgreSQL Node 24,
+isolated Auth/SMTP/playback, and full application regression. Local tests use only
+generated media and disposable PostgreSQL, never a production database.
+Actual run/job metadata and sanitized check annotations are retained in
+`docs/evidence/protected-playback-phase2-{ci,jobs,auth,native-node22,native-node24}.json`;
+local summaries are in `protected-playback-phase2-local.json`. The run SHA and all
+four conclusions were programmatically asserted before writing this report.
+
+- `npm run test:postgres:native --workspace aether-api`: **38 checks PASS on each
+  of Node 22 and 24**, real native query engine/PrismaService plus disposable PG.
+- `node apps/api/scripts/test-auth-recovery.mjs`: **15 real assertion groups PASS**,
+  including six authenticated-playback groups below. Exact disposable Auth/SMTP,
+  certificate, media and database setup is `.github/workflows/auth-recovery.yml`.
+  No fixtures replace identity, business guards or Prisma in this E2E harness.
+
+- `npm run test --workspace aether-api -- --runInBand`: **40 suites / 630 tests PASS**.
+- `node scripts/test-web-contracts.mjs`: **260 checks PASS** across all 14 offline
+  Web suites, including nine new protected transport/Geo contract groups.
+- `npm run test:postgres --workspace aether-api`: **36 checks PASS**, actual
+  isolated PostgreSQL using the explicitly labelled WASM/pg adapter, not native
+  engine evidence.
+- `node apps/web/tests/pinned-fetch.test.mjs`: **19 checks PASS** on local sockets.
+- `npm run test:bridge --workspace aether-admin`: **PASS**, existing actual HTTP
+  bridge assertion group.
+- `npm exec --workspace aether-api -- tsc --noEmit`,
+  `npm exec --workspace aether-web -- tsc --noEmit`, API lint: **PASS**.
+  Web lint: **0 errors / 3 existing warnings**, not suppressed.
+- `DATABASE_URL=postgresql://unused:unused@127.0.0.1:1/unused npm run build --workspaces`:
+  **PASS** (build is not substituted for behavior evidence).
+- `node scripts/check-protected-media-assets.mjs`: **43 JS files / zero known
+  upstream curated stream addresses PASS**.
+- `npm audit --omit=dev --json`: **0 production vulnerabilities** at this checkpoint;
+  tooling audit remains visible in CI, not suppressed or forcibly upgraded.
+
+Existing browser suites also ran locally against the freshly built isolated
+site on port 3003, with an actual Chromium binary and original generated media:
+
+```bash
+FFMPEG="$PWD/.cache/phase2-ffmpeg/package/ffmpeg" node scripts/generate-media-fixtures.mjs .cache/phase2-media
+export BASE_URL=http://127.0.0.1:3003
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE=/tmp/chromium-wrapper
+export LD_LIBRARY_PATH=/tmp/al2023/lib FONTCONFIG_PATH=/tmp/fonts
+export MEDIA_FIXTURES="$PWD/.cache/phase2-media"
+npm run test:browser --workspace aether-web
+npm run test:channels:browser --workspace aether-web
+npm run test:layout --workspace aether-web
+npm run test:search:browser --workspace aether-web
+npm run test:popup --workspace aether-web
+```
+
+| Browser command | Passed | Failed |
+|---|---:|---:|
+| `test:browser` | 23 | 0 |
+| `test:channels:browser` | 25 | 0 |
+| `test:layout` | 120 | 0 |
+| `test:search:browser` | 19 | 0 |
+| `test:popup` | 18 | 0 |
+| **Total** | **205** | **0** |
+
+These five commands also passed in the final CI. The older general browser
+suites use explicit synthetic catalog/media interception for UI/decoder regression;
+they are **not** substituted for the separate real authenticated E2E harness.
+Temporary FFmpeg tooling/media stayed under ignored `.cache`; no package or
+lockfile dependency was added for it. Test servers on 3003/3004 were stopped.
+
+`BASE_URL=http://127.0.0.1:3004 PLAYWRIGHT_CHROMIUM_EXECUTABLE=/tmp/chromium-wrapper LD_LIBRARY_PATH=/tmp/al2023/lib FONTCONFIG_PATH=/tmp/fonts node apps/web/tests/admin-providers-browser.mjs`:
+**PASS**, the actual Admin browser assertion group with explicitly mocked admin
+identity/API states and responsive widths 390/820/1280 (not a real Admin Auth E2E).
+It also passed in final CI. A first attempt against the old existing preview on
+3002 timed out waiting for an alert; that attempt is retained as a failed run,
+not counted as success. The fresh current production build on 3004 passed.
+
+Additional final-CI commands, all **PASS**, without external providers:
+- `node apps/api/scripts/test-external-tls.mjs` — real local TLS/certificate gates.
+- `MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/api/scripts/test-external-http-protocols.mjs` — generated HLS/DASH/M3U transport group.
+- `FFMPEG="$(command -v ffmpeg)" MEDIA_FIXTURES="$GITHUB_WORKSPACE/.cache/media-fixtures" node apps/worker-media/tests/local-media-input.mjs` — real worker input rejection/processing group.
+- `npm exec --workspace aether-admin -- tsc --noEmit`, all three workspace lint
+  commands and `npm run build --workspaces` — actual CI gates, not skipped.
+
+**Failures found and fixed, not hidden:** initial run
+https://github.com/aldaeny/Cloud-play/actions/runs/42921170679 failed after the
+player's `use client` directive was displaced by new imports; TypeScript/lint alone
+had not caught that Next build error. It was corrected and actual builds rerun.
+Intermediate run https://github.com/aldaeny/Cloud-play/actions/runs/42922106464
+failed only the final logout status expectation (403 expected, authoritative 401
+returned); the assertion now permits 401 or 403, never a successful response.
+Initial local PG schema-inventory assertions expected the old model/table counts;
+these were updated to 48/50 without removing relationship/RLS assertions.
+The browser-bundle scan exposed the count-only raw-directory import leak, now
+fixed and tested. The latest full run above is green; intermediate failed runs
+are not portrayed as acceptance evidence.
+
+The Auth CI journey is real: browser → existing Next player/session/media routes
+→ Nest Supabase guard → disposable GoTrue + native Prisma/PostgreSQL → isolated
+TLS transport → original FFmpeg-generated HLS/DASH. Neither Auth, Prisma nor
+business guards are replaced in that harness. The only network routing override
+maps the explicit synthetic media hostname to its local TLS fixture; production
+pinned-transport/private-network denial is unchanged. Existing older PG playback
+checks still explicitly use an identity fixture and are not presented as that E2E.
+
+The six authenticated-playback assertion groups cover:
+1. Actual cross-user and same-user cross-Supabase-session denial, signed context
+   validation/replay, four racing creates under the two-lease cap, renewal,
+   expiration and cross-channel denial.
+2. HLS decoded video dimensions/currentTime at desktop 1280 px through the actual
+   chain; an actual dropped TLS segment connection recovers via bounded retry.
+3. Buffered offline/online behavior and lease revocation with cookies retained;
+   independent HLS variant/segment/subtitle authorization, real 206 byte ranges,
+   repeated-URI byte-range playlist checks, and relative/absolute rewriting.
+4. Supported DASH fMP4 initialization/media decoded at mobile viewport 390 px.
+5. Actual licence/entitlement revocation blocks subsequent DASH init/media.
+6. Actual refresh-token rotation renews the same-session lease; actual GoTrue
+   logout denies still-signed JWT playback immediately (401 or 403).
+
+**Format boundary:** unencrypted HLS (tested H.264/AAC MPEG-TS, subtitles), strict
+same-origin DASH SegmentTemplate/SegmentList subset (tested H.264/AAC fMP4).
+Declared unsupported codecs are denied; absence of codec declarations still
+requires browser decode validation. AES-128/SAMPLE-AES HLS, all DRM/key retrieval,
+external DASH BaseURL/xlink/clock controls, unsupported templates, RTMP and other
+unsupported MIME/protocol profiles are rejected. There are **no supported
+protected encryption-key requests** in this release; no key/DRM extraction is
+attempted. This does not claim universal HLS/DASH/codec compatibility.
+
+### Remaining production blockers
+
+- Actual approved hosting-ingress trust/no-bypass and signing-key provisioning
+  have not been exercised on Vercel. The isolated edge is not hosting evidence.
+- Approved production schema/grants, reviewed channel mappings/rights and
+  operational configuration remain unapplied; no real provider was contacted.
+- Physical/native Safari, Firefox, Android TV and Google TV are untested here.
+  Chromium mobile viewport evidence is not a physical mobile/TV certification.
+- Four competing creates prove serialization, not sustained throughput, scale,
+  latency SLOs or production reliability. No production load/p95 claim is made.
+- Per-plan subscription/device restrictions are not attached to ExternalChannel
+  leases; existing VOD entitlement paths and their fail-closed delivery remain
+  unchanged. A business entitlement decision is required before paid Live use.
+- Sender-constrained/DPoP anti-theft tokens are not implemented: stealing both a
+  bearer and its same-session cookie/lease remains a bearer-credential compromise.
+  Media-address replay within that authorized lease is intentionally permitted.
+- Multi-tab different-channel playback, prolonged offline expiration/restart,
+  browser-level provider failover/codec continuity, conditional/multipart ranges
+  and sliding-window implicit ranges need further device/reliability acceptance.
+- Logs/metrics are implemented, but centralized aggregation, alert thresholds,
+  retention, routing and production operational health acceptance are not proven.
+- The prior real malware scanner/operator quarantine acceptance and any real
+  report-recipient setup remain unverified. No reports were sent externally.
+
+**Do not deploy, merge, activate candidates or declare production readiness on the
+strength of these isolated tests.**
+
+---
+
 ## Decision and safety boundary
 
 **Complete production acceptance is NOT granted.** The multi-provider, rights-gated failover, playback proxy, durable reporting and quarantine implementations below are real and tested in isolation. Production integration still requires trusted country/platform assertions, a real malware scanner, an approved report recipient and authorized provider/media/device acceptance. Unsupported protocol profiles remain denied. Do not interpret this report as approval to deploy, merge, migrate production, publish a source, rotate a key or contact a provider.

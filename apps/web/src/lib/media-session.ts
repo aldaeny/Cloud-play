@@ -34,7 +34,7 @@ function schedule(id:string,g:number,delay=45000,retry=false){
 /** Existing player calls this at attach/retry. No second account authority. */
 export function prepareMediaSession(src:string):Promise<void>{return serial(async()=>{
  const id=channel(src);if(id===null)return;if(!id)throw new Error('INVALID_CHANNEL');
- if(current===id){await exchange(id,'PUT');return;}
+ if(current===id){try{await exchange(id,'PUT');return;}catch(error){await release().catch(()=>{});throw error;}}
  if(current)await release();
  await exchange(id,'POST');current=id;const g=++generation;schedule(id,g);
  const subscription=getSupabase()?.auth.onAuthStateChange(event=>{
