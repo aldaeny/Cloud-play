@@ -176,6 +176,15 @@ try {
     assert.ok(found.length > 0, 'English title search broke');
   });
 
+  await check('hostile search markup stays inert in the actual DOM', async () => {
+    await page.evaluate(()=>{window.__cloudplayXss=0;});
+    await filmSearch.fill('<img src=x onerror="window.__cloudplayXss=1"><script>window.__cloudplayXss=1</script>');
+    await page.waitForTimeout(300);
+    assert.equal(await page.evaluate(()=>window.__cloudplayXss),0);
+    assert.equal(await page.locator('img[src="x"]').count(),0);
+    assert.equal(await filmSearch.inputValue(),'<img src=x onerror="window.__cloudplayXss=1"><script>window.__cloudplayXss=1</script>');
+  });
+
   await check('film search clears back to the full library', async () => {
     await filmSearch.fill('');
     await page.waitForTimeout(300);

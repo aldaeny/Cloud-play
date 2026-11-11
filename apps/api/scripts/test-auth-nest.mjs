@@ -57,11 +57,12 @@ try {
   await request(server).get(`/external-playback/${randomUUID()}/manifest`).expect(401);
   await request(server).get(`/external-playback/${randomUUID()}/manifest`).set('Authorization', bearer).expect(403);
   await request(server).get(`/external-playback/${randomUUID()}/resource?ticket=invalid`).set('Authorization', bearer).expect(403);
+  const inertName="<img src=x onerror=window.__cloudplayXss=1>'); DROP TABLE \"Profile\"; --";
   const own = await request(server).post('/profiles').set('Authorization', bearer)
-    .send({ name: 'Actual Auth Fixture', userId: otherUser, tenantId: otherTenant, roles: ['admin'] }).expect(201);
+    .send({ name: inertName, userId: otherUser, tenantId: otherTenant, roles: ['admin'] }).expect(201);
   assert.equal(own.body.userId, user.id);
   const profiles = await request(server).get('/profiles').set('Authorization', bearer).expect(200);
-  assert.equal(profiles.body.length, 1); assert.equal(profiles.body[0].id, own.body.id);
+  assert.equal(profiles.body.length, 1); assert.equal(profiles.body[0].id, own.body.id);assert.equal(profiles.body[0].name,inertName);
   await request(server).put(`/profiles/${otherProfile}`).set('Authorization', bearer).send({ name: 'stolen' }).expect(404);
   await request(server).delete(`/profiles/${otherProfile}`).set('Authorization', bearer).expect(404);
   await pool.query('UPDATE "AppUser" SET status=\'disabled\' WHERE id=$1', [user.id]);

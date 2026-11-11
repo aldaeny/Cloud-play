@@ -159,10 +159,6 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   const capacity=await measurePlaybackCapacity({app,prisma,base,token,geo});
   console.log('PERFORMANCE_EVIDENCE '+JSON.stringify(capacity));
   pass('bounded real Auth/native PG benchmark: 20 creates, 20 renewals at concurrency four, 32 synthetic segments at concurrency eight; connection and size samples recorded');
-  stage='progressive_synthetic_load';
-  const {progressiveLoad}=await import('./test-progressive-load.mjs');
-  await progressiveLoad({app,prisma,tenant,base,geo});
-  pass('actual isolated progressive load at 10/25/50/100 distinct GoTrue users; native DB and synthetic TLS media; recovery query succeeds');
   stage='real_refresh_rotation_and_logout';
   const rotated=await fetch('http://127.0.0.1:9999/token?grant_type=refresh_token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({refresh_token:refreshToken})});assert.equal(rotated.status,200);const fresh=await rotated.json();
   assert.equal(JSON.parse(Buffer.from(fresh.access_token.split('.')[1],'base64url')).session_id,JSON.parse(Buffer.from(token.split('.')[1],'base64url')).session_id);
@@ -172,6 +168,10 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   assert.ok([401,403].includes(afterLogout.status),'logout must deny whether GoTrue rejects JWT or authoritative session row is absent');
   pass('actual refresh-token rotation renews same-session lease; real GoTrue logout immediately denies still-signed access JWT');
   await dashContext.close();
+  stage='progressive_synthetic_load';
+  const {progressiveLoad}=await import('./test-progressive-load.mjs');
+  await progressiveLoad({app,prisma,tenant,base,geo});
+  pass('actual isolated progressive load at 10/25/50/100 distinct GoTrue users; native DB and synthetic TLS media; recovery query succeeds');
   return checks;
  }catch(error){
   const status=String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/);

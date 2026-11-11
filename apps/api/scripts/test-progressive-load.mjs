@@ -22,6 +22,12 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
  const stats=a=>{const b=[...a].sort((x,y)=>x-y),p=n=>+(b[Math.max(0,Math.ceil(b.length*n)-1)]||0).toFixed(3);return {count:a.length,p50_ms:p(.5),p95_ms:p(.95),p99_ms:p(.99)};};
  const db=async()=>{const [row]=await prisma.$queryRaw`SELECT count(*)::int AS connections FROM pg_stat_activity WHERE datname=current_database() AND backend_type='client backend'`;return row.connections;};
  const initialConnections=await db();
+ // Keep one listening server for the whole measurement. Supertest's automatic
+ // per-request listen/close lifecycle races when many temporary agents share
+ // a non-listening Nest server, producing harness errors instead of HTTP data.
+ const server=app.getHttpServer();
+ if(!server.listening)await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
+ const settle=async tasks=>{const results=await Promise.allSettled(tasks);const failed=results.find(r=>r.status==='rejected');if(failed)throw failed.reason;return results;};
  const channel=base.split('/')[2];
  const call=(u,method,path)=>request(app.getHttpServer())[method](path).timeout({response:10000,deadline:15000}).set('Authorization','Bearer '+u.token).set('x-playback-session',u.lease||'');
  try{
@@ -37,13 +43,13 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
    }
    checkpoint='requests_'+count;const phaseStart=performance.now(),cpu=process.cpuUsage(),samples={login,create:[],renew:[],channels:[],manifest:[],segment:[]};let errors=0,timeouts=0,total=0,connections=0;
    const timed=async(kind,fn)=>{const t=performance.now();total++;try{return await fn();}catch(e){errors++;if(e.timeout||e.name==='TimeoutError')timeouts++;throw e;}finally{samples[kind].push(performance.now()-t);}};
-   await Promise.all(users.map(async u=>{
+   checkpoint='create_'+count;await settle(users.map(async u=>{
     const r=await timed('create',()=>call(u,'post',base+'/session').set('x-external-geo',geo(channel,u.token)).expect(201));u.lease=r.body.id;
    }));
    // Three timed waves with a 2s pause: bounded sustained bursts, not a soak.
    for(let wave=0;wave<3;wave++){
-    safety();connections=Math.max(connections,await db());
-    await Promise.all(users.map(async u=>{
+    checkpoint='wave_'+count+'_'+wave;safety();connections=Math.max(connections,await db());
+    await settle(users.map(async u=>{
      await timed('renew',()=>call(u,'put',base+'/session').set('x-external-geo',geo(channel,u.token)).expect(200));
      await timed('channels',()=>call(u,'get','/profiles').expect(200)); // real authenticated API read; channel list is a Web path, not this API
      const text=async path=>(await call(u,'get',path).buffer(true).parse((res,done)=>{let value='';res.on('data',b=>value+=b.toString());res.on('end',()=>done(null,value));}).expect(200)).body;
@@ -53,7 +59,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
      await timed('segment',()=>call(u,'get',segment).expect(200));
     }));await wait(2000);
    }
-   await Promise.all(users.map(async u=>{await call(u,'delete',base+'/session').expect(200);u.lease=undefined;}));
+   checkpoint='revoke_'+count;await settle(users.map(async u=>{await call(u,'delete',base+'/session').expect(200);u.lease=undefined;}));
    const used=process.cpuUsage(cpu);safety();
    phases.push({status:'VERIFIED',users:count,duration_ms:Math.round(performance.now()-phaseStart),waves:3,requests_measured:total,error_rate:errors/total,timeout_rate:timeouts/total,latency:Object.fromEntries(Object.entries(samples).map(([k,v])=>[k==='channels'?'authenticated_profiles_api':k,stats(v)])),process_cpu_ms:(used.user+used.system)/1000,rss_bytes:process.memoryUsage().rss,observed_db_connections_max:connections});
   }
@@ -62,7 +68,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Progressive synthetic load::'+JSON.stringify(result));return result;
  }catch(error){
   const code=typeof error?.code==='string'&&/^[A-Z0-9_]{1,32}$/.test(error.code)?error.code:'LOAD_CHECK_FAILED';
-  const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null};
+  const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null,http_status:typeof error?.status==='number'?error.status:null,expected_got:String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1)||null,known_reason:['Server is not running','ECONNRESET','ECONNREFUSED','socket hang up','RSS safety stop','free memory safety stop','total duration safety stop','connection recovery budget'].find(text=>String(error?.message||'').includes(text))||null};
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('LOAD_FAILURE '+JSON.stringify(result));throw error;
  }finally{
   // Disposable identities only. Never print tokens, emails or passwords.
