@@ -1,0 +1,20 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {validatePlan} from './validate-launch-plan.mjs';
+import {verifyRecovery} from './verify-recovery-evidence.mjs';
+const blank=JSON.parse(readFileSync(new URL('../../ops/launch-plan.json',import.meta.url)));
+const approved=()=>{const p=structuredClone(blank);Object.assign(p,{executionApproved:true});p.budget.approved=true;Object.assign(p.staging,{apiOrigin:'https://api.example.invalid',webOrigin:'https://web.example.invalid',supabaseProjectRef:'a'.repeat(20),storageBucket:'synthetic'});Object.assign(p.restore,{supabaseProjectRef:'b'.repeat(20),storageBucket:'recovered',region:'independent-region'});Object.assign(p.security,{policyApproved:true,authIngressEnforcementVerified:true,ssoSessionAvailable:true});Object.assign(p.recovery,{pitrEntitlementVerified:true,targetsApproved:true});Object.assign(p.monitoring,{externalMonitorProvisioned:true,alertDestinationConfigured:true});return p;};
+const evidence=()=>({sourceProjectRef:'a'.repeat(20),restoreProjectRef:'b'.repeat(20),incidentAt:'2026-11-08T12:00:00Z',restorePointAt:'2026-11-08T11:59:00Z',newestRestoredCommitAt:'2026-11-08T11:58:00Z',verifiedServiceReadyAt:'2026-11-08T12:05:00Z',beforePointMarkerPresent:true,afterPointMarkerAbsent:true,rlsOwnerTenantDenialVerified:true,authVerified:true,playbackVerified:true,rollbackVerified:true,alertDeliveryVerified:true,objects:[{sourceSha256:'a'.repeat(64),restoredSha256:'a'.repeat(64),sourceBytes:188,restoredBytes:188,metadataMatch:true,aclDenialVerified:true}],evidenceReferences:['operator-action','storage-check','rollback-check']});
+test('unfilled plan is BLOCKED, no pretend readiness',()=>assert.equal(validatePlan(blank).status,'BLOCKED'));
+test('filled approved plan only passes offline validation',()=>assert.equal(validatePlan(approved()).status,'PASS'));
+test('budget sum and headroom are deterministic',()=>{const r=validatePlan(blank);assert.equal(r.estimatedMonthlyUsd,235);assert.equal(r.proposedCeilingUsd,250);});
+test('production and non-independent restore forbidden',()=>{const p=approved();p.restore.supabaseProjectRef=p.productionProjectRefs[0];assert.equal(validatePlan(p).status,'FAIL');p.restore.supabaseProjectRef=p.staging.supabaseProjectRef;assert.equal(validatePlan(p).status,'FAIL');});
+test('pool overcommit and invalid numeric resources fail',()=>{const p=approved();p.api.replicas=100;assert.equal(validatePlan(p).status,'FAIL');p.api.replicas=NaN;assert.equal(validatePlan(p).status,'FAIL');});
+test('over-budget, invalid countries and credential-bearing origins fail',()=>{const p=approved();p.budget.proposedMonthlyCeiling=1;p.security.allowedCountries=['iq'];p.staging.apiOrigin='https://user:password@example.invalid';assert.equal(validatePlan(p).status,'FAIL');});
+test('recovery observations compute real intervals, not defaults',()=>{const r=verifyRecovery(approved(),evidence());assert.equal(r.rpoSeconds,120);assert.equal(r.rtoSeconds,300);});
+for(const kind of ['auth','checksum','timeline','objective','reference','authorization'])test('reject incomplete recovery '+kind,()=>{const p=approved(),e=evidence();if(kind==='auth')e.authVerified=false;if(kind==='checksum')e.objects[0].restoredSha256='b'.repeat(64);if(kind==='timeline')e.newestRestoredCommitAt='2026-11-08T13:00:00Z';if(kind==='objective')p.recovery.rtoTargetSeconds=1;if(kind==='reference')e.evidenceReferences=[];if(kind==='authorization')p.executionApproved=false;assert.throws(()=>verifyRecovery(p,e));});
+
+test('string approvals cannot authorize execution',()=>{const p=approved();p.executionApproved='true';assert.equal(validatePlan(p).status,'BLOCKED');});
+test('non-numeric recovery objectives fail',()=>{const p=approved();p.recovery.rpoTargetSeconds=NaN;assert.equal(validatePlan(p).status,'FAIL');assert.throws(()=>verifyRecovery(p,evidence()));});
+test('string observations cannot certify a restore',()=>{const e=evidence();e.rollbackVerified='false';assert.throws(()=>verifyRecovery(approved(),e));});

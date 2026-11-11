@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "environment": "staging",
+  "executionApproved": false,
+  "productionProjectRefs": ["syscezbzxgnfxftfzaqa"],
+  "knownVercelProject": "prj_zxlqaeLb1EvuMDFcnHHvRAelbHad",
+  "knownVercelTeam": "team_nmqPC9TkSiA2rxnHqz6cVADh",
+  "staging": {"apiOrigin": null, "webOrigin": null, "supabaseProjectRef": null, "storageBucket": null},
+  "restore": {"supabaseProjectRef": null, "storageBucket": null, "region": null},
+  "api": {"replicas": 2, "cpuPerReplica": 1, "memoryMiBPerReplica": 1024, "connectionLimitPerReplica": 5, "poolTimeoutSeconds": 10, "reservedAuthWorkerConnections": 10, "databaseConnectionBudget": 30},
+  "security": {"allowedCountries": ["IQ"], "policyApproved": false, "authIngressEnforcementVerified": false, "ssoSessionAvailable": false, "rateLimitStore": "postgres"},
+  "monitoring": {"probeIntervalSeconds": 60, "timeoutMs": 5000, "consecutiveFailuresToAlert": 3, "alertDestinationConfigured": false, "externalMonitorProvisioned": false},
+  "recovery": {"pitrEntitlementVerified": false, "rpoTargetSeconds": 300, "rtoTargetSeconds": 1800, "targetsApproved": false},
+  "budget": {
+    "currency": "USD", "approved": false, "proposedMonthlyCeiling": 250, "oneOffDrillCeiling": 25,
+    "pricingStatus": "planning allowances, not verified vendor quotes; no purchase authorized",
+    "monthlyAllowances": {"managedDatabaseBase": 25, "stagingAndRestoreCompute": 20, "managedPitr": 100, "commercialWebHosting": 20, "twoApiReplicas": 24, "independentStorageBackup": 6, "monitoring": 5, "storage": 5, "contingency": 30},
+    "excludedUntilQuoted": ["media/CDN egress", "content rights", "physical device lab", "tax", "additional seats/regions", "transcoding worker/Redis if activated"]
+  }
+}

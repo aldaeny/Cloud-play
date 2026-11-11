@@ -1,0 +1,18 @@
+{
+  "status": "NOT RUN",
+  "sourceProjectRef": null,
+  "restoreProjectRef": null,
+  "incidentAt": null,
+  "restorePointAt": null,
+  "newestRestoredCommitAt": null,
+  "verifiedServiceReadyAt": null,
+  "beforePointMarkerPresent": false,
+  "afterPointMarkerAbsent": false,
+  "rlsOwnerTenantDenialVerified": false,
+  "authVerified": false,
+  "playbackVerified": false,
+  "rollbackVerified": false,
+  "alertDeliveryVerified": false,
+  "objects": [],
+  "evidenceReferences": []
+}
