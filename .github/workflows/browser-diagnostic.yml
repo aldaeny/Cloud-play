@@ -1,0 +1,19 @@
+name: Isolated browser download diagnostic
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-download:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/fixture-tool-step.mjs browser_install node node_modules/playwright-core/cli.js install --with-deps chromium
+        env:
+          DEBUG: pw:install
