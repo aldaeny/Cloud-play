@@ -84,7 +84,7 @@ try {
   const playbackLogin=await call('/token?grant_type=password',{email,password:newPassword});
   assert.equal(playbackLogin.status,200);
   const nestResult=await promisify(execFile)(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-auth-nest.mjs')], {
-    timeout: 300000, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
+    timeout: 600000, maxBuffer:16*1024*1024, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
       AUTH_PLAYBACK_SESSION:JSON.stringify(playbackLogin.data),
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
   }).catch(error=>{
@@ -96,13 +96,15 @@ try {
     console.log('::error title=Protected playback isolated failure::'+expected);
     throw new Error('ISOLATED_NEST_PLAYBACK_FAILED');
   });
+  const loadLine=nestResult.stdout.split('\n').find(line=>line.startsWith('::notice title=Progressive synthetic load::'));
+  assert.ok(loadLine);console.log(loadLine);
   const capacityLine=nestResult.stdout.split('\n').find(line=>line.startsWith('PERFORMANCE_EVIDENCE '));
   assert.ok(capacityLine);const capacity=JSON.parse(capacityLine.slice('PERFORMANCE_EVIDENCE '.length));
   assert.equal(capacity.certifies_production_capacity,false);assert.equal(capacity.create.count,20);assert.equal(capacity.renew.count,20);assert.equal(capacity.segment.count,32);
   await writeFile('production-readiness-performance.json',JSON.stringify(capacity,null,2)+'\n');
   console.log('::notice title=Isolated playback capacity::'+JSON.stringify(capacity));
   for(const line of nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')))await passed(line.slice(5));
-  assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,8);
+  assert.equal(nestResult.stdout.split('\n').filter(line=>line.startsWith('PASS protected authenticated playback:')).length,9);
   await passed('actual Nest native Prisma and Web owner-ID ACL integrate with Supabase identity; tenant disabled and invalid-token checks pass');
 
   const row = (await pool.query('SELECT recovery_token FROM auth.users WHERE email=$1', [email])).rows[0];

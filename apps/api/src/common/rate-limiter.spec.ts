@@ -16,3 +16,15 @@ describe('BoundedRateLimiter', () => {
     expect(limit.check('second', 10, 1100).allowed).toBe(true);
   });
 });
+
+describe('actual HTTP limiter ignores forged forwarding headers',()=>{
+ it('cannot reset the auth budget by changing X-Forwarded-For',async()=>{
+  const express=(await import('express')).default;
+  const request=(await import('supertest')).default;
+  const {rateLimiter}=await import('./rate-limiter');
+  const app=express();app.use(rateLimiter);app.post('/auth/login',(_req,res)=>res.sendStatus(204));
+  for(let i=0;i<10;i++)await request(app).post('/auth/login').set('X-Forwarded-For',`203.0.113.${i}`).expect(204);
+  const denied=await request(app).post('/auth/login').set('X-Forwarded-For','198.51.100.99').expect(429);
+  expect(denied.headers['retry-after']).toBeDefined();expect(denied.body.code).toBe('RATE_LIMITED');
+ });
+});

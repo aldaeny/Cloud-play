@@ -7,7 +7,7 @@ permissions:
 jobs:
   recovery:
     runs-on: ubuntu-24.04
-    timeout-minutes: 18
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -59,6 +59,8 @@ jobs:
           AUTH_FIXTURE_CERT_DIR: ${{ github.workspace }}/.cache/auth-fixture
           AUTH_TEST_DATABASE_URL: postgresql://postgres:isolated-fixture-only@127.0.0.1:5439/postgres
         run: node apps/api/scripts/test-auth-recovery.mjs
+      - name: Restore real custom backup into separate disposable database
+        run: node apps/api/scripts/test-logical-restore.mjs
       - name: Publish sanitized fixture assertions
         if: always()
         run: |
@@ -73,6 +75,8 @@ jobs:
           path: |
             auth-recovery-evidence.txt
             production-readiness-performance.json
+            progressive-load-evidence.json
+            logical-restore-evidence.json
           retention-days: 14
       - name: Remove disposable fixtures
         if: always()

@@ -63,6 +63,7 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   await create('unsigned').expect(403);await create(geo(fixtures[0].channel.id,token,{expiresAt:1})).expect(403);
   const assertion=geo(fixtures[0].channel.id),lease=await create(assertion).expect(201);
   await create(assertion).expect(403);
+  await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id,token,{country:'US'})).expect(403);
   const races=await Promise.all([1,2,3,4].map(()=>create(geo(fixtures[0].channel.id))));assert.equal(races.filter(r=>r.status===201).length,1);assert.equal(races.filter(r=>r.status===429).length,3);
   const get=(url,id=lease.body.id,bearer=token)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${bearer}`).set('x-playback-session',id);
   await get(base+'/manifest').expect(200);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get(base+'/manifest',lease.body.id,otherSessionToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
@@ -158,6 +159,10 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   const capacity=await measurePlaybackCapacity({app,prisma,base,token,geo});
   console.log('PERFORMANCE_EVIDENCE '+JSON.stringify(capacity));
   pass('bounded real Auth/native PG benchmark: 20 creates, 20 renewals at concurrency four, 32 synthetic segments at concurrency eight; connection and size samples recorded');
+  stage='progressive_synthetic_load';
+  const {progressiveLoad}=await import('./test-progressive-load.mjs');
+  await progressiveLoad({app,prisma,tenant,base,geo});
+  pass('actual isolated progressive load at 10/25/50/100 distinct GoTrue users; native DB and synthetic TLS media; recovery query succeeds');
   stage='real_refresh_rotation_and_logout';
   const rotated=await fetch('http://127.0.0.1:9999/token?grant_type=refresh_token',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({refresh_token:refreshToken})});assert.equal(rotated.status,200);const fresh=await rotated.json();
   assert.equal(JSON.parse(Buffer.from(fresh.access_token.split('.')[1],'base64url')).session_id,JSON.parse(Buffer.from(token.split('.')[1],'base64url')).session_id);
