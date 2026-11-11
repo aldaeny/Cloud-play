@@ -35,6 +35,11 @@ try{
  run(['run','-d','--init','--name',api,'--label','cloudplay.fixture=docker-native','--network',network,...envArgs,image]);ownedApi=true;await waitHealth(200);
  const probe=JSON.parse(run(['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();(async()=>{const n=await p.tenant.count();const rows=await p.$queryRaw`SELECT count(*)::int AS connections FROM pg_stat_activity WHERE datname=current_database() AND backend_type='client backend'`;console.log(JSON.stringify({tenants:n,connections:rows[0].connections}));await p.$disconnect()})().catch(()=>process.exit(1))"]));
  assert.equal(probe.tenants,0);assert.ok(probe.connections<=6);passed('running production image executes actual native Prisma model query; explicit per-process pool3 budget');
+ // Controlled one-connection native pool: measure actual queued requests and
+ // P2024 timeouts, not merely pg_stat_activity connection counts. Separate
+ // process/URL leaves the running API pool configuration unchanged.
+ const saturation=JSON.parse(run(['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const u=new URL(process.env.DATABASE_URL);u.searchParams.set('connection_limit','1');u.searchParams.set('pool_timeout','1');const p=new PrismaClient({datasources:{db:{url:u.href}}});(async()=>{await p.$connect();const start=performance.now();const rows=await Promise.allSettled(Array.from({length:16},()=>p.$queryRaw`SELECT pg_sleep(0.2)::text`));const failed=rows.filter(r=>r.status==='rejected');if(!failed.length||rows.every(r=>r.status==='rejected')||failed.some(r=>r.reason.code!=='P2024'))throw new Error('POOL_EXPECTATION');const recovery=performance.now();await p.tenant.count();console.log(JSON.stringify({status:'PASS',connection_limit:1,concurrent_queries:16,completed:rows.length-failed.length,p2024_timeouts:failed.length,elapsed_ms:Math.round(performance.now()-start),recovery_query_ms:+(performance.now()-recovery).toFixed(3),rss_bytes:process.memoryUsage().rss}));await p.$disconnect()})().catch(()=>process.exit(1))"]));
+ assert.ok(saturation.p2024_timeouts>0);passed('actual native one-connection pool queues concurrent queries, returns P2024 under saturation and recovers');
  const held=spawn('docker',['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.$transaction(async t=>{await t.tenant.create({data:{id:'11111111-1111-4111-8111-111111111111'}});console.log('TX_READY');await t.$executeRaw`SELECT pg_sleep(10)`;},{timeout:15000}).then(()=>process.exit(1),async()=>{await p.$disconnect();console.log('TX_ABORTED');})"],{stdio:['ignore','pipe','ignore']});
  let heldOutput='';let timer;const readyTx=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('TX_READY_TIMEOUT')),10000);held.stdout.on('data',chunk=>{heldOutput+=chunk.toString();if(heldOutput.includes('TX_READY'))resolve();});held.once('error',()=>reject(new Error('TX_EXEC_FAILED')));});
  const heldDone=new Promise(resolve=>held.once('exit',resolve));
@@ -48,7 +53,7 @@ try{
  const start=performance.now();run(['stop','-t','10',api]);
  const exit=JSON.parse(run(['inspect','--format','{{json .State}}',api]));assert.equal(exit.ExitCode,0);assert.equal(exit.OOMKilled,false);assert.ok(performance.now()-start<11000);passed('SIGTERM executes graceful app.close/disconnect and exits0 without forced kill');
  run(['start',api]);await waitHealth(200);passed('production image restarts; native DB/health remains intact');
- const result={status:'PASS',scope:'real Docker production image; isolated PostgreSQL17 only',checks,engine:engines,node:run(['exec',api,'node','--version']),production_accessed:false,secret_values_exported:false};
+ const result={status:'PASS',scope:'real Docker production image; isolated PostgreSQL17 only',checks,pool_saturation:saturation,engine:engines,node:run(['exec',api,'node','--version']),production_accessed:false,secret_values_exported:false};
  await writeFile('docker-runtime-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Docker native runtime assertions::'+JSON.stringify(result));
 }catch(error){
  let diagnostic={};
