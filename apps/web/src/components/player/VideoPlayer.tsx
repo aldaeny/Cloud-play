@@ -1,4 +1,5 @@
 'use client';
+import {usePrivateMediaUrl} from '../../lib/use-private-media-url';
 import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
 import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 
@@ -27,7 +28,9 @@ function sourceError(src: string): boolean {
 }
 
 /** Browser-native media element + on-demand MSE engines. No credentials, fake tracks or page reloads. */
-export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onError, onQualityChange, onReady }: Props) {
+export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, autoPlay, onError, onQualityChange, onReady }: Props) {
+  const src=usePrivateMediaUrl(requestedSrc);
+  const privateResume=useRef<{input:string;time:number;paused:boolean}|null>(null);
   useEffect(() => () => { if(src.startsWith('/api/external/'))void releaseMediaSession(src).catch(()=>{}); },[src]);
   const preferences = useContext(PlaybackPreferencesContext);
   const saved = getPrefsSnapshot();
@@ -112,7 +115,10 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video||!src) return;
+    const resume=privateResume.current?.input===requestedSrc?privateResume.current:null;
+    const restore=()=>{if(resume&&!isLive&&Number.isFinite(video.duration)&&resume.time<video.duration)video.currentTime=resume.time;};
+    video.addEventListener('loadedmetadata',restore);
     let cancelled = false;
     let hls: Hls | null = null;
     let dash: MediaPlayerClass | null = null;
@@ -124,7 +130,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
     const markReady = () => {
       if (cancelled || ready) return;
       ready = true; setStatus('ready'); callbacks.current.onReady?.();
-      if (shouldAutoPlay) void play();
+      if (shouldAutoPlay&&!resume?.paused) void play();
     };
     const timeout = setTimeout(() => { if (!cancelled && !ready) fail('انتهت مهلة الاتصال بالبث. تحقق من الشبكة ثم أعد المحاولة.'); }, 25000);
     const recoverNetwork = (retry: () => void) => {
@@ -214,11 +220,13 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
     }
     void attach();
     return () => {
+      if(requestedSrc.includes('&session=1'))privateResume.current={input:requestedSrc,time:video.currentTime,paused:video.paused};
+      video.removeEventListener('loadedmetadata',restore);
       cancelled = true; clearTimeout(timeout);
       hls?.destroy(); dash?.reset(); hlsRef.current = null; dashRef.current = null;
       video.pause(); video.removeAttribute('src'); video.load();
     };
-  }, [src, type, attempt, shouldAutoPlay, preferences.startMuted, fail, play]);
+  }, [src, requestedSrc, isLive, type, attempt, shouldAutoPlay, preferences.startMuted, fail, play]);
 
   useEffect(() => {
     const online = () => { setOffline(false); if (statusRef.current === 'error') setAttempt(value => value + 1); };
@@ -267,7 +275,7 @@ export function VideoPlayer({ src, type, poster, title, isLive, autoPlay, onErro
   return <div ref={containerRef} className="cp-player media-player" dir="ltr" tabIndex={0} role="region" aria-label={`مشغل ${title}`} onKeyDown={onKeyDown} onPointerMove={showControls} onPointerDown={showControls} onFocusCapture={showControls} data-controls-hidden={!controlsVisible && status === 'playing' && !settingsOpen} data-playback-status={status}>
     <video ref={videoRef} poster={poster} playsInline preload="metadata" muted={muted} aria-label={title}
       onClick={() => { if (window.matchMedia('(pointer: coarse)').matches) showControls(); else togglePlay(); }}
-      onLoadedMetadata={() => { setDuration(videoRef.current?.duration ?? 0); if (type === 'mp4' || (type === 'hls' && !hlsRef.current)) { setStatus(current => current === 'blocked' || current === 'error' ? current : 'ready'); callbacks.current.onReady?.(); if (shouldAutoPlay) void play(); } }}
+      onLoadedMetadata={() => { setDuration(videoRef.current?.duration ?? 0); if (type === 'mp4' || (type === 'hls' && !hlsRef.current)) { setStatus(current => current === 'blocked' || current === 'error' ? current : 'ready'); callbacks.current.onReady?.(); if (shouldAutoPlay&&!(privateResume.current?.input===requestedSrc&&privateResume.current.paused)) void play(); } }}
       onPlay={() => { setStatus('playing'); showControls(); }}
       onPlaying={() => { setStatus('playing'); setOffline(false); showControls(); }}
       onPause={() => setStatus(current => current === 'error' ? current : 'paused')}

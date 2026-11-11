@@ -12,22 +12,15 @@ function one(value: string | string[] | undefined): string {
  * the encrypted token and are never sent to the browser in the clear.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Legacy bearer capabilities are not live Auth/Geo-session authorization.
-  // Never allow this alternate private delivery path to bypass the protected
-  // backend lease boundary in production. Management/catalog remain intact.
-  if(process.env.NODE_ENV==='production'){
-    res.setHeader('Cache-Control','private, no-store');
-    return res.status(503).json({error:'SESSION_BOUND_XTREAM_REQUIRED'});
-  }
-
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET');
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
 
+  let media: Awaited<ReturnType<typeof requireOwner>>['media'];
   try {
-    await requireOwner(req);
+    ({media}=await requireOwner(req,res));
   } catch (error) {
     const code = error instanceof AccessError ? error.code : 'AUTH_UNAVAILABLE';
     return res.status(accessStatus(code)).json({ error: code });
@@ -38,9 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!isKind(kind) || !/^\d{1,18}$/.test(id)) return res.status(400).json({ error: 'INVALID_INPUT' });
 
   try {
-    const { token, container } = playbackToken(kind, id, one(req.query.ext));
+    const { token, container } = playbackToken(kind, id, one(req.query.ext),media);
     return res.status(200).json({
-      url: `/api/xtream/stream?t=${encodeURIComponent(token)}`,
+      url: `/api/xtream/stream?t=${encodeURIComponent(token)}${media?'&session=1':''}`,
       kind,
       container,
       hls: container === 'm3u8',

@@ -17,15 +17,6 @@ export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
  * The response never echoes the playlist URL or any raw stream URL.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Legacy private M3U capabilities do not bind every resource to a live Auth
-  // session/Geo lease. Do not expose that as protected production delivery.
-  // Keep the importer/player implementation for controlled development; the
-  // existing session-bound external playback path is the production boundary.
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Cache-Control','private, no-store');
-    return res.status(503).json({error:'SESSION_BOUND_PLAYLIST_REQUIRED'});
-  }
-
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'POST') {
@@ -33,9 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
 
-  let owner: { email: string; userId: string };
+  let owner: Awaited<ReturnType<typeof requireOwner>>;
   try {
-    owner = await requireOwner(req);
+    owner = await requireOwner(req,res);
   } catch (error) {
     const code = error instanceof AccessError ? error.code : 'AUTH_UNAVAILABLE';
     return res.status(accessStatus(code)).json({ error: code });
@@ -46,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!url || url.length > 4096) return res.status(400).json({ error: 'INVALID_URL' });
 
   try {
-    const result = await importPlaylist(url, owner.userId);
+    const result = await importPlaylist(url, owner.userId, owner.media);
     return res.status(200).json({ data: result });
   } catch (error) {
     const code = error instanceof PlaylistError ? error.code : 'UPSTREAM_ERROR';

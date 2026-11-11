@@ -58,6 +58,23 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   secondUserId=(await adminCreated.json()).id;await prisma.appUser.create({data:{id:secondUserId,tenantId:tenant,status:'active'}});
   const secondLogin=await fetch('http://127.0.0.1:9999/token?grant_type=password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:secondEmail,password:secondPassword})});assert.equal(secondLogin.status,200);const secondToken=(await secondLogin.json()).access_token;
   const base='/external-playback/'+fixtures[0].channel.id;
+  stage='private_media_live_authorization';
+  const ownerBefore=process.env.XTREAM_OWNER_USER_IDS,countriesBefore=process.env.PRIVATE_MEDIA_ALLOWED_COUNTRIES;
+  process.env.XTREAM_OWNER_USER_IDS=userId;process.env.PRIVATE_MEDIA_ALLOWED_COUNTRIES='IQ';
+  const privateCheck=(bearer=token,patch={})=>request(app.getHttpServer()).post('/private-media/authorize').set('Authorization',`Bearer ${bearer}`).set('x-external-geo',geo('private-media',bearer,{ipHash:'a'.repeat(64),...patch}));
+  try{
+   await request(app.getHttpServer()).post('/private-media/authorize').expect(401);
+   const privateGrant=await privateCheck().expect(201);assert.equal(privateGrant.body.userId,userId);assert.equal(privateGrant.body.sessionId,JSON.parse(Buffer.from(token.split('.')[1],'base64url')).session_id);
+   await privateCheck(secondToken).expect(403);await privateCheck(token,{country:'US'}).expect(403);await privateCheck(token,{ipHash:undefined}).expect(403);
+   const replay=geo('private-media',token,{ipHash:'a'.repeat(64)});
+   const once=()=>request(app.getHttpServer()).post('/private-media/authorize').set('Authorization',`Bearer ${token}`).set('x-external-geo',replay);
+   await once().expect(201);await once().expect(403);
+   const otherSid=JSON.parse(Buffer.from(otherSessionToken.split('.')[1],'base64url')).session_id;
+   await prisma.$executeRaw`UPDATE auth.sessions SET not_after=now()-interval '1 second' WHERE id=${otherSid}::uuid`;
+   await privateCheck(otherSessionToken).expect(403);
+   await prisma.$executeRaw`UPDATE auth.sessions SET not_after=NULL WHERE id=${otherSid}::uuid`;
+   pass('private-media authorization uses actual GoTrue/native session rows; owner/country/IP/replay and expired-session denial');
+  }finally{if(ownerBefore===undefined)delete process.env.XTREAM_OWNER_USER_IDS;else process.env.XTREAM_OWNER_USER_IDS=ownerBefore;if(countriesBefore===undefined)delete process.env.PRIVATE_MEDIA_ALLOWED_COUNTRIES;else process.env.PRIVATE_MEDIA_ALLOWED_COUNTRIES=countriesBefore;}
   stage='geo_lease_security';
   const create=(assertion)=>request(app.getHttpServer()).post(base+'/session').set('Authorization',`Bearer ${token}`).set('x-external-geo',assertion);
   await create('unsigned').expect(403);await create(geo(fixtures[0].channel.id,token,{expiresAt:1})).expect(403);
@@ -85,6 +102,9 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   pass('real GoTrue/PG: cross-user and same-user cross-session reuse denied; unsigned/expired/replayed geo denied; four racing creates enforce limit; renewal, expiry and cross-channel denial');
   stage='next_https_startup';
   apiServer=createServer(tlsOptions,app.getHttpAdapter().getInstance());await new Promise(resolve=>apiServer.listen(9444,'127.0.0.1',resolve));
+  stage='private_production_route_live_auth';
+  const {privateMediaLive}=await import('./test-private-media-live.mjs');
+  checks+=await privateMediaLive({prisma,userId,secondUserId,token,secondToken,otherSessionToken,tlsOptions,apiOrigin:'https://127.0.0.1:9444',media});
   // This proxy models a trusted ingress and overwrites country. It does NOT
   // claim a real hosting-provider integration was exercised.
   edge=createServer(tlsOptions,(req,res)=>{

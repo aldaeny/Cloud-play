@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {type MediaBinding} from './private-media-session';
 import { publicFetch } from './public-fetch';
 /**
  * Server-only Xtream adapter for the PRIVATE, owner-only player.
@@ -285,14 +287,14 @@ export async function accountStatus(): Promise<AccountStatus> {
  * Build the provider-relative playback path and seal it into a token.
  * The raw path (which contains the credentials) never leaves this function.
  */
-export function playbackToken(kind: Kind, id: string, ext?: string): { token: string; container: string } {
+export function playbackToken(kind: Kind, id: string, ext?: string,binding?:MediaBinding): { token: string; container: string } {
   const config = settings();
   if (!/^\d{1,18}$/.test(id)) throw new PrivateError('INVALID_INPUT');
   const container = kind === 'live' ? 'm3u8' : cleanExt(ext) ?? 'mp4';
   const user = encodeURIComponent(config.username);
   const pass = encodeURIComponent(config.password);
   const path = `/${kind}/${user}/${pass}/${id}.${container}`;
-  return { token: sealPath(path, config.secret), container };
+  return { token: sealPath(path, config.secret,binding?Math.max(0,binding.expiresAt-Date.now()):undefined,binding?.expiresAt,binding,config.url.origin,undefined,binding?'selection':undefined,providerFingerprint()), container };
 }
 
 /** Seal an artwork path on the provider so http posters can be shown safely. */
@@ -315,3 +317,5 @@ export function providerOrigin(): string {
 export function proxySecret(): string {
   return settings().secret;
 }
+
+export function providerFingerprint():string {const c=settings();return createHash('sha256').update(JSON.stringify([c.url.origin,c.username,c.password])).digest('hex');}

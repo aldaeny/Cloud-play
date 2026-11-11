@@ -1,3 +1,4 @@
+import type {MediaBinding} from './private-media-session';
 /**
  * Capability tokens for the private Xtream player.
  *
@@ -37,8 +38,8 @@ function fromB64url(input: string): Buffer {
 }
 
 /** Encrypt a provider-relative path into an expiring, URL-safe token. */
-export function sealPath(path: string, secret: string, ttlMs: number = TOKEN_TTL_MS, maxExpiresAt: number = Infinity): string {
-  const payload = Buffer.from(JSON.stringify({ p: path, e: Math.min(Date.now() + ttlMs,maxExpiresAt) }), 'utf8');
+export function sealPath(path: string, secret: string, ttlMs: number = TOKEN_TTL_MS, maxExpiresAt: number = Infinity, binding?:MediaBinding, origin?:string,role?:'key',purpose?:'selection',source?:string): string {
+  const payload = Buffer.from(JSON.stringify({ v:source,s:purpose,o:origin,k:role,b:binding, p: path, e: Math.min(Date.now() + ttlMs,maxExpiresAt) }), 'utf8');
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv('aes-256-gcm', keyFor(secret), iv);
   const body = Buffer.concat([cipher.update(payload), cipher.final()]);
@@ -55,7 +56,7 @@ export class TokenError extends Error {
  * Open a token and return the provider-relative path.
  * Throws TokenError for malformed, tampered, expired or oversized tokens.
  */
-export function openToken(token: string, secret: string): { path: string; expiresAt: number } {
+export function openToken(token: string, secret: string): { path: string; expiresAt: number; binding?:MediaBinding;origin?:string;role?:'key';purpose?:'selection';source?:string } {
   if (typeof token !== 'string' || !token || token.length > MAX_TOKEN_CHARS) throw new TokenError();
   let raw: Buffer;
   try {
@@ -78,7 +79,7 @@ export function openToken(token: string, secret: string): { path: string; expire
     throw new TokenError();
   }
   if (!parsed || typeof parsed !== 'object') throw new TokenError();
-  const record = parsed as { p?: unknown; e?: unknown };
+  const record = parsed as { b?:MediaBinding;o?:string;k?:'key';s?:'selection';v?:string; p?: unknown; e?: unknown };
   if (typeof record.p !== 'string' || typeof record.e !== 'number') throw new TokenError();
   if (!Number.isFinite(record.e) || record.e < Date.now()) throw new TokenError();
   const path = record.p;
@@ -87,7 +88,7 @@ export function openToken(token: string, secret: string): { path: string; expire
   // resolve off-origin, so they are rejected outright.
   if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\') || path.length > 2048) throw new TokenError();
   if (/[\u0000-\u001f\u007f]/.test(path)) throw new TokenError();
-  return { path, expiresAt: record.e };
+  return { path, expiresAt: record.e, binding:record.b,origin:record.o,role:record.k,purpose:record.s,source:record.v };
 }
 
 /** Convenience wrapper for callers that only need the path. */

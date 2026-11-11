@@ -9,7 +9,8 @@
  *
  * Fail-closed: with no allow-list configured, nobody gets in.
  */
-import type { NextApiRequest } from 'next';
+import {authorizeMedia,setMediaCookie,MediaAccessError,type MediaBinding} from './private-media-session';
+import type {NextApiResponse, NextApiRequest } from 'next';
 import { createClient } from '@supabase/supabase-js';
 
 export type AccessCode =
@@ -17,7 +18,9 @@ export type AccessCode =
   | 'OWNER_NOT_SET'
   | 'SIGN_IN_REQUIRED'
   | 'NOT_AUTHORIZED'
-  | 'AUTH_UNAVAILABLE';
+  | 'AUTH_UNAVAILABLE'
+  | 'PRIVATE_MEDIA_DENIED'
+  | 'TRUSTED_GEO_REQUIRED';
 
 export class AccessError extends Error {
   constructor(public code: AccessCode) {
@@ -60,7 +63,11 @@ function bearer(req: NextApiRequest): string | null {
  * explicitly authorized. The JWT is validated by Supabase Auth, never trusted from the
  * client payload alone.
  */
-export async function requireOwner(req: NextApiRequest): Promise<{ email: string; userId: string }> {
+export async function requireOwner(req: NextApiRequest, res?: NextApiResponse): Promise<{ email: string; userId: string; media?:MediaBinding }> {
+  if(process.env.NODE_ENV==='production'){
+    try{const media=await authorizeMedia(req,false);if(res)setMediaCookie(req,res,media);return {email:'',userId:media.userId,media};}
+    catch(error){if(error instanceof MediaAccessError){if(error.status===401)throw new AccessError('SIGN_IN_REQUIRED');if(error.status===403)throw new AccessError('PRIVATE_MEDIA_DENIED');}throw new AccessError('AUTH_UNAVAILABLE');}
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) throw new AccessError('ACCOUNTS_OFF');
@@ -105,6 +112,6 @@ export async function requireOwner(req: NextApiRequest): Promise<{ email: string
 /** Map an access failure to an HTTP status without leaking which emails exist. */
 export function accessStatus(code: AccessCode): number {
   if (code === 'SIGN_IN_REQUIRED') return 401;
-  if (code === 'NOT_AUTHORIZED') return 403;
+  if (code === 'NOT_AUTHORIZED'||code==='PRIVATE_MEDIA_DENIED'||code==='TRUSTED_GEO_REQUIRED') return 403;
   return 503;
 }

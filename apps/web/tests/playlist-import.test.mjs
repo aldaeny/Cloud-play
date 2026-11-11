@@ -127,7 +127,7 @@ globalThis.fetch = (input, init) => {
 };
 
 try {
-  await check('production import refuses unbound playback before Auth/provider network calls',async()=>{
+  await check('production import fails closed when the trusted bridge is unconfigured, without provider calls',async()=>{
     const old=process.env.NODE_ENV;process.env.NODE_ENV='production';const before=fetchCalls.length;
     try{const res=await invoke(importRoute,{method:'POST',body:{url:'https://list.example.com/a.m3u'}});assert.equal(res.statusCode,503);assert.equal(fetchCalls.length,before);}
     finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;}

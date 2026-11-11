@@ -1,3 +1,4 @@
+import {usePrivateMediaUrl} from '../../lib/use-private-media-url';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSupabase } from '../../lib/supabase';
@@ -91,25 +92,33 @@ async function apiGet<T>(path: string): Promise<T> {
 
 /** HLS via hls.js where needed, native HLS on Safari, progressive otherwise. */
 function PrivateVideo({ source, onError }: { source: Playing; onError: (message: string) => void }) {
+  const url=usePrivateMediaUrl(source.url);
   const ref = useRef<HTMLVideoElement>(null);
+  const resumeRef=useRef<{source:string;time:number;paused:boolean}|null>(null);
 
   useEffect(() => {
     const video = ref.current;
-    if (!video) return;
+    if (!video||!url) return;
+    const resume=resumeRef.current?.source===source.url?resumeRef.current:null;
+    const restore=()=>{if(resume&&source.kind!=='live'&&Number.isFinite(video.duration)&&resume.time<video.duration)video.currentTime=resume.time;if(resume?.paused)video.pause();};
+    video.addEventListener('loadedmetadata',restore);
+    const remember=()=>{resumeRef.current={source:source.url,time:video.currentTime,paused:video.paused};video.removeEventListener('loadedmetadata',restore);};
     let disposed = false;
     let hls: { destroy: () => void } | null = null;
 
     if (!source.hls) {
-      video.src = source.url;
+      video.src = url;
       return () => {
+        remember();
         video.removeAttribute('src');
         video.load();
       };
     }
 
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = source.url;
+      video.src = url;
       return () => {
+        remember();
         video.removeAttribute('src');
         video.load();
       };
@@ -123,7 +132,7 @@ function PrivateVideo({ source, onError }: { source: Playing; onError: (message:
       }
       const instance = new Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30 });
       hls = instance;
-      instance.loadSource(source.url);
+      instance.loadSource(url);
       instance.attachMedia(video);
       instance.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) onError('PLAYBACK_FAILED');
@@ -131,12 +140,13 @@ function PrivateVideo({ source, onError }: { source: Playing; onError: (message:
     }).catch(() => onError('HLS_UNSUPPORTED'));
 
     return () => {
+      remember();
       disposed = true;
       hls?.destroy();
       video.removeAttribute('src');
       video.load();
     };
-  }, [source, onError]);
+  }, [source, url, onError]);
 
   return <video ref={ref} className="pp-video" controls autoPlay playsInline />;
 }

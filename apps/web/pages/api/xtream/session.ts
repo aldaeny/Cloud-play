@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!ownerConfigured()) return res.status(200).json({ owner: false, reason: 'OWNER_NOT_SET', configured: true });
 
   try {
-    const { email } = await requireOwner(req);
+    const { email } = await requireOwner(req,res);
     let account = null;
     try {
       account = await accountStatus();

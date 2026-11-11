@@ -5,7 +5,7 @@ import type { Request } from 'express';
 import { PrismaService } from '../../prisma.service';
 import type { UserRequest } from '../../common/permissions.decorator';
 
-export type GeoEnvelope = { channelId:string; tokenHash:string; country:string; platform:'web'; issuedAt:number; expiresAt:number; nonce:string };
+export type GeoEnvelope = { channelId:string; tokenHash:string; country:string; ipHash?:string; platform:'web'; issuedAt:number; expiresAt:number; nonce:string };
 /** A request assertion, NOT a media ticket. Replay ledger is transactional PostgreSQL. */
 export function verifyGeo(value:unknown, channelId:string, token:string, now=Date.now()):GeoEnvelope {
   const key=process.env.EXTERNAL_GEO_SIGNING_KEY;

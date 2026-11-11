@@ -1,10 +1,11 @@
+import {boundMediaProxy} from '../../../src/server/bound-media-proxy';
 import {readCapped} from '../../../src/server/safe-fetch';
 import { publicFetch } from '../../../src/server/public-fetch';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
 import { openToken, sealPath, TokenError, TOKEN_TTL_MS } from '../../../src/server/xtream-token';
-import { PrivateError, providerOrigin, proxySecret } from '../../../src/server/xtream-private';
+import { PrivateError, providerFingerprint, providerOrigin, proxySecret } from '../../../src/server/xtream-private';
 import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
@@ -103,13 +104,11 @@ async function fetchUpstream(start: URL, origin: string, range?: string): Promis
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Legacy bearer capabilities are not live Auth/Geo-session authorization.
-  // Never allow this alternate private delivery path to bypass the protected
-  // backend lease boundary in production. Management/catalog remain intact.
-  if(process.env.NODE_ENV==='production'){
-    res.setHeader('Cache-Control','private, no-store');
-    return res.status(503).json({error:'SESSION_BOUND_XTREAM_REQUIRED'});
-  }
+  if(process.env.NODE_ENV==='production')return boundMediaProxy(req,res,{
+    open:t=>{const g=openToken(t,proxySecret());if(g.origin!==providerOrigin()||g.source!==providerFingerprint())throw new TokenError();return {...g,origin:g.origin};},
+    seal:g=>sealPath(g.path,proxySecret(),Math.max(0,g.expiresAt-Date.now()),g.expiresAt,g.binding,g.origin,g.role,undefined,g.source),
+    route:'/api/xtream/stream',
+  });
 
   if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');

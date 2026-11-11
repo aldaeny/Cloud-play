@@ -1,3 +1,4 @@
+import {boundMediaProxy} from '../../../src/server/bound-media-proxy';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import type { ReadableStream as NodeWebReadableStream } from 'node:stream/web';
@@ -37,14 +38,11 @@ function isPlaylist(url: URL, contentType: string): boolean {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  // Legacy private M3U capabilities do not bind every resource to a live Auth
-  // session/Geo lease. Do not expose that as protected production delivery.
-  // Keep the importer/player implementation for controlled development; the
-  // existing session-bound external playback path is the production boundary.
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Cache-Control','private, no-store');
-    return res.status(503).json({error:'SESSION_BOUND_PLAYLIST_REQUIRED'});
-  }
+  if(process.env.NODE_ENV==='production')return boundMediaProxy(req,res,{
+    open:t=>openStream(t,playlistSecret()),
+    seal:g=>sealStream(g,playlistSecret(),Math.max(0,g.expiresAt-Date.now())),
+    route:'/api/playlist/stream',
+  });
 
   if (!enforceRateLimit(req, res, { bucket: 'stream' })) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');

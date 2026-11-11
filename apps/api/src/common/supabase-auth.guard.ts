@@ -51,7 +51,7 @@ export class SupabaseAuthGuard implements CanActivate {
     >();
 
     const deny=(code:string,status:number)=>{
-      if(request.path?.startsWith('/external-playback/'))new Logger('ProtectedPlayback').warn(JSON.stringify({event:'authorization_failure',value:1,status}));
+      if((request.path?.startsWith('/external-playback/')||request.path?.startsWith('/private-media/')))new Logger('ProtectedPlayback').warn(JSON.stringify({event:'authorization_failure',value:1,status}));
       return new HttpException(code,status);
     };
     const token = SupabaseAuthService.bearer(request.headers['authorization']);

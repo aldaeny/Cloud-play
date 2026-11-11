@@ -181,10 +181,10 @@ async function main() {
 
   console.log('\nPrivate player — security & integration\n');
 
-  await check('unbound private Xtream delivery is explicitly unavailable in production', async () => {
-    const old=process.env.NODE_ENV;process.env.NODE_ENV='production';
-    try{for(const handler of [streamHandler,fixtureRequire('./pages/api/xtream/play.js').default]){const res=await invoke(handler,{t:tokenMod.sealPath('/live/u/p/5.m3u8',SECRET)});assert.equal(res.statusCode,503);assert.deepEqual(JSON.parse(res.payload()),{error:'SESSION_BOUND_XTREAM_REQUIRED'});}}
-    finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;}
+  await check('production private Xtream denies unauthenticated legacy delivery before outbound calls', async () => {
+    const old=process.env.NODE_ENV,origin=process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN;process.env.NODE_ENV='production';process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN='https://private.example';
+    try{for(const handler of [streamHandler,fixtureRequire('./pages/api/xtream/play.js').default]){const res=await invoke(handler,{t:tokenMod.sealPath('/live/u/p/5.m3u8',SECRET)});assert.equal(res.statusCode,401);assert.deepEqual(JSON.parse(res.payload()),{error:'SIGN_IN_REQUIRED'});}}
+    finally{if(old===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=old;if(origin===undefined)delete process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN;else process.env.PRIVATE_MEDIA_PUBLIC_ORIGIN=origin;}
   });
   await check('nested Xtream capability cannot outlive its parent cap', () => {
     const parent=Date.now()+1000;const child=tokenMod.sealPath('/seg.ts',SECRET,60000,parent);assert.equal(tokenMod.openToken(child,SECRET).expiresAt,parent);

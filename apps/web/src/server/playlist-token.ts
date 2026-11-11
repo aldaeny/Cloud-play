@@ -1,3 +1,4 @@
+import type {MediaBinding} from './private-media-session';
 /**
  * Capability tokens for imported playlists.
  *
@@ -24,6 +25,9 @@ export const PLAYLIST_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_TOKEN_CHARS = 8192;
 
 export type StreamGrant = {
+  binding?: MediaBinding;
+  role?: 'key';
+  purpose?:'selection';
   /** Parent cap when re-sealing nested resources; never extend authorization. */
   expiresAt?: number;
   origin: string;
@@ -77,6 +81,9 @@ export function sealStream(
 ): string {
   const payload = Buffer.from(
     JSON.stringify({
+      b: grant.binding,
+      k: grant.role,
+      s: grant.purpose,
       o: grant.origin,
       p: grant.path,
       r: grant.referrer ?? '',
@@ -118,7 +125,7 @@ export function openStream(
     throw new PlaylistTokenError();
   }
   if (!parsed || typeof parsed !== 'object') throw new PlaylistTokenError();
-  const record = parsed as { o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
+  const record = parsed as { b?:MediaBinding; k?:'key';s?:'selection'; o?: unknown; p?: unknown; r?: unknown; u?: unknown; e?: unknown };
   if (typeof record.o !== 'string' || typeof record.p !== 'string' || typeof record.e !== 'number') {
     throw new PlaylistTokenError();
   }
@@ -140,6 +147,9 @@ export function openStream(
   if (/[\u0000-\u001f\u007f]/.test(referrer + userAgent)) throw new PlaylistTokenError();
 
   return {
+    binding: record.b,
+    role:record.k,
+    purpose:record.s,
     origin,
     path,
     referrer: referrer || undefined,
