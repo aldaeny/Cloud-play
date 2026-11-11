@@ -1,0 +1,269 @@
+[
+  {
+    "status": "PASS",
+    "scope": "synthetic isolated GoTrue/native PG/Nest/controlled TLS; main.ts ingress middleware excluded",
+    "certifies_production_capacity": false,
+    "phases": [
+      {
+        "status": "PASS",
+        "users": 10,
+        "duration_ms": 10350,
+        "waves": 3,
+        "requests_measured": 130,
+        "response_bytes_measured": 1408004,
+        "error_rate": 0,
+        "timeout_rate": 0,
+        "latency": {
+          "login": {
+            "count": 10,
+            "p50_ms": 177.516,
+            "p95_ms": 214.49,
+            "p99_ms": 214.49
+          },
+          "create": {
+            "count": 10,
+            "p50_ms": 237.958,
+            "p95_ms": 250.303,
+            "p99_ms": 250.303
+          },
+          "renew": {
+            "count": 30,
+            "p50_ms": 256.813,
+            "p95_ms": 481.569,
+            "p99_ms": 487.311
+          },
+          "authenticated_profiles_api": {
+            "count": 30,
+            "p50_ms": 157.239,
+            "p95_ms": 219.595,
+            "p99_ms": 292.068
+          },
+          "manifest": {
+            "count": 30,
+            "p50_ms": 320.032,
+            "p95_ms": 411.578,
+            "p99_ms": 432.479
+          },
+          "segment": {
+            "count": 30,
+            "p50_ms": 166.46,
+            "p95_ms": 324.716,
+            "p99_ms": 336.934
+          }
+        },
+        "process_cpu_ms": 3177.029,
+        "rss_bytes": 263299072,
+        "observed_db_connections_max": 5
+      },
+      {
+        "status": "PASS",
+        "users": 25,
+        "duration_ms": 15515,
+        "waves": 3,
+        "requests_measured": 325,
+        "response_bytes_measured": 3520087,
+        "error_rate": 0,
+        "timeout_rate": 0,
+        "latency": {
+          "login": {
+            "count": 15,
+            "p50_ms": 134.252,
+            "p95_ms": 165.777,
+            "p99_ms": 165.777
+          },
+          "create": {
+            "count": 25,
+            "p50_ms": 476.999,
+            "p95_ms": 492.753,
+            "p99_ms": 493.125
+          },
+          "renew": {
+            "count": 75,
+            "p50_ms": 590.53,
+            "p95_ms": 653.1,
+            "p99_ms": 665.18
+          },
+          "authenticated_profiles_api": {
+            "count": 75,
+            "p50_ms": 375.805,
+            "p95_ms": 445.424,
+            "p99_ms": 470.832
+          },
+          "manifest": {
+            "count": 75,
+            "p50_ms": 831.925,
+            "p95_ms": 1153.939,
+            "p99_ms": 1168.557
+          },
+          "segment": {
+            "count": 75,
+            "p50_ms": 459.767,
+            "p95_ms": 720.296,
+            "p99_ms": 945.755
+          }
+        },
+        "process_cpu_ms": 7477.512,
+        "rss_bytes": 338796544,
+        "observed_db_connections_max": 5
+      },
+      {
+        "status": "PASS",
+        "users": 50,
+        "duration_ms": 25748,
+        "waves": 3,
+        "requests_measured": 650,
+        "response_bytes_measured": 7040246,
+        "error_rate": 0,
+        "timeout_rate": 0,
+        "latency": {
+          "login": {
+            "count": 25,
+            "p50_ms": 136.894,
+            "p95_ms": 165.173,
+            "p99_ms": 168.957
+          },
+          "create": {
+            "count": 50,
+            "p50_ms": 949.031,
+            "p95_ms": 971.725,
+            "p99_ms": 973.244
+          },
+          "renew": {
+            "count": 150,
+            "p50_ms": 1281.791,
+            "p95_ms": 1770.177,
+            "p99_ms": 1791.7
+          },
+          "authenticated_profiles_api": {
+            "count": 150,
+            "p50_ms": 770.647,
+            "p95_ms": 1174.612,
+            "p99_ms": 1335.719
+          },
+          "manifest": {
+            "count": 150,
+            "p50_ms": 1706.448,
+            "p95_ms": 2170.111,
+            "p99_ms": 2242.948
+          },
+          "segment": {
+            "count": 150,
+            "p50_ms": 1015.201,
+            "p95_ms": 1402.917,
+            "p99_ms": 1457.946
+          }
+        },
+        "process_cpu_ms": 15538.503,
+        "rss_bytes": 429854720,
+        "observed_db_connections_max": 5
+      },
+      {
+        "status": "PASS",
+        "users": 100,
+        "duration_ms": 46184,
+        "waves": 3,
+        "requests_measured": 1300,
+        "response_bytes_measured": 14080344,
+        "error_rate": 0,
+        "timeout_rate": 0,
+        "latency": {
+          "login": {
+            "count": 50,
+            "p50_ms": 159.867,
+            "p95_ms": 182.358,
+            "p99_ms": 191.093
+          },
+          "create": {
+            "count": 100,
+            "p50_ms": 2142.723,
+            "p95_ms": 2192.033,
+            "p99_ms": 2194.906
+          },
+          "renew": {
+            "count": 300,
+            "p50_ms": 2544.503,
+            "p95_ms": 3245.821,
+            "p99_ms": 3279.42
+          },
+          "authenticated_profiles_api": {
+            "count": 300,
+            "p50_ms": 1624.557,
+            "p95_ms": 2094.746,
+            "p99_ms": 2158.669
+          },
+          "manifest": {
+            "count": 300,
+            "p50_ms": 3558.833,
+            "p95_ms": 4319.022,
+            "p99_ms": 4500.882
+          },
+          "segment": {
+            "count": 300,
+            "p50_ms": 2062.709,
+            "p95_ms": 2741.029,
+            "p99_ms": 3367.87
+          }
+        },
+        "process_cpu_ms": 30199.651,
+        "rss_bytes": 464896000,
+        "observed_db_connections_max": 5
+      }
+    ],
+    "safety_limits": {
+      "rss_bytes": 805306368,
+      "min_free_bytes": 268435456,
+      "total_ms": 240000,
+      "request_deadline_ms": 15000
+    },
+    "max_rss_bytes": 464896000,
+    "min_free_bytes": 14553808896,
+    "initial_db_connections": 5,
+    "recovery_db_connections": 5,
+    "recovery_query": "PASS",
+    "recovery_query_ms": 1.105,
+    "limitations": [
+      "three sustained bursts per level, not long soak",
+      "process CPU/RSS not DB CPU/IO/RSS",
+      "authenticated profiles API read is not Web channel-directory load",
+      "all users same controlled tenant/stream; no physical concurrent decoders",
+      "no production ingress/distributed rate limit certification",
+      "observed connection count is not internal Prisma queue saturation telemetry"
+    ]
+  },
+  {
+    "status": "PASS",
+    "scope": "600s+ isolated real GoTrue/native PG/Nest/TLS, five viewers; not production ingress or devices",
+    "duration_ms": 600243,
+    "requests": 9085,
+    "flows": 2995,
+    "failed_flows": 0,
+    "throughput_rps": 15.136,
+    "error_rate": 0,
+    "timeout_rate": 0,
+    "response_bytes": 163321248,
+    "latency": {
+      "count": 9085,
+      "p50_ms": 124.575,
+      "p95_ms": 209.353,
+      "p99_ms": 325.224
+    },
+    "process_cpu_ms": 209546.619,
+    "recovery_query_ms": 0.987,
+    "initial_db_connections": 5,
+    "recovery_db_connections": 5,
+    "slo": {
+      "status": "candidate fixture SLO only; production approval BLOCKED",
+      "p95_ms": 2000,
+      "p99_ms": 5000,
+      "error_rate_max": 0.01,
+      "timeout_rate_max": 0,
+      "throughput_rps_min": 5
+    },
+    "limitations": [
+      "five synthetic viewers; not physical decoders",
+      "main.ts ingress/distributed quota excluded",
+      "process CPU/RSS not DB IO/CPU",
+      "ten minutes not hours/days stability proof"
+    ]
+  }
+]
