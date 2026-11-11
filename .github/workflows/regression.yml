@@ -41,6 +41,7 @@ jobs:
         run: node apps/api/scripts/test-external-tls.mjs
       - name: Install isolated browser and original media fixture tooling
         run: |
+          bash scripts/prepare-ci-browser-host.sh
           node scripts/fixture-tool-step.mjs browser_install node node_modules/playwright-core/cli.js install --with-deps chromium
           if ! command -v ffmpeg >/dev/null; then node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get update && node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get install -y ffmpeg; fi
           FFMPEG="$(command -v ffmpeg)" node scripts/fixture-tool-step.mjs media_generate node scripts/generate-media-fixtures.mjs .cache/media-fixtures

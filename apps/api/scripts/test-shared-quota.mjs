@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
+import {createServer,request as httpRequest} from 'node:http';
 import {fork} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as wait} from 'node:timers/promises';
 export async function testSharedQuota(client,databaseUrl,check,clientPath,database){
- await check('two real HTTP replicas with independent native Prisma pools share atomic quota; XFF spoof/restart cannot reset allowance',async()=>{
-  const children=[];let stage='QUOTA_START';
+ await check('round-robin HTTP load balancer and two independent native Prisma replicas share atomic quota; outage/retry/restart never reset allowance',async()=>{
+  const children=[];let balancer;let stage='QUOTA_START';
   const worker=()=>new Promise((resolve,reject)=>{
    const child=fork(fileURLToPath(new URL('./test-shared-quota-worker.cjs',import.meta.url)),[],{env:{PATH:process.env.PATH,DATABASE_URL:databaseUrl+'?connect_timeout=2&pool_timeout=2',QUOTA_FIXTURE_CLIENT:clientPath,QUOTA_FIXTURE_WINDOW_MS:'60000'},stdio:['ignore','ignore','ignore','ipc']});children.push(child);
    const timer=setTimeout(()=>reject(new Error('QUOTA_WORKER_TIMEOUT')),15000);
@@ -16,7 +17,18 @@ export async function testSharedQuota(client,databaseUrl,check,clientPath,databa
    const [{now}]=await client.$queryRaw`SELECT clock_timestamp() AS now`;
    const left=60000-(now.getTime()%60000);if(left<45000)await wait(left+30);
    const a=await worker(),b=await worker();
-   stage='QUOTA_RACE';const replies=await Promise.all(Array.from({length:30},(_,i)=>hit(i%2?a.port:b.port,'/auth/login',i)));
+   // Real round-robin HTTP hop, not client-side alternating URLs. It forwards
+   // spoofed XFF unchanged; the production middleware still uses only the peer.
+   let turn=0;const routed=[0,0];
+   balancer=createServer((req,res)=>{
+    const index=turn++%2;routed[index]++;
+    const upstream=httpRequest({host:'127.0.0.1',port:index?a.port:b.port,path:req.url,method:req.method,headers:req.headers},reply=>{res.writeHead(reply.statusCode,reply.headers);reply.pipe(res);});
+    upstream.on('error',()=>{res.writeHead(502);res.end();});req.pipe(upstream);
+   });
+   await new Promise(resolve=>balancer.listen(0,'127.0.0.1',resolve));
+
+   stage='QUOTA_RACE';const replies=await Promise.all(Array.from({length:30},(_,i)=>hit(balancer.address().port,'/auth/login',i)));
+   assert.deepEqual(routed,[15,15]);
    assert.equal(replies.filter(r=>r.status===204).length,10);assert.equal(replies.filter(r=>r.status===429).length,20);
    assert.ok(replies.filter(r=>r.status===429).every(r=>Number(r.headers.get('retry-after'))>=1));
    stage='QUOTA_REPLICA_RESTART';a.child.send('stop');await new Promise(resolve=>a.child.once('exit',resolve));const restarted=await worker();
@@ -47,6 +59,6 @@ export async function testSharedQuota(client,databaseUrl,check,clientPath,databa
    const {createRequire}=await import('node:module');const require=createRequire(import.meta.url);
    const {PostgresRateLimiter}=require('../dist/common/shared-rate-limiter.js');
    await new PostgresRateLimiter(client).prune();assert.equal(await client.externalGeoNonce.count({where:{id:{startsWith:'quota:'}}}),0);
-  }catch(error){error.code=stage;throw error;}finally{for(const child of children)if(child.exitCode===null&&child.signalCode===null){if(child.connected)child.send('stop');await Promise.race([new Promise(resolve=>child.once('exit',resolve)),wait(3000)]);if(child.exitCode===null)child.kill('SIGKILL');}}
+  }catch(error){error.code=stage;throw error;}finally{if(balancer){balancer.closeAllConnections();await new Promise(resolve=>balancer.close(resolve));}for(const child of children)if(child.exitCode===null&&child.signalCode===null){if(child.connected)child.send('stop');await Promise.race([new Promise(resolve=>child.once('exit',resolve)),wait(3000)]);if(child.exitCode===null)child.kill('SIGKILL');}}
  });
 }
