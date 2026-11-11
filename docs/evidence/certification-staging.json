@@ -1,0 +1,14 @@
+{
+  "source": "read-only Vercel list_deployments and GET via fetch_page",
+  "commit": "0687a4465e79a7317920e6424ecad3323fed7481",
+  "deployment_id": "dpl_9XSgiYrKtYC9TDJLZKLvwN3z4Zub",
+  "preview_url": "https://cloud-play-iraq-phpjghaxm-aldaeny60-1073.vercel.app",
+  "hosting_build_state": "READY",
+  "api_probe_path": "/api/external/session",
+  "application_journey_status": "BLOCKED",
+  "reason": "Vercel login/SSO intercept before application",
+  "geo_provenance_status": "BLOCKED",
+  "protection_bypassed": false,
+  "settings_changed": false,
+  "production_accessed": false
+}

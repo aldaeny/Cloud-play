@@ -1,0 +1,34 @@
+{
+  "environment": "disposable-GoTrue-native-PostgreSQL-synthetic-TLS",
+  "certifies_production_capacity": false,
+  "concurrency": {
+    "renew": 4,
+    "segment": 8
+  },
+  "create": {
+    "count": 20,
+    "mean_ms": 73.875,
+    "p95_ms": 108.214,
+    "max_ms": 118.267
+  },
+  "renew": {
+    "count": 20,
+    "mean_ms": 186.008,
+    "p95_ms": 206.581,
+    "max_ms": 206.764
+  },
+  "segment": {
+    "count": 32,
+    "mean_ms": 492.962,
+    "p95_ms": 599.838,
+    "max_ms": 600.304
+  },
+  "database": {
+    "observed_client_connections_max": 5,
+    "max_connections_setting": 100,
+    "size_bytes_before": 12293811,
+    "size_bytes_after": 12293811,
+    "shared_buffers_setting_bytes": 134217728
+  },
+  "node_rss_bytes": 251023360
+}

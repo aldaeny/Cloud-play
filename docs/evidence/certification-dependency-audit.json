@@ -1,0 +1,222 @@
+{
+  "command_runtime": "npm audit --omit=dev --json",
+  "command_full": "npm audit --json",
+  "runtime": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "dependencies": {
+      "prod": 259,
+      "dev": 875,
+      "optional": 102,
+      "peer": 50,
+      "peerOptional": 0,
+      "total": 1230
+    }
+  },
+  "full": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 8,
+      "moderate": 10,
+      "high": 0,
+      "critical": 0,
+      "total": 18
+    },
+    "dependencies": {
+      "prod": 259,
+      "dev": 875,
+      "optional": 102,
+      "peer": 50,
+      "peerOptional": 0,
+      "total": 1230
+    }
+  },
+  "tooling_findings": [
+    {
+      "package": "@jest/core",
+      "severity": "low",
+      "direct": false,
+      "range": ">=25.2.0-alpha.86",
+      "fix_available": true
+    },
+    {
+      "package": "@nestjs/cli",
+      "severity": "moderate",
+      "direct": true,
+      "range": ">=7.3.0-next.1",
+      "fix_available": true
+    },
+    {
+      "package": "@typescript-eslint/eslint-plugin",
+      "severity": "moderate",
+      "direct": true,
+      "range": "6.16.0 - 8.72.2",
+      "fix_available": {
+        "name": "@typescript-eslint/eslint-plugin",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "@typescript-eslint/parser",
+      "severity": "moderate",
+      "direct": true,
+      "range": "6.16.0 - 8.72.2",
+      "fix_available": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "@typescript-eslint/type-utils",
+      "severity": "moderate",
+      "direct": false,
+      "range": "6.16.0 - 8.72.2",
+      "fix_available": true
+    },
+    {
+      "package": "@typescript-eslint/typescript-estree",
+      "severity": "moderate",
+      "direct": false,
+      "range": "6.16.0 - 8.72.2",
+      "fix_available": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "@typescript-eslint/utils",
+      "severity": "moderate",
+      "direct": false,
+      "range": "6.16.0 - 8.72.2",
+      "fix_available": {
+        "name": "@typescript-eslint/eslint-plugin",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "create-jest",
+      "severity": "low",
+      "direct": false,
+      "range": ">=29.7.0",
+      "fix_available": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "deepmerge",
+      "severity": "low",
+      "direct": false,
+      "range": ">=4.2.0",
+      "fix_available": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "eslint-config-next",
+      "severity": "moderate",
+      "direct": true,
+      "range": ">=15.6.0-canary.0",
+      "fix_available": {
+        "name": "eslint-config-next",
+        "version": "15.5.29",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "fork-ts-checker-webpack-plugin",
+      "severity": "low",
+      "direct": false,
+      "range": ">=5.0.0-alpha.1",
+      "fix_available": true
+    },
+    {
+      "package": "glob",
+      "severity": "moderate",
+      "direct": false,
+      "range": "9.0.0 - 14.0.1",
+      "fix_available": true
+    },
+    {
+      "package": "jest",
+      "severity": "low",
+      "direct": true,
+      "range": ">=25.2.0-alpha.86",
+      "fix_available": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "jest-cli",
+      "severity": "low",
+      "direct": false,
+      "range": ">=25.2.0-alpha.86",
+      "fix_available": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "jest-config",
+      "severity": "low",
+      "direct": false,
+      "range": ">=25.2.0-alpha.86",
+      "fix_available": {
+        "name": "jest",
+        "version": "25.1.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "minimatch",
+      "severity": "moderate",
+      "direct": false,
+      "range": "7.0.0 - 11.0.0",
+      "fix_available": {
+        "name": "@typescript-eslint/parser",
+        "version": "6.15.0",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "ts-jest",
+      "severity": "low",
+      "direct": true,
+      "range": ">=25.10.0-alpha.1",
+      "fix_available": {
+        "name": "ts-jest",
+        "version": "25.5.1",
+        "isSemVerMajor": true
+      }
+    },
+    {
+      "package": "typescript-eslint",
+      "severity": "moderate",
+      "direct": false,
+      "range": "<=8.72.2",
+      "fix_available": {
+        "name": "eslint-config-next",
+        "version": "15.5.29",
+        "isSemVerMajor": true
+      }
+    }
+  ],
+  "forced_updates": false,
+  "lockfile_changed": false
+}

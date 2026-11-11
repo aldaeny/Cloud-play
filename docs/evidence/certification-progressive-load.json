@@ -1,0 +1,225 @@
+{
+  "status": "VERIFIED",
+  "scope": "synthetic isolated GoTrue/native PG/Nest/controlled TLS; main.ts ingress middleware excluded",
+  "certifies_production_capacity": false,
+  "phases": [
+    {
+      "status": "VERIFIED",
+      "users": 10,
+      "duration_ms": 11260,
+      "waves": 3,
+      "requests_measured": 130,
+      "error_rate": 0,
+      "timeout_rate": 0,
+      "latency": {
+        "login": {
+          "count": 10,
+          "p50_ms": 192.885,
+          "p95_ms": 225.808,
+          "p99_ms": 225.808
+        },
+        "create": {
+          "count": 10,
+          "p50_ms": 347.847,
+          "p95_ms": 360.731,
+          "p99_ms": 360.731
+        },
+        "renew": {
+          "count": 30,
+          "p50_ms": 273.508,
+          "p95_ms": 418.34,
+          "p99_ms": 451.241
+        },
+        "authenticated_profiles_api": {
+          "count": 30,
+          "p50_ms": 183.646,
+          "p95_ms": 306.351,
+          "p99_ms": 371.624
+        },
+        "manifest": {
+          "count": 30,
+          "p50_ms": 413.367,
+          "p95_ms": 588.884,
+          "p99_ms": 601.007
+        },
+        "segment": {
+          "count": 30,
+          "p50_ms": 273.043,
+          "p95_ms": 469.844,
+          "p99_ms": 488.573
+        }
+      },
+      "process_cpu_ms": 4274.79,
+      "rss_bytes": 253734912,
+      "observed_db_connections_max": 5
+    },
+    {
+      "status": "VERIFIED",
+      "users": 25,
+      "duration_ms": 17531,
+      "waves": 3,
+      "requests_measured": 325,
+      "error_rate": 0,
+      "timeout_rate": 0,
+      "latency": {
+        "login": {
+          "count": 15,
+          "p50_ms": 156.896,
+          "p95_ms": 194.165,
+          "p99_ms": 194.165
+        },
+        "create": {
+          "count": 25,
+          "p50_ms": 600.229,
+          "p95_ms": 617.879,
+          "p99_ms": 619.581
+        },
+        "renew": {
+          "count": 75,
+          "p50_ms": 783.773,
+          "p95_ms": 862.638,
+          "p99_ms": 870.561
+        },
+        "authenticated_profiles_api": {
+          "count": 75,
+          "p50_ms": 482.417,
+          "p95_ms": 553.123,
+          "p99_ms": 560.205
+        },
+        "manifest": {
+          "count": 75,
+          "p50_ms": 1041.05,
+          "p95_ms": 1166.536,
+          "p99_ms": 1188.892
+        },
+        "segment": {
+          "count": 75,
+          "p50_ms": 403.429,
+          "p95_ms": 797.197,
+          "p99_ms": 905.036
+        }
+      },
+      "process_cpu_ms": 9795.353,
+      "rss_bytes": 260640768,
+      "observed_db_connections_max": 5
+    },
+    {
+      "status": "VERIFIED",
+      "users": 50,
+      "duration_ms": 29616,
+      "waves": 3,
+      "requests_measured": 650,
+      "error_rate": 0,
+      "timeout_rate": 0,
+      "latency": {
+        "login": {
+          "count": 25,
+          "p50_ms": 164.695,
+          "p95_ms": 187.804,
+          "p99_ms": 201.214
+        },
+        "create": {
+          "count": 50,
+          "p50_ms": 1194.609,
+          "p95_ms": 1226.239,
+          "p99_ms": 1227.04
+        },
+        "renew": {
+          "count": 150,
+          "p50_ms": 1439.807,
+          "p95_ms": 1689.88,
+          "p99_ms": 1706.679
+        },
+        "authenticated_profiles_api": {
+          "count": 150,
+          "p50_ms": 976.198,
+          "p95_ms": 1074.224,
+          "p99_ms": 1352.468
+        },
+        "manifest": {
+          "count": 150,
+          "p50_ms": 2212.132,
+          "p95_ms": 2693.205,
+          "p99_ms": 2751.267
+        },
+        "segment": {
+          "count": 150,
+          "p50_ms": 1231.318,
+          "p95_ms": 1815.611,
+          "p99_ms": 1853.487
+        }
+      },
+      "process_cpu_ms": 18652.202,
+      "rss_bytes": 380833792,
+      "observed_db_connections_max": 5
+    },
+    {
+      "status": "VERIFIED",
+      "users": 100,
+      "duration_ms": 54883,
+      "waves": 3,
+      "requests_measured": 1300,
+      "error_rate": 0,
+      "timeout_rate": 0,
+      "latency": {
+        "login": {
+          "count": 50,
+          "p50_ms": 169.204,
+          "p95_ms": 202.114,
+          "p99_ms": 214.477
+        },
+        "create": {
+          "count": 100,
+          "p50_ms": 2752.487,
+          "p95_ms": 2820.979,
+          "p99_ms": 2823.904
+        },
+        "renew": {
+          "count": 300,
+          "p50_ms": 2998.407,
+          "p95_ms": 4237.717,
+          "p99_ms": 4362.472
+        },
+        "authenticated_profiles_api": {
+          "count": 300,
+          "p50_ms": 2038.105,
+          "p95_ms": 2286.152,
+          "p99_ms": 2391.959
+        },
+        "manifest": {
+          "count": 300,
+          "p50_ms": 4392.546,
+          "p95_ms": 5200.281,
+          "p99_ms": 5316.057
+        },
+        "segment": {
+          "count": 300,
+          "p50_ms": 1901.046,
+          "p95_ms": 3224.389,
+          "p99_ms": 3420.764
+        }
+      },
+      "process_cpu_ms": 37080.45,
+      "rss_bytes": 526979072,
+      "observed_db_connections_max": 5
+    }
+  ],
+  "safety_limits": {
+    "rss_bytes": 805306368,
+    "min_free_bytes": 268435456,
+    "total_ms": 240000,
+    "request_deadline_ms": 15000
+  },
+  "max_rss_bytes": 526979072,
+  "min_free_bytes": 14373531648,
+  "initial_db_connections": 5,
+  "recovery_db_connections": 5,
+  "recovery_query": "VERIFIED",
+  "limitations": [
+    "three sustained bursts per level, not long soak",
+    "process CPU/RSS not DB CPU/IO/RSS",
+    "authenticated profiles API read is not Web channel-directory load",
+    "all users same controlled tenant/stream; no physical concurrent decoders",
+    "no production ingress/distributed rate limit certification"
+  ]
+}
