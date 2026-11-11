@@ -74,3 +74,17 @@ that installation must succeed or the step fails. This removes unconditional
 network installation of optional font packages on an already capable runner,
 without disabling host requirements or any actual application/browser tests.
 Missing dependencies, unavailable browser download or failed launch remain fatal.
+
+Run43058684119 at29e8549 proved actual Chromium145.0.7632.6 download, normal
+host validation and realDOM launch PASS in both jobs. A separate ffmpeg APT
+installation then timed out. Pin a test-only FFmpeg8.1 branch release asset:
+FFmpeg-Builds/FFmpeg-Builds tagautobuild-2026-11-07-12-47,
+ffmpeg-n8.1.3-34-ga35157abb9-linux64-gpl-8.1.tar.xz,
+SHA256d9e9ab7ecc262a4d6cdb334b17af16ce227a9ed44d052f194ad0deca1a29e037
+(GitHub release asset digest read via API). HTTPS download, digest verification,
+explicit archive member extraction; failed download/hash/launch are fatal.
+Only original synthetic fixture generation/worker fixture tests use this binary,
+never production image/runtime. No binary/archive enters Git. Upstream GPL build
+license/source/build recipes remain available at the pinned public release and
+repository; do not redistribute this binary as part of the product. npm dependency
+audit does not independently audit this binary or its supplier. FullCI rerun needed.

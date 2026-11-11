@@ -51,7 +51,8 @@ jobs:
       - name: Install isolated playback browser and generate synthetic media
         run: |
           node scripts/fixture-tool-step.mjs browser_install node scripts/install-ci-browser.mjs
-          if ! command -v ffmpeg >/dev/null; then node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get update && node scripts/fixture-tool-step.mjs ffmpeg_install sudo apt-get install -y ffmpeg; fi
+          node scripts/fixture-tool-step.mjs ffmpeg_install bash scripts/install-ci-ffmpeg.sh
+          export PATH="$GITHUB_WORKSPACE/.cache/fixture-tools/ffmpeg:$PATH"
           FFMPEG="$(command -v ffmpeg)" node scripts/fixture-tool-step.mjs media_generate node scripts/generate-media-fixtures.mjs .cache/media-fixtures
       - name: Execute actual Auth and SMTP lifecycle
         env:
