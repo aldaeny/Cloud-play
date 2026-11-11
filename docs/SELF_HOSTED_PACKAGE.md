@@ -216,3 +216,12 @@ proof. Series episode selection, progress/resume UI and end-to-end hosted VOD
 browser acceptance remain incomplete. Physical devices and public ingress have
 not been tested. The synthetic tools-based drill is a different verification
 scope, not evidence of browser delivery through this BFF.
+
+GoTrue v2.197.0's official migration
+`20240612123726_enable_rls_update_grants.up.sql` grants to a role literally named
+`postgres`. PostgreSQL initialized with `POSTGRES_USER=aether` does not create
+that role. The package now prepares a **NOLOGIN, non-superuser, no-RLS-bypass**
+compatibility role when absent, before Auth migrations and before isolated
+restore of those grants. Existing roles are never altered. No additional
+password/account or paid Supabase service is required. The source is reproducible
+at https://github.com/supabase/auth/blob/v2.197.0/migrations/20240612123726_enable_rls_update_grants.up.sql .

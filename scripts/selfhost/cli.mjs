@@ -87,6 +87,7 @@ try {
     for(const service of ['api','worker','web','admin','tools','storage']) { const label=docker(['image','inspect','--format','{{index .Config.Labels "org.opencontainers.image.revision"}}',`cloudplay-selfhost-${service}:${release}`]).toString().trim(); if(label!==release)throw new Error('Exact retained image revision required for restore'); }
     compose(['up','-d','--wait','--no-build','--pull','never','postgres','redis','minio']);
     compose(['stop','minio']);
+    compose(['run','--rm','--no-deps','tools','prepare-roles']);
     docker(['exec','-i',volume('postgres'),'sh','-ec','pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error'],{stdio:[openArchive(path.join(dir,'database.dump')),'pipe','pipe']});
     docker(['run','--rm','-i','--volumes-from',volume('minio'),'postgres:17','tar','-C','/data','-xf','-'],{stdio:[openArchive(path.join(dir,'objects.tar')),'pipe','pipe']});
     compose(['up','-d','--wait','--no-build','--pull','never','minio','api','worker-media','web','admin','mailpit','auth','auth-gateway']);

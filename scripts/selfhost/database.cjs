@@ -6,6 +6,10 @@ async function main() {
   const url = new URL(process.env.DATABASE_URL || '');
   if (url.hostname !== 'postgres' || process.env.SELFHOST_LOCAL_ONLY !== 'true') throw new Error('LOCAL_COMPOSE_DATABASE_REQUIRED');
   const action = process.argv[2];
+  if (action === 'prepare-roles' || action === 'migrate') {
+    const p = new PrismaClient();try { await p.$executeRawUnsafe(require('./roles.cjs')); } finally { await p.$disconnect(); }
+    if(action === 'prepare-roles') return;
+  }
   if (action === 'migrate') {
     const result = spawnSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy', '--schema', 'apps/api/prisma/schema.prisma'], { stdio: 'inherit' });
     if (result.status !== 0) throw new Error('MIGRATIONS_FAILED');
