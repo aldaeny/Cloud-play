@@ -1,4 +1,10 @@
-# Phase 2 production-readiness gate — NOT PRODUCTION READY
+# Production-readiness gate — NOT READY — BLOCKED (2026-11-11)
+
+The current execution, scoped results, issue priorities, evidence and external acceptance blockers are recorded in [PRODUCTION_CERTIFICATION.md](PRODUCTION_CERTIFICATION.md). In particular, the native Prisma runtime, real Geo enforcement, secure protected HLS, full security coverage, devices, production-like load, separate restore and staging are **not certified**. The historical phase report below is retained for context; it is not a current status or proof for this branch.
+
+---
+
+# Historical phase 2 production-readiness gate — NOT PRODUCTION READY
 
 ## Repository and scope
 
