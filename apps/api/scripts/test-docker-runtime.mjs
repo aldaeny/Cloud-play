@@ -48,6 +48,23 @@ try{
  const aborted=await Promise.race([heldDone,wait(20000).then(()=>-1)]);assert.equal(aborted,0);assert.ok(heldOutput.includes('TX_ABORTED'));passed('real in-flight native transaction aborts during database outage');
  run(['start',db]);await waitHealth(200,40);passed('same running application reconnects after isolated DB restart');
  assert.equal(run(['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.tenant.count().then(async n=>{console.log(n);await p.$disconnect();}).catch(()=>process.exit(1))"]),'0');passed('database restart preserves committed state and rolls back interrupted fixture transaction');
+ // Real admitted HTTP requests inside the production API image. Pausing only
+ // the disposable DB holds readiness queries in flight; separate client image
+ // survives API exit and asserts every admitted response body, not just TCP ACK.
+ run(['pause',db]);
+ let clientOutput='';
+ const client=spawn('docker',['run','--rm','--network',network,image,'node','-e',"const http=require('http');let sent=0;Promise.all(Array.from({length:8},()=>new Promise((resolve,reject)=>{const q=http.get('http://cloudplay-runtime-api:3000/health',r=>{let b='';r.on('data',c=>b+=c);r.on('end',()=>{if(r.statusCode!==200||JSON.parse(b).database!=='connected')reject(new Error());else resolve();});});q.on('finish',()=>{if(++sent===8)console.log('CLIENT_SENT');});q.on('error',reject);}))).then(()=>console.log('CLIENT_ALL_8_OK'),()=>process.exit(1));"],{stdio:['ignore','pipe','ignore']});
+ const clientDone=new Promise(resolve=>client.once('exit',resolve));
+ const clientReady=new Promise((resolve,reject)=>{const t=setTimeout(()=>reject(new Error('DRAIN_CLIENT_TIMEOUT')),10000);client.stdout.on('data',b=>{clientOutput+=b.toString();if(clientOutput.includes('CLIENT_SENT')){clearTimeout(t);resolve();}});client.once('error',()=>{clearTimeout(t);reject(new Error('DRAIN_CLIENT_FAILED'));});});
+ try{
+  await clientReady;await wait(200);run(['kill','--signal=TERM',api]);
+  let admitted=false;for(let i=0;i<40;i++){const logs=run(['logs',api]);if(logs.includes('HTTP_DRAIN_STARTED active=8')){admitted=true;break;}await wait(50);}assert.ok(admitted,'all eight requests admitted before SIGTERM');
+ }finally{run(['unpause',db]);}
+ assert.equal(await Promise.race([clientDone,wait(20000).then(()=>-1)]),0);assert.ok(clientOutput.includes('CLIENT_ALL_8_OK'));
+ let ended=false;for(let i=0;i<40;i++){if(run(['inspect','--format','{{.State.Running}}',api])==='false'){ended=true;break;}await wait(100);}assert.ok(ended);
+ assert.equal(run(['inspect','--format','{{.State.ExitCode}}',api]),'0');assert.ok(run(['logs',api]).includes('HTTP_DRAIN_COMPLETED active=0'));
+ passed('SIGTERM under real eight-request HTTP load drains every admitted response before Prisma teardown; no body loss');
+ run(['start',api]);await waitHealth(200);passed('production API recovers after loaded HTTP drain and restart');
  // /health is the existing database-aware readiness contract. Do not invent a
  // second endpoint or claim liveness is independent of database availability.
  const start=performance.now();run(['stop','-t','10',api]);

@@ -82,3 +82,5 @@ auth-recovery-evidence.txt
 /logical-restore-evidence.json
 /production-readiness-performance.json
 /docker-runtime-evidence.json
+
+/soak-evidence.json

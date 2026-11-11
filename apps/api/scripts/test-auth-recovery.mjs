@@ -84,7 +84,7 @@ try {
   const playbackLogin=await call('/token?grant_type=password',{email,password:newPassword});
   assert.equal(playbackLogin.status,200);
   const nestResult=await promisify(execFile)(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'test-auth-nest.mjs')], {
-    timeout: 600000, maxBuffer:16*1024*1024, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
+    timeout: 1500000, maxBuffer:16*1024*1024, env: { ...process.env, AUTH_FIXTURE_ACCESS_TOKEN: newLogin.data.access_token,
       AUTH_PLAYBACK_SESSION:JSON.stringify(playbackLogin.data),
       NODE_EXTRA_CA_CERTS: path.join(process.env.AUTH_FIXTURE_CERT_DIR, 'cert.pem') },
   }).catch(error=>{
@@ -97,6 +97,7 @@ try {
     console.log('::error title=Protected playback isolated failure::'+expected);
     throw new Error('ISOLATED_NEST_PLAYBACK_FAILED');
   });
+  if(process.env.ISOLATED_SOAK_MS){const soakLine=nestResult.stdout.split('\n').find(line=>line.startsWith('::notice title=Isolated ten-minute soak::'));assert.ok(soakLine);console.log(soakLine);}
   const loadLine=nestResult.stdout.split('\n').find(line=>line.startsWith('::notice title=Progressive synthetic load::'));
   assert.ok(loadLine);console.log(loadLine);
   const capacityLine=nestResult.stdout.split('\n').find(line=>line.startsWith('PERFORMANCE_EVIDENCE '));
