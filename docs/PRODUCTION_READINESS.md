@@ -1,5 +1,10 @@
 # Cloud Play — final master readiness evaluation
 
+## Final project completion directive — current status
+
+**NOT READY — BLOCKED.** The current implementation and acceptance scope are in [FINAL_PROJECT_COMPLETION_REPORT.md](FINAL_PROJECT_COMPLETION_REPORT.md), with [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md) and `docs/evidence/final-*.json`. Older “legacy M3U/Xtream production routes disabled” statements below describe the prior remediation, not the current code: those blanket503 gates have been replaced with live Supabase-session/Geo/IP-bound selection exchange and120-second resource grants. Positive production-handler/live Auth integration is required, not only denial tests. New private-media policy/configuration was not applied to production. Actual hosted Geo/SSO and broader Auth/API Geo policy, long-duration client/device behavior, target soak/distributed quota and managed recovery remain open release gates. No production certificate, merge or deployment is authorized.
+
+
 ## Critical blockers remediation update
 
 **NOT READY — BLOCKED.** Current remediation results and open release gates are authoritative in [CRITICAL_BLOCKERS_REMEDIATION.md](CRITICAL_BLOCKERS_REMEDIATION.md). New tests use **PASS / FAIL / BLOCKED / NOT RUN**; earlier status terminology below is historical, not a replacement for this update. Actual Docker runtime at `e074e58` passed after fixing omitted API workspace dependencies; final-HEAD workflow must additionally prove enhanced outage/transaction cases. Production legacy M3U/Xtream routes are explicitly fail-closed pending session-bound migration. Trusted hosting Geo and physical-device acceptance remain unproven. No production release is authorized.

@@ -21,7 +21,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEq
 const PREFIX = 'cloudplay-xtream-proxy:v1:';
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
-/** Playback sessions stay valid long enough to watch a film, then die. */
+/** Legacy development default; production resources use MEDIA_TTL_MS and live Auth. */
 export const TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_TOKEN_CHARS = 4096;
 

@@ -1,0 +1,33 @@
+{
+  "status": "BLOCKED",
+  "project_id": "prj_zxlqaeLb1EvuMDFcnHHvRAelbHad",
+  "runtime": "Node26.x Next.js apps/web Vercel iad1",
+  "sso_protection": "all_except_custom_domains",
+  "ready_preview": {
+    "id": "dpl_4hb7q9Y6kb5HjUnxz2PJ9DfXKZUR",
+    "sha": "a5c417d8133b5e431b58493db237525ca392ca87",
+    "url": "https://cloud-play-iraq-cp9b4szjx-aldaeny60-1073.vercel.app",
+    "probe_path": "/api/xtream/session",
+    "result": "redirect to Vercel login, not application access or Geo verification"
+  },
+  "latest_preview": {
+    "id": "dpl_Hin9VtejQTZZ26nQbFgdex9eCXxE",
+    "sha": "ac0f0e16a024feb8af450ed06eb5ad2cadad6eb4",
+    "state": "CANCELED",
+    "reason": "commit did not affect web project"
+  },
+  "methods": [
+    "read-only get_project",
+    "read-only list_deployments",
+    "unauthenticated preview path fetch stopped at SSO"
+  ],
+  "production_accessed_for_tests": false,
+  "settings_or_secrets_changed": false,
+  "missing": [
+    "authorized SSO preview access",
+    "isolated ingress/Auth/API/PG configuration with synthetic media",
+    "approved country policy for login/refresh/general APIs",
+    "proof dedicated hosting headers overwritten and no alternate ingress"
+  ],
+  "secret_values_retained": false
+}

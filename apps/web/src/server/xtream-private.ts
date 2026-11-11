@@ -71,7 +71,11 @@ function settings() {
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new PrivateError('NOT_CONFIGURED');
   if (url.pathname !== '/' && url.pathname !== '') throw new PrivateError('NOT_CONFIGURED');
   if (url.protocol === 'http:' && process.env.XTREAM_ALLOW_HTTP !== 'true') throw new PrivateError('HTTP_DISABLED');
-  return { url, username, password, secret: process.env.XTREAM_PROXY_SECRET || password };
+  const secret=process.env.XTREAM_PROXY_SECRET||password;
+  // Production capabilities must not derive their encryption key from a
+  // potentially weak provider account password. No secret/settings mutation.
+  if(process.env.NODE_ENV==='production'&&(!process.env.XTREAM_PROXY_SECRET||secret.length<32))throw new PrivateError('NOT_CONFIGURED');
+  return { url, username, password, secret };
 }
 
 /** Throws if the private player is switched off or incompletely configured. */

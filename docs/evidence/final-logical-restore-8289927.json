@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "raw_historical_harness_status": "VERIFIED",
+  "scope": "disposable PostgreSQL17 custom archive to separate database on same isolated cluster; NOT managed Supabase/PITR",
+  "snapshot": {
+    "tables": 77,
+    "rows": 1246,
+    "sha256": "4fdc607cc67ac0f7f0fa63e07118500780d4483a8319144bc7a1c4e77d57a773"
+  },
+  "checks": [
+    "custom archive readable",
+    "truncated archive rejected",
+    "single transaction restore",
+    "all public/auth table row hashes equal",
+    "indexes constraints RLS policies grants equal",
+    "restored foreign key enforced"
+  ],
+  "production_accessed": false,
+  "archive_retained": false
+}

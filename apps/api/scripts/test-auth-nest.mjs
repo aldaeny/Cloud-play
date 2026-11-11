@@ -1,7 +1,7 @@
 // Native Nest/Prisma against disposable GoTrue via fixture TLS bridge.
 // Executed only by test-auth-recovery.mjs; no mocked identity/DB/guards.
 import { createServer } from 'node:https';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {execFileSync} from 'node:child_process';

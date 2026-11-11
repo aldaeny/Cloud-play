@@ -17,7 +17,7 @@ try{
  run(['version']);
  assert.equal(run(['image','inspect','--format','{{.Config.User}}',image]),'node');
  const baked=JSON.parse(run(['image','inspect','--format','{{json .Config.Env}}',image]));
- assert.ok(!baked.some(s=>/^(?:DATABASE_URL|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|ADMIN_JWT_SECRET|XTREAM_ENCRYPTION_KEY|SUPABASE.*)=/.test(s)));
+ assert.ok(!baked.some(s=>/^(?:DATABASE_URL|JWT_ACCESS_SECRET|JWT_REFRESH_SECRET|ADMIN_JWT_SECRET|XTREAM_ENCRYPTION_KEY|XTREAM_PROXY_SECRET|PLAYLIST_PROXY_SECRET|EXTERNAL_GEO_SIGNING_KEY|SUPABASE.*)=/.test(s)));
  assert.equal(run(['run','--rm',image,'node','-e',"const fs=require('fs');for(const p of ['/app/.env','/app/.env.docker-canary','/app/.git','/app/docs'])if(fs.existsSync(p))process.exit(1);console.log('clean')"]),'clean');
  passed('runtime image is non-root; no baked credential env, root env/canary/git/docs files');
  const engines=run(['run','--rm',image,'node','-e',"const fs=require('fs');const p='/app/node_modules/.prisma/client';const e=fs.readdirSync(p).filter(n=>/^libquery_engine-.*\\.so\\.node$/.test(n));if(!e.length)process.exit(1);for(const n of e)require(p+'/'+n);console.log(e.join(','))"]);

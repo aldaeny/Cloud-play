@@ -12,9 +12,10 @@ import {type MediaBinding} from './private-media-session';
  * Because the proxy runs on the server it can forward Referer and User-Agent,
  * so entries that the public tier must reject as unplayable can work here.
  *
- * Tokens are minted at import time rather than at play time on purpose: they are
- * self-contained, so playback keeps working across serverless instances with no
- * server-side playlist session to lose.
+ * Production imports mint encrypted non-playable selection descriptors bound to
+ * the original live Auth session/IP/country and absolute expiry. Existing players
+ * exchange them for120-second resource grants; every resource checks live Auth.
+ * Legacy self-contained playable tokens remain development-only.
  */
 import { createHash } from 'node:crypto';
 import { parsePublicUrl, readCapped, safeFetch, SafeFetchError } from './safe-fetch';

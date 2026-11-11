@@ -1,4 +1,4 @@
-import {usePrivateMediaUrl} from '../../lib/use-private-media-url';
+import {usePrivateMediaUrl,PRIVATE_MEDIA_DENIED} from '../../lib/use-private-media-url';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSupabase } from '../../lib/supabase';
@@ -99,6 +99,7 @@ function PrivateVideo({ source, onError }: { source: Playing; onError: (message:
   useEffect(() => {
     const video = ref.current;
     if (!video||!url) return;
+    if(url===PRIVATE_MEDIA_DENIED){onError('SESSION_EXPIRED');return;}
     const resume=resumeRef.current?.source===source.url?resumeRef.current:null;
     const restore=()=>{if(resume&&source.kind!=='live'&&Number.isFinite(video.duration)&&resume.time<video.duration)video.currentTime=resume.time;if(resume?.paused)video.pause();};
     video.addEventListener('loadedmetadata',restore);

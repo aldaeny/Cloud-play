@@ -1,5 +1,5 @@
 'use client';
-import {usePrivateMediaUrl} from '../../lib/use-private-media-url';
+import {usePrivateMediaUrl,PRIVATE_MEDIA_DENIED} from '../../lib/use-private-media-url';
 import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
 import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 
@@ -140,6 +140,7 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
       else fail('تعذر الوصول إلى مصدر البث بعد عدة محاولات. قد يكون متوقفاً أو يمنع التشغيل من هذا الموقع.');
     };
     async function attach() {
+      if(src===PRIVATE_MEDIA_DENIED){fail('انتهت جلسة التشغيل أو تغيّر سياق الوصول. سجّل الدخول واختر المصدر مجدداً.');return;}
       try { await prepareMediaSession(src); } catch { fail('يرجى تسجيل الدخول؛ التشغيل المحمي غير متاح.'); return; }
       if (cancelled) return;
       if (!src || sourceError(src)) { fail('رابط البث غير صالح أو غير آمن.'); return; }

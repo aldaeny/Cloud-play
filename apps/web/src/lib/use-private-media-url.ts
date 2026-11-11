@@ -3,6 +3,7 @@ import {getSupabase} from './supabase';
 /** Keep the existing players. Exchange non-playable selection descriptors for
  * short media grants; no refresh token/provider credential ever enters a URL.
  * No renewal after original selection cap, logout or backend denial. */
+export const PRIVATE_MEDIA_DENIED='private-media:denied';
 export function usePrivateMediaUrl(input:string):string{
  const bound=/^\/api\/(playlist|xtream)\/stream\?t=[A-Za-z0-9_-]+&session=1$/.test(input);
  const [state,setState]=useState({input:'',url:''});
@@ -18,9 +19,9 @@ export function usePrivateMediaUrl(input:string):string{
     if(!response.ok)throw new Error();const result=await response.json();
     if(typeof result.url!=='string'||!/^\/api\/(playlist|xtream)\/stream\?t=[A-Za-z0-9_-]+$/.test(result.url)||!Number.isSafeInteger(result.expiresAt)||result.expiresAt<=Date.now())throw new Error();
     if(cancelled)return;setState({input,url:result.url});timer=setTimeout(()=>void renew(),Math.min(45000,Math.max(1,result.expiresAt-Date.now()-1000)));
-   }catch{if(!cancelled)setState({input,url:''});}
+   }catch{if(!cancelled)setState({input,url:PRIVATE_MEDIA_DENIED});}
   };
-  void renew();const subscription=auth?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){clearTimeout(timer);if(!cancelled)setState({input,url:''});}});
+  void renew();const subscription=auth?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){clearTimeout(timer);if(!cancelled)setState({input,url:PRIVATE_MEDIA_DENIED});}});
   return()=>{cancelled=true;clearTimeout(timer);subscription?.data.subscription.unsubscribe();};
  },[input,bound]);
  return bound?(state.input===input?state.url:''):input;

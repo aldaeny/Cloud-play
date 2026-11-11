@@ -21,6 +21,8 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
 const PREFIX = 'cloudplay-playlist-proxy:v1:';
 const IV_BYTES = 12;
 const TAG_BYTES = 16;
+// Legacy development default only. Production selection descriptors need live
+// Auth exchange; playable resources are capped at120 seconds.
 export const PLAYLIST_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_TOKEN_CHARS = 8192;
 
@@ -49,7 +51,7 @@ export class PlaylistTokenError extends Error {
  */
 export function playlistSecret(): string {
   const secret = (process.env.PLAYLIST_PROXY_SECRET || process.env.XTREAM_PROXY_SECRET || '').trim();
-  if (secret.length < 16) throw new PlaylistTokenError();
+  if (secret.length < (process.env.NODE_ENV==='production'?32:16)) throw new PlaylistTokenError();
   return secret;
 }
 

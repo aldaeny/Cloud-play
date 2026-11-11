@@ -1,5 +1,10 @@
 # Critical production blockers remediation
 
+## Final project completion directive — current status
+
+**NOT READY — BLOCKED.** The current implementation and acceptance scope are in [FINAL_PROJECT_COMPLETION_REPORT.md](FINAL_PROJECT_COMPLETION_REPORT.md), with [HARDWARE_VALIDATION.md](HARDWARE_VALIDATION.md) and `docs/evidence/final-*.json`. Older “legacy M3U/Xtream production routes disabled” statements below describe the prior remediation, not the current code: those blanket503 gates have been replaced with live Supabase-session/Geo/IP-bound selection exchange and120-second resource grants. Positive production-handler/live Auth integration is required, not only denial tests. New private-media policy/configuration was not applied to production. Actual hosted Geo/SSO and broader Auth/API Geo policy, long-duration client/device behavior, target soak/distributed quota and managed recovery remain open release gates. No production certificate, merge or deployment is authorized.
+
+
 ## Decision: NOT READY — BLOCKED
 
 This remediation uses **PASS / FAIL / BLOCKED / NOT RUN** per test. Earlier certification vocabulary is historical only. No production release, migration, merge, provider activation, SSO change or secret rotation is authorized.
