@@ -88,3 +88,6 @@ auth-recovery-evidence.txt
 # Local lifecycle archives contain secrets and customer data; never commit.
 .selfhost*/
 selfhost-runtime-evidence.json
+
+# Generated runtime vulnerability inventory (CI artifact, not source)
+/security-evidence/

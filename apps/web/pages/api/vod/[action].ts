@@ -6,7 +6,7 @@ const uuid=(value:unknown):value is string=>typeof value==='string'&&/^[a-f0-9]{
 export default async function handler(req:NextApiRequest,res:NextApiResponse){
   res.setHeader('Cache-Control','private, no-store');res.setHeader('X-Content-Type-Options','nosniff');
   const action=req.query.action;
-  const expected=action==='session'||action==='end'||action==='heartbeat'?'POST':action==='catalog'||action==='profiles'||action==='devices'||action==='media'?'GET':null;
+  const expected=action==='session'||action==='end'||action==='heartbeat'||action==='progress'?'POST':action==='catalog'||action==='profiles'||action==='devices'||action==='media'||action==='episodes'?'GET':null;
   if(!expected)return res.status(404).end();
   if(req.method!==expected){res.setHeader('Allow',expected);return res.status(405).end();}
   let publicOrigin:URL;
@@ -19,7 +19,15 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
     const origin=new URL(process.env.API_INTERNAL_URL||'');
     if(origin.protocol!=='https:'||origin.username||origin.password||origin.pathname!=='/'||origin.search||origin.hash)throw new Error();
     let path:string,body:unknown,scope:string|undefined;
-    if(action==='catalog')path='/search';
+    let upstreamMethod=expected;
+    if(action==='episodes'){
+      if(!uuid(req.query.title))return res.status(400).end();
+      path=`/titles/${req.query.title}/episodes`;
+    }else if(action==='progress'){
+      const b=req.body;
+      if(!uuid(b?.titleId)||!uuid(b?.profileId)||(b.episodeId!==undefined&&!uuid(b.episodeId))||!Number.isSafeInteger(b.positionSec)||b.positionSec<0||b.positionSec>86400||!Number.isSafeInteger(b.durationSec)||b.durationSec<0||b.durationSec>86400)return res.status(400).end();
+      path='/playback/me/progress';upstreamMethod='PUT';body={titleId:b.titleId,profileId:b.profileId,positionSec:b.positionSec,durationSec:b.durationSec,...(b.episodeId?{episodeId:b.episodeId}:{})};
+    }else if(action==='catalog')path='/search';
     else if(action==='profiles')path='/profiles';
     else if(action==='devices')path='/playback/devices';
     else if(action==='session'){
@@ -36,7 +44,7 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
       const search=new URLSearchParams({resource,expires,signature});
       path=`/playback/sessions/${session}/media?${search}`;scope=`vod:${title}`;
     }
-    const upstream=await fetch(new URL(path,origin),{method:expected,headers:{Authorization:`Bearer ${token}`,...apiGeoHeaders(req,expected,path,token),...(scope?{'x-external-geo':signHostingGeo(req,scope,token)}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000)});
+    const upstream=await fetch(new URL(path,origin),{method:upstreamMethod,headers:{Authorization:`Bearer ${token}`,...apiGeoHeaders(req,upstreamMethod,path,token),...(scope?{'x-external-geo':signHostingGeo(req,scope,token)}:{}),...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000)});
     if(!upstream.ok)return res.status([400,401,403,404,409,429].includes(upstream.status)?upstream.status:503).json({error:'VOD_REQUEST_DENIED'});
     const reader=upstream.body?.getReader();if(!reader)throw new Error();
     let size=0;const chunks:Uint8Array[]=[];

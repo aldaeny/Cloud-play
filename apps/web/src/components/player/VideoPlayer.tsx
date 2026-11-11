@@ -14,6 +14,7 @@ import { getPrefsSnapshot } from '../../lib/preferences';
 type Track = { id: number; label: string };
 type Props = {
   src: string; type: StreamType; poster?: string; title: string; isLive: boolean;
+  initialPositionSec?: number; onProgress?: (positionSec:number,durationSec:number)=>void;
   autoPlay?: boolean; onError?: (error: Error) => void; onQualityChange?: (quality: string) => void; onReady?: () => void;
 };
 type Status = 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'blocked' | 'error';
@@ -28,7 +29,7 @@ function sourceError(src: string): boolean {
 }
 
 /** Browser-native media element + on-demand MSE engines. No credentials, fake tracks or page reloads. */
-export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, autoPlay, onError, onQualityChange, onReady }: Props) {
+export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, autoPlay, initialPositionSec=0, onProgress, onError, onQualityChange, onReady }: Props) {
   const src=usePrivateMediaUrl(requestedSrc);
   const privateResume=useRef<{input:string;time:number;paused:boolean}|null>(null);
   useEffect(() => () => { if(src.startsWith('/api/external/'))void releaseMediaSession(src).catch(()=>{}); },[src]);
@@ -40,7 +41,9 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const dashRef = useRef<MediaPlayerClass | null>(null);
-  const callbacks = useRef({ onError, onReady, onQualityChange });
+  const callbacks = useRef({ onError, onReady, onQualityChange, onProgress });
+  const initialPosition=useRef(initialPositionSec);
+  useEffect(()=>{initialPosition.current=initialPositionSec;},[initialPositionSec]);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [status, setStatus] = useState<Status>('loading');
@@ -58,7 +61,7 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
   const [duration, setDuration] = useState(0);
   const [offline, setOffline] = useState(false);
   const statusRef = useRef(status);
-  useEffect(() => { callbacks.current = { onError, onReady, onQualityChange }; }, [onError, onReady, onQualityChange]);
+  useEffect(() => { callbacks.current = { onError, onReady, onQualityChange, onProgress }; }, [onError, onReady, onQualityChange, onProgress]);
   useEffect(() => { statusRef.current = status; }, [status]);
 
   const showControls = useCallback(() => {
@@ -117,7 +120,7 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
     const video = videoRef.current;
     if (!video||!src) return;
     const resume=privateResume.current?.input===requestedSrc?privateResume.current:null;
-    const restore=()=>{if(resume&&!isLive&&Number.isFinite(video.duration)&&resume.time<video.duration)video.currentTime=resume.time;};
+    const restore=()=>{const position=resume?.time??initialPosition.current;if(!isLive&&Number.isFinite(position)&&position>0&&Number.isFinite(video.duration)&&position<video.duration)video.currentTime=position;};
     video.addEventListener('loadedmetadata',restore);
     let cancelled = false;
     let hls: Hls | null = null;
@@ -283,7 +286,7 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
       onWaiting={() => setStatus(current => current === 'error' ? current : 'buffering')}
       onCanPlay={() => setStatus(current => current === 'playing' || current === 'error' || current === 'blocked' ? current : 'ready')}
       onVolumeChange={() => { const video = videoRef.current; if (video) { setMuted(video.muted); setVolume(video.volume); } }}
-      onTimeUpdate={() => setTime(videoRef.current?.currentTime ?? 0)}
+      onTimeUpdate={() => {const video=videoRef.current;setTime(video?.currentTime??0);if(video&&!isLive&&Number.isFinite(video.duration))callbacks.current.onProgress?.(Math.floor(video.currentTime),Math.floor(video.duration));}}
       onDurationChange={() => setDuration(videoRef.current?.duration ?? 0)}
       onEnded={() => setStatus('paused')}
       onError={() => fail('تعذر قراءة الفيديو. قد يكون المصدر متوقفاً أو غير مدعوم أو محظوراً بواسطة CORS.')}/>
