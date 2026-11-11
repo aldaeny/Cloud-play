@@ -32,7 +32,6 @@ COPY --from=build /mc /usr/local/bin/mc
 # This is not legal sign-off that all corresponding dependency source obligations are met.
 COPY --from=build /source /usr/share/doc/cloudplay-storage/source
 COPY infra/docker/Dockerfile.storage /usr/share/doc/cloudplay-storage/Dockerfile.storage
-COPY docs/STORAGE_DISTRIBUTION_COMPLIANCE.md /usr/share/doc/cloudplay-storage/COMPLIANCE.md
 EXPOSE 9000 9001
 ENTRYPOINT ["/usr/local/bin/minio"]
 CMD ["server", "/data", "--console-address", ":9001"]
