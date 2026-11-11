@@ -7,17 +7,20 @@ import {writeFile} from 'node:fs/promises';
 import pg from 'pg';
 const target='cloudplay_restore_fixture';
 const docker=(args)=>execFileSync('docker',args,{timeout:120000,stdio:['ignore','pipe','pipe']});
-let source,restored;
+let source,restored,created=false,guarded=false;
 try{
  assert.equal(docker(['inspect','--format','{{.Config.Image}}','auth-db']).toString().trim(),'postgres:17');
+ assert.equal(docker(['inspect','--format','{{index .Config.Labels "cloudplay.fixture"}}','auth-db']).toString().trim(),'auth-isolated');guarded=true;
  // Freeze disposable Auth only, never production. Fixture application has exited.
  docker(['stop','auth']);
  source=new pg.Pool({host:'127.0.0.1',port:5439,user:'postgres',password:'isolated-fixture-only',database:'postgres',max:1,connectionTimeoutMillis:3000});
  assert.match((await source.query('SHOW server_version')).rows[0].server_version,/^17\./);
  assert.equal((await source.query('SELECT count(*)::int AS n FROM auth.users')).rows[0].n>0,true);
- await source.query(`CREATE DATABASE ${target}`);
+ await source.query(`CREATE DATABASE ${target}`);created=true;
  docker(['exec','auth-db','pg_dump','-U','postgres','-d','postgres','--format=custom','--no-owner','--file=/tmp/cloudplay-fixture.dump']);
  assert.ok(docker(['exec','auth-db','pg_restore','--list','/tmp/cloudplay-fixture.dump']).toString().includes('TABLE DATA'));
+ docker(['exec','auth-db','sh','-c','head -c 32 /tmp/cloudplay-fixture.dump > /tmp/cloudplay-fixture-truncated.dump']);
+ assert.throws(()=>docker(['exec','auth-db','pg_restore','--list','/tmp/cloudplay-fixture-truncated.dump']));
  docker(['exec','auth-db','pg_restore','-U','postgres','--dbname='+target,'--no-owner','--exit-on-error','--single-transaction','/tmp/cloudplay-fixture.dump']);
  restored=new pg.Pool({host:'127.0.0.1',port:5439,user:'postgres',password:'isolated-fixture-only',database:target,max:1,connectionTimeoutMillis:3000});
  const snapshot=async pool=>{
@@ -39,12 +42,12 @@ try{
  const before=await snapshot(source),after=await snapshot(restored);assert.deepEqual(after,before);
  // Prove restored constraints execute, not merely names present.
  await assert.rejects(restored.query(`INSERT INTO "Profile"(id,"userId",name) VALUES ('11111111-1111-4111-8111-111111111111','22222222-2222-4222-8222-222222222222','invalid fixture')`),e=>e.code==='23503');
- const result={status:'VERIFIED',scope:'disposable PostgreSQL17 custom archive to separate database on same isolated cluster; NOT managed Supabase/PITR',snapshot:before,checks:['custom archive readable','single transaction restore','all public/auth table row hashes equal','indexes constraints RLS policies grants equal','restored foreign key enforced'],production_accessed:false,archive_retained:false};
+ const result={status:'VERIFIED',scope:'disposable PostgreSQL17 custom archive to separate database on same isolated cluster; NOT managed Supabase/PITR',snapshot:before,checks:['custom archive readable','truncated archive rejected','single transaction restore','all public/auth table row hashes equal','indexes constraints RLS policies grants equal','restored foreign key enforced'],production_accessed:false,archive_retained:false};
  await writeFile('logical-restore-evidence.json',JSON.stringify(result,null,2)+'\n');
  console.log('::notice title=Logical restore assertions::'+JSON.stringify(result));
 } catch { console.error('ISOLATED_LOGICAL_RESTORE_FAILED (details suppressed to protect fixture Auth data)');process.exitCode=1;
 } finally {
  await restored?.end();
- if(source){await source.query(`DROP DATABASE IF EXISTS ${target} WITH (FORCE)`);await source.end();}
- docker(['exec','auth-db','rm','-f','/tmp/cloudplay-fixture.dump']);
+ if(source){if(created)await source.query(`DROP DATABASE ${target} WITH (FORCE)`);await source.end();}
+ if(guarded)docker(['exec','auth-db','rm','-f','/tmp/cloudplay-fixture.dump','/tmp/cloudplay-fixture-truncated.dump']);
 }
