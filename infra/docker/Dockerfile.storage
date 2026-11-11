@@ -1,7 +1,7 @@
 # Free official upstream source, exact commits/archive hashes, pinned Go compiler.
 # These are Cloud Play source builds, NOT vendor-distributed official binaries.
 FROM golang:1.27.4-bookworm AS build
-ENV CGO_ENABLED=0 GOTOOLCHAIN=local
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOMAXPROCS=2 GOFLAGS=-p=2
 ARG TARGETARCH
 RUN set -eu; case "$TARGETARCH" in amd64|arm64) ;; *) exit 1 ;; esac; \
     mkdir -p /src/minio /src/mc /source; \
