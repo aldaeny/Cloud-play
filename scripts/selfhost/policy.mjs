@@ -35,5 +35,5 @@ export function parseEnvironment(text) {
 export function redactDiagnostic(text, values) {
   let result=String(text||'');
   for(const value of Object.values(values).filter(v=>typeof v==='string'&&v.length>=8).sort((a,b)=>b.length-a.length))result=result.split(value).join('[REDACTED]');
-  return result.replace(/(?:postgres(?:ql)?:\/\/|Bearer\s+)[^\s"']+/gi,'[REDACTED_CREDENTIAL]').slice(-6000).replace(/[\r\n]+/g,' ');
+  return result.replace(/(?:postgres(?:ql)?:\/\/|Bearer\s+)[^\s"']+/gi,'[REDACTED_CREDENTIAL]').slice(-2400).replace(/[\r\n]+/g,' ');
 }

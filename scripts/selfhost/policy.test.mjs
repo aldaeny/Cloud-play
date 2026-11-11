@@ -29,3 +29,8 @@ test('diagnostics redact credentials and known secrets without hiding failure co
   const result=redactDiagnostic('build failed password-unique-secret Bearer abc.def.ghi postgresql://user:pass@host/db\nreason: denied',{PASSWORD:'password-unique-secret'});
   assert.ok(result.includes('build failed'));assert.ok(result.includes('denied'));assert.ok(!result.includes('password-unique-secret'));assert.ok(!result.includes('abc.def.ghi'));assert.ok(!result.includes('user:pass'));assert.ok(!result.includes('\n'));
 });
+
+test('diagnostic tail fits GitHub annotations and preserves final failure',()=>{
+  const result=redactDiagnostic('progress '.repeat(2000)+'FINAL_STORAGE_FAILURE',{});
+  assert.ok(result.length<=2400);assert.ok(result.endsWith('FINAL_STORAGE_FAILURE'));
+});

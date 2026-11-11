@@ -39,7 +39,8 @@ try {
     if (compose(['ps','-a','-q']).toString().trim()) throw new Error('Install requires a new project; use upgrade for existing installs');
     if (docker(['volume','ls','-q','--filter',`label=com.docker.compose.project=${project}`]).toString().trim()) throw new Error('Existing volumes: refusing install');
     compose(['build','api','worker-media','web','admin','tools','minio']);
-    compose(['up','-d','--wait','postgres','redis','minio','minio-init']);
+    compose(['up','-d','--wait','postgres','redis','minio']);
+    compose(['run','--rm','--no-deps','minio-init']);
     compose(['run','--rm','--no-deps','tools','migrate']);
     // Operator credentials are passed through environment, never command-line values.
     compose(['run','--rm','--no-deps','-e','BOOTSTRAP_ADMIN_EMAIL','-e','BOOTSTRAP_ADMIN_PASSWORD','tools','bootstrap']);
@@ -74,7 +75,7 @@ try {
     copyFileSync(path.join(root,'.env'), path.join(dir,'installation.env')); chmodSync(path.join(dir,'installation.env'),0o600);
     writeFileSync(path.join(dir,'manifest.json'), JSON.stringify({ version:1, project, release, postgresMajor:17, auth:'local-gotrue-schema-in-database', files:Object.fromEntries(['database.dump','objects.tar','installation.env','tls/cert.pem','tls/key.pem'].map(f=>[f,sha(path.join(dir,f))])) },null,2),{mode:0o600});
     compose(['up','-d','--wait','--no-build','--pull','never','minio','api','worker-media','web','admin','mailpit','auth','auth-gateway']);
-  } else if (action === 'restore') {
+  } else if (action === 'restore' || action === 'rollback') {
     const dir = archivePath(archiveArg), manifest = JSON.parse(readFileSync(path.join(dir,'manifest.json')));
     if (manifest.version !== 1 || manifest.release !== release || manifest.project === project) throw new Error('Restore requires same release and a different empty project');
     for (const file of ['database.dump','objects.tar','installation.env','tls/cert.pem','tls/key.pem']) if (sha(path.join(dir,file)) !== manifest.files[file]) throw new Error('Archive checksum mismatch');
@@ -97,8 +98,7 @@ try {
     compose(['stop',...writers]);
     compose(['run','--rm','--no-deps','tools','migrate']);
     compose(['up','-d','--wait','api','worker-media','web','admin','mailpit','auth','auth-gateway']);
-  } else if (action === 'rollback') {
-    throw new Error('Safe rollback is restore into a different empty project at the archive release; in-place schema downgrade is forbidden. Use restore.');
+
   } else throw new Error('Usage: cli.mjs install|migrate|health|backup|restore|upgrade|rollback cloudplay-local-NAME EXACT_SHA [NEW_ARCHIVE_DIR]');
   console.log(`PASS local ${action}; no cloud or production operation performed`);
 } catch (error) {

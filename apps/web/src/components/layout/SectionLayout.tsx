@@ -69,7 +69,7 @@ export default function SectionLayout({ title, children, noIndex = false }: {
       </Head>
       <AppHeader language={language} theme={theme} onToggleLanguage={toggleLang} onToggleTheme={toggleTheme} />
       <main className="section-main shell"><h1>{title[language]}</h1><OwnerPlayerLink language={language}/>{children(language)}</main>
-      <footer className="section-footer shell"><Link href="/">{brandName}</Link> · {ar ? 'مجاني بالكامل — المفضلة والتقدم تُزامَن مع حسابك المجاني.' : 'Completely free — favorites and progress sync to your free account.'}</footer>
+      <footer className="section-footer shell"><Link href="/library">{ar ? 'مكتبة المؤسسة' : 'Organization library'}</Link> · <Link href="/">{brandName}</Link> · {ar ? 'مجاني بالكامل — المفضلة والتقدم تُزامَن مع حسابك المجاني.' : 'Completely free — favorites and progress sync to your free account.'}</footer>
     </div>
   );
 }

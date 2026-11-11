@@ -32,6 +32,11 @@ export class PlaybackController {
     @Optional() private readonly vod?: VodDeliveryService,
   ) {}
 
+  @Get('devices')
+  async devices(@CurrentUser() user: UserRequest) {
+    return this.prisma.device.findMany({where:{userId:user.id,revokedAt:null},select:{id:true,deviceName:true,platform:true},take:50});
+  }
+
   @Post('sessions')
   async createSession(
     @CurrentUser() user: UserRequest,

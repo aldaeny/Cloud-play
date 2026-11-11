@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { parseEnvironment } from './policy.mjs';
 const run=(cmd,args,opts={})=>execFileSync(cmd,args,{maxBuffer:16*1024*1024,stdio:['pipe','pipe','pipe'],...opts}).toString().trim();
-const sha=run('git',['rev-parse','HEAD']),source='cloudplay-local-source',target='cloudplay-local-restored';
+const sha=run('git',['rev-parse','HEAD']),source='cloudplay-local-source',target='cloudplay-local-restored',rollbackTarget='cloudplay-local-rollback';
 const dir=mkdtempSync(path.join(tmpdir(),'cloudplay-selfhost-')),archive=path.join(dir,'snapshot');
 const base=['compose','--env-file','.env','-f','infra/docker/compose.yml','-f','infra/docker/compose.local.yml','-f','infra/docker/compose.selfhost.yml'];
 const env={...process.env,SELFHOST_RELEASE:sha,BOOTSTRAP_ADMIN_EMAIL:'operator@synthetic.invalid',BOOTSTRAP_ADMIN_PASSWORD:randomBytes(24).toString('hex')};
@@ -93,7 +93,11 @@ try {
   writeFileSync(manifestPath,manifest);
   pass('corrupt archive rejected before restore target resource creation');
   assert.throws(()=>cli('rollback',target,[archive]));
-  pass('in-place destructive schema rollback refused; documented rollback is separate-project restore');
+  compose(target,['stop']);
+  console.log(cli('rollback',rollbackTarget,[archive]));
+  console.log(cli('health',rollbackTarget));
+  assert.deepEqual(probeAt(rollbackTarget),before);
+  pass('rollback command restores exact retained release snapshot into a third empty project; existing installation is not overwritten');
   const evidence={head:sha,status:'PASS',checks,scope:'disposable Compose applications + private storage + local GoTrue schema/TLS; not a production or physical-device proof'};
   writeFileSync('selfhost-runtime-evidence.json',JSON.stringify(evidence,null,2));
   console.log('::notice title=Selfhost package verified assertions::'+JSON.stringify(evidence));
@@ -104,6 +108,6 @@ try {
   throw error;
 } finally {
   // Only resources created under these explicit disposable fixture projects.
-  for(const project of [source,target,'cloudplay-local-corrupt'])try{compose(project,['down','--volumes','--remove-orphans']);}catch{}
+  for(const project of [source,target,rollbackTarget,'cloudplay-local-corrupt'])try{compose(project,['down','--volumes','--remove-orphans']);}catch{}
   if(ownedEnv){rmSync('.env');rmSync('.selfhost',{recursive:true,force:true});}rmSync(dir,{recursive:true,force:true});
 }

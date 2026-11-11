@@ -133,8 +133,13 @@ image revision are required before writes. PostgreSQL restore fails on errors;
 MinIO is restored while stopped. Existing targets and corrupt archives are refused.
 Keep source resources intact until you validate restored accounts, tenant scope,
 licenses, objects and playback. No automated cutover/DNS action is performed.
-The `rollback` command intentionally rejects an in-place schema downgrade; safe
-rollback is the same isolated restore procedure at the **old archive release**.
+The `rollback` command runs this same restore procedure at the **old archive release**,
+requiring a third empty project; in-place schema downgrade is rejected:
+
+```
+node scripts/selfhost/cli.mjs rollback cloudplay-local-rollback "$OLD_RELEASE" .selfhost-backups/pre-upgrade
+```
+
 No schema down-migration or customer-data deletion is part of this package.
 
 ## Upgrade
@@ -157,7 +162,7 @@ successful same-release migration is not proof every future upgrade is reversibl
 `node scripts/selfhost/runtime-test.mjs` is a disposable CI drill of the **shipped
 CLI**: build/install/migrate/bootstrap/health, duplicate refusal, object write,
 quiesced backup, separate-project restore, exact tenant/staff/branding/object
-comparison, populated-target refusal, corrupt archive refusal and rollback safety.
+comparison, populated-target refusal, corrupt archive refusal and an actual third-project rollback restoration.
 It creates and deletes only its explicitly named synthetic fixture projects. Its
 result must be read at the final tested HEAD; mere presence of this test is not a
 PASS. Local Docker is unavailable in the agent sandbox; CI supplies runtime proof.
@@ -188,3 +193,26 @@ A source/license/legal review and Docker OS-image vulnerability scan remain rele
 gates; an npm audit does not cover these binaries. Only amd64 is exercised in CI;
 arm64 checksum configuration is not physical-device/runtime proof. Other platforms
 fail closed. Web/Admin/worker images use supported Node22, matching the tested matrix.
+
+### Organization viewer bridge (partial, not customer playback certification)
+
+`/library` is an additive organization catalog/profile/owned-device selector; it
+preserves the existing public film catalog. It uses the signed-in Supabase token
+and backend tenant/license/rights checks. Devices must already be provisioned by
+the operator; entering a browser-selected UUID never creates a device grant.
+The read-only device listing excludes revoked devices and secret identifiers.
+The BFF pins its backend origin, refuses redirects, bounds bodies, requires an
+exact HTTPS `VOD_PUBLIC_ORIGIN`, and rewrites signed HLS resources to same-origin
+HttpOnly/Secure-cookie media requests. Heartbeats refresh that short-lived media
+credential from the current Supabase session; revocation remains checked by the
+backend on every object request. Cookie expiry fails closed if refresh fails.
+
+**Not enabled by the local package:** this bridge also requires HTTPS
+`API_INTERNAL_URL` and the existing verified-hosting Geo boundary
+(`signHostingGeo`); the Compose HTTP API and untrusted self-hosted request headers
+cannot satisfy it. Do not set `VERCEL=1` on a custom server to bypass this gate.
+Ten modeled route contracts are not hosted ingress, browser playback, or device
+proof. Series episode selection, progress/resume UI and end-to-end hosted VOD
+browser acceptance remain incomplete. Physical devices and public ingress have
+not been tested. The synthetic tools-based drill is a different verification
+scope, not evidence of browser delivery through this BFF.
