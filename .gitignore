@@ -84,3 +84,7 @@ auth-recovery-evidence.txt
 /docker-runtime-evidence.json
 
 /soak-evidence.json
+
+# Local lifecycle archives contain secrets and customer data; never commit.
+.selfhost*/
+selfhost-runtime-evidence.json

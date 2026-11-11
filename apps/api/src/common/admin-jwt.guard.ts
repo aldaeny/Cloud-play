@@ -1,3 +1,4 @@
+import { requireOrganization } from './organization-license';
 import { Injectable, ExecutionContext, UnauthorizedException, ForbiddenException, CanActivate } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
@@ -30,6 +31,7 @@ export class AdminJwtGuard implements CanActivate {
     if (typeof payload.sub !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.sub) || payload.tokenType !== 'admin') throw new UnauthorizedException('Invalid admin token');
     const staff = await this.prisma.staffUser.findUnique({ where: { id: payload.sub }, include: { role: true } });
     if (!staff || staff.role.tenantId !== staff.tenantId) throw new UnauthorizedException('Invalid admin account');
+    await requireOrganization(this.prisma, staff.tenantId);
     let permissions: string[] = [];
     try {
       const value: unknown = JSON.parse(staff.role.permissions);

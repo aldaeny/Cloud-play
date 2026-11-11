@@ -32,3 +32,8 @@ docs
 progressive-load-evidence.json
 logical-restore-evidence.json
 production-readiness-performance.json
+
+.selfhost*
+selfhost-runtime-evidence.json
+**/objects.tar
+**/installation.env

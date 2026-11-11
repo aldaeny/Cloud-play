@@ -9,6 +9,8 @@ RUN npm ci --no-audit --no-fund && npm run build --workspace aether-api \
  && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 
 FROM node:22-bookworm-slim AS runtime
+ARG CLOUDPLAY_RELEASE
+LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production

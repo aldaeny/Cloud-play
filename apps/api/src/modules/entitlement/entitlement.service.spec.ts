@@ -114,7 +114,7 @@ describe('EntitlementService', () => {
       mockPrisma.subscription.findMany.mockResolvedValue([]);
       mockPrisma.rightsWindow.findMany.mockResolvedValue([{ id: '1' }]);
       mockPrisma.playbackSession.count.mockResolvedValue(0);
-      mockPrisma.device.count.mockResolvedValue(5);
+      mockPrisma.device.count.mockResolvedValue(6);
       mockPrisma.playbackSession.findFirst.mockResolvedValue(null);
 
       const result = await service.check('user-id', 'profile-id', 'device-id', 'title-id');
@@ -204,7 +204,7 @@ describe('EntitlementService', () => {
 
   it('counts streams across all profiles, not just the requesting profile', async () => {
     await service.check('user-id', 'profile-id', 'device-id', 'title-id');
-    expect(mockPrisma.playbackSession.count).toHaveBeenLastCalledWith({ where: { userId: 'user-id', endedAt: null } });
+    expect(mockPrisma.playbackSession.count).toHaveBeenLastCalledWith({ where: { userId: 'user-id', endedAt: null, OR: [{ vodExpiresAt: null }, { vodExpiresAt: { gt: expect.any(Date) } }] } });
   });
 
   it('cannot grant another tenant plan', async () => {

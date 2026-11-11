@@ -11,7 +11,7 @@ describe('Supabase-authenticated profiles HTTP contract', () => {
   let app: INestApplication;
   const id = '11111111-1111-4111-8111-111111111111';
   const otherId = '22222222-2222-4222-8222-222222222222';
-  const db = { appUser: { findUnique: jest.fn() }, profile: { findMany: jest.fn() } };
+  const db = { tenant: { findUnique: jest.fn().mockResolvedValue({ licenseEnforced: false }) }, appUser: { findUnique: jest.fn() }, profile: { findMany: jest.fn() } };
   const verifyAccessToken = jest.fn();
   beforeAll(async () => {
     const mod = await Test.createTestingModule({ imports: [AppModule] })

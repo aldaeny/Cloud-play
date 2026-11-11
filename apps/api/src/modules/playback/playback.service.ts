@@ -1,4 +1,6 @@
-import { Injectable, ForbiddenException, ConflictException, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, ForbiddenException, ConflictException, ServiceUnavailableException, Optional } from '@nestjs/common';
+import type { Request } from 'express';
+import { VodDeliveryService } from './vod-delivery.service';
 import { PrismaService } from '../../prisma.service';
 import { RightsService } from '../rights/rights.service';
 import { EntitlementService } from '../entitlement/entitlement.service';
@@ -9,6 +11,7 @@ export class PlaybackService {
     private readonly prisma: PrismaService,
     private readonly rightsService: RightsService,
     private readonly entitlementService: EntitlementService,
+    @Optional() private readonly vod?: VodDeliveryService,
   ) {}
 
   async createSession(
@@ -17,7 +20,9 @@ export class PlaybackService {
     deviceId: string,
     titleId: string,
     episodeId?: string,
+    request?: Request,
   ) {
+    if (process.env.VOD_DELIVERY_ENABLED === 'true' && this.vod && request) return this.vod.create(userId,profileId,deviceId,titleId,episodeId,request);
     // 1. Check Entitlement (Subscription, Rights, Rating, Limits)
     const entitlement = await this.entitlementService.check(
       userId,

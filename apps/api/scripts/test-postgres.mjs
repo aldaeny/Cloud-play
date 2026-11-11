@@ -10,6 +10,8 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
+import { testVodDelivery } from './test-vod-delivery.mjs';
+import { testOrganizationLicense } from './test-organization-license.mjs';
 import { testTenantSettings } from './test-tenant-settings.mjs';
 import { testExternalCandidates } from './test-external-candidates.mjs';
 import { testRls } from './test-rls.mjs';
@@ -351,6 +353,8 @@ try {
     assert.equal(await client.xtreamCatalogSnapshot.count(), 0);
     await client.xtreamServer.deleteMany({ where: { tenantId: tenant.id } });
   });
+  await testOrganizationLicense(client, check);
+  await testVodDelivery(client, pool, api, check);
   await testTenantSettings(client, api, check);
   await testExternalCandidates(client, tenant, check);
   await check('new channel/report and quarantine migrations rollback/reapply on isolated empty feature state preserve existing users', async()=>{

@@ -34,6 +34,16 @@ export class StorageService {
     if (!result.Body) throw new Error('Empty S3 response body');
     return Buffer.from(await result.Body.transformToByteArray());
   }
+  async downloadBounded(objectKey: string, maxBytes: number): Promise<Buffer> {
+    const result = await this.client(this.internalEndpoint).send(new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }));
+    if (!result.Body || (result.ContentLength !== undefined && result.ContentLength > maxBytes)) { result.Body?.transformToWebStream().cancel(); throw new Error('OBJECT_TOO_LARGE'); }
+    const parts: Buffer[] = []; let size = 0;
+    for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+      size += chunk.length; if (size > maxBytes) throw new Error('OBJECT_TOO_LARGE');
+      parts.push(Buffer.from(chunk));
+    }
+    return Buffer.concat(parts);
+  }
   async objectExists(objectKey: string): Promise<boolean> {
     try {
       await this.client(this.internalEndpoint).send(new HeadObjectCommand({ Bucket: this.bucket, Key: objectKey }));

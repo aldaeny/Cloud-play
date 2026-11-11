@@ -1,3 +1,4 @@
+import { PublicBrandingController } from './public-branding.controller';
 import { TenantSettingsService } from './tenant-settings.service';
 import { TenantSettingsController } from './tenant-settings.controller';
 import { PrivateMediaController } from './private-media.controller';
@@ -21,7 +22,7 @@ import { XtreamServersService } from './xtream-servers.service';
 import { XtreamHealthService } from './xtream-health.service';
 
 @Module({
-  controllers: [TenantSettingsController, PrivateMediaController, ExternalPlaybackController, ExternalChannelsController, ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
+  controllers: [PublicBrandingController, TenantSettingsController, PrivateMediaController, ExternalPlaybackController, ExternalChannelsController, ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
   providers: [TenantSettingsService, ExternalPlaybackSessionService, ExternalReportsService, ExternalChannelsService, ExternalMonitorService, ExternalServersService, XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
   exports: [AdminService, XtreamHealthService],
 })

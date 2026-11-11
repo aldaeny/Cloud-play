@@ -1,4 +1,6 @@
 FROM node:20-alpine AS builder
+ARG CLOUDPLAY_RELEASE
+LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app
 RUN apk add --no-cache ffmpeg openssl
 COPY . .

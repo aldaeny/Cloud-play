@@ -76,6 +76,7 @@ export class EntitlementService {
       where: {
         userId,
         endedAt: null,
+        OR: [{ vodExpiresAt: null }, { vodExpiresAt: { gt: now } }],
       },
     });
     const maxStreams = plan?.maxStreams || 3;
@@ -85,7 +86,7 @@ export class EntitlementService {
     const devices = await this.prisma.device.count({
       where: { userId, revokedAt: null },
     });
-    const deviceLimit = devices < (plan?.maxDevices || 5);
+    const deviceLimit = devices <= (plan?.maxDevices || 5);
 
     // Get resume position from last session
     const lastSession = await this.prisma.playbackSession.findFirst({

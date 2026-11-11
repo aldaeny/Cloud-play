@@ -1,3 +1,4 @@
+import { requireOrganization } from './organization-license';
 import {
   Injectable,
   ExecutionContext,
@@ -63,6 +64,7 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('User not found or inactive');
       }
 
+      await requireOrganization(this.prisma, user.tenantId);
       // Attach user to request for downstream handlers
       request.user = {
         id: payload.sub,

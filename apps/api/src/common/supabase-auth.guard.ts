@@ -1,3 +1,4 @@
+import { requireOrganization } from './organization-license';
 import {ApiGeoPolicyService} from './api-geo-policy.service';
 /**
  * Supabase-backed authentication guard for the Hybrid architecture (D1 Option C).
@@ -81,6 +82,7 @@ export class SupabaseAuthGuard implements CanActivate {
     if (!account) throw new HttpException('ACCOUNT_NOT_PROVISIONED' satisfies AccountCode, 403);
     if (account.status !== 'active') throw new HttpException('ACCOUNT_INACTIVE' satisfies AccountCode, 403);
 
+    await requireOrganization(this.prisma, account.tenantId);
     request.user = {
       id: account.id,
       tenantId: account.tenantId,

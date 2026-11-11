@@ -7,7 +7,7 @@ permissions:
 jobs:
   docker-native:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,9 +22,13 @@ jobs:
           rm .env.docker-canary
       - name: Run production image with native Prisma and isolated PostgreSQL
         run: node apps/api/scripts/test-docker-runtime.mjs
+      - name: Shipped self-hosted install and complete local database-object restore drill
+        run: node scripts/selfhost/runtime-test.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: production-docker-runtime
-          path: docker-runtime-evidence.json
+          path: |
+            docker-runtime-evidence.json
+            selfhost-runtime-evidence.json
           retention-days: 14

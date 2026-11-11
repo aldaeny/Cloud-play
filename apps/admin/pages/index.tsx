@@ -17,6 +17,17 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (token) return;
+    const abort = new AbortController();
+    fetch('/api/admin/public-branding', { signal: abort.signal }).then(async res => {
+      if (!res.ok) return;
+      const b = await res.json();
+      if (typeof b?.displayName === 'string' && /^#[a-f0-9]{6}$/i.test(b.brandDark) && /^#[a-f0-9]{6}$/i.test(b.cyanGlow) && (b.logoUrl === null || /^\/brand-assets\/[a-zA-Z0-9_-]+\.(png|webp|jpg)$/.test(b.logoUrl))) setBranding(b);
+    }).catch(() => {});
+    return () => abort.abort();
+  }, [token]);
+
   async function login(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError('');

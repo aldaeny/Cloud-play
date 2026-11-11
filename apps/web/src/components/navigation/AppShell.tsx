@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { useBranding } from '../brand/BrandingProvider';
+import type { CSSProperties } from 'react';
 import { AccountProvider } from '../account/AccountProvider';
 import AppHeader from '../layout/AppHeader';
 import GlobalNav from '../nav/GlobalNav';
@@ -12,6 +14,7 @@ import { readAppearance } from '../../lib/appearance';
 
 
 export default function AppShell({ children }: { children: ReactNode }) {
+  const brand = useBranding();
   const router = useRouter();
   const currentPath = usePathname();
   const pathname = currentPath ?? '/live';
@@ -40,7 +43,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return <NavigationProvider value={navigation}>
     <AccountProvider>
       <PageTransition>
-        <div className={classes} dir={ar ? 'rtl' : 'ltr'}>
+        <div className={classes} style={brand ? ({ '--bg': brand.brandDark, '--panel': brand.brandCard, '--cyan': brand.cyanGlow, '--pink': brand.magentaGlow, '--purple': brand.violetGlow, backgroundColor: prefs.theme === 'dark' ? brand.brandDark : undefined } as CSSProperties) : undefined} dir={ar ? 'rtl' : 'ltr'}>
           <AppHeader language={prefs.language} theme={prefs.theme}
             onToggleLanguage={() => setPref('cloudplay-language', ar ? 'en' : 'ar')}
             onToggleTheme={() => setPref('cloudplay-theme', prefs.theme === 'dark' ? 'light' : 'dark')} />

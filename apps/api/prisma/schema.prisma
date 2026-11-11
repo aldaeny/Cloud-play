@@ -37,6 +37,14 @@ enum SubscriptionStatus {
 }
 
 model Tenant {
+  licenseEnforced Boolean @default(false)
+  licenseTier String?
+  licenseStatus String @default("unlicensed")
+  licenseExpiresAt DateTime? @db.Timestamptz
+  maxUsers Int @default(0)
+  maxStaff Int @default(0)
+  maxServers Int @default(0)
+  maxTitles Int @default(0)
   playbackLeases ExternalPlaybackLease[]
   externalServers ExternalServer[]
   contentLicenses ContentLicense[]
@@ -238,6 +246,7 @@ model Episode {
 }
 
 model MediaAsset {
+  vodSessions PlaybackSession[] @relation("VodPlaybackAssets")
   id              String @id @default(uuid()) @db.Uuid
   ownerType       String
   ownerId         String @db.Uuid
@@ -271,6 +280,11 @@ model TranscodeJob {
 }
 
 model PlaybackSession {
+  vodCountry String?
+  vodAssetId String? @db.Uuid
+  vodAsset MediaAsset? @relation("VodPlaybackAssets", fields: [vodAssetId], references: [id])
+  authBinding String?
+  vodExpiresAt DateTime? @db.Timestamptz
   id              String @id @default(uuid()) @db.Uuid
   userId          String @db.Uuid
   user            AppUser @relation(fields: [userId], references: [id])
