@@ -69,3 +69,11 @@ browser/media fixture tooling failed before application and Auth browser tests.
 No overall acceptance claim. Added fixed-label tooling failure classifications
 (no arbitrary error/secret fragments) to identify the failing command without
 bypassing it. Final handoff records results of the required post-change full CI.
+
+Run `43046186848` at `4a11be41ccd9721a6a8168b91656cf9a5ae0cb8e`:
+full CI FAIL. Native failure is now localized to `QUOTA_WINDOW_RESET`, after the
+actual outage/retry assertions, while the parent observer still held its own stale
+pool. Explicitly reconnect the observer pool before collecting DB-time evidence;
+no business transaction is replayed. Fixture browser installation failed with
+`download` classification (Auth exceeded600s and timed out; application exited1).
+These tests remain failures, not converted to PASS. No browser assertions skipped.

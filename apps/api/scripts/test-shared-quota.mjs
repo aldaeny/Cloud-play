@@ -36,6 +36,9 @@ export async function testSharedQuota(client,databaseUrl,check,clientPath,databa
     while(status===503&&performance.now()<deadline){status=(await hit(port)).status;if(status===503)await wait(100);}
     assert.equal(status,429);
    }
+   // Parent observer also held a connection across the outage. Reconnect its
+   // own pool before read-only evidence collection (no business write replay).
+   await client.$disconnect();await client.$connect();
    stage='QUOTA_WINDOW_RESET';const [{now:resetNow}]=await client.$queryRaw`SELECT clock_timestamp() AS now`;
    await wait(60000-(resetNow.getTime()%60000)+50);
    assert.equal((await hit(b.port)).status,204);assert.equal((await hit(restarted.port)).status,204);
