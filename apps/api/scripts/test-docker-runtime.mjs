@@ -1,6 +1,6 @@
 // Real Docker image/native Prisma/isolated PostgreSQL. No production URL read.
 import assert from 'node:assert/strict';
-import {execFileSync,spawnSync} from 'node:child_process';
+import {execFileSync,spawnSync,spawn} from 'node:child_process';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {setTimeout as wait} from 'node:timers/promises';
@@ -22,8 +22,9 @@ try{
  passed('runtime image is non-root; no baked credential env, root env/canary/git/docs files');
  const engines=run(['run','--rm',image,'node','-e',"const fs=require('fs');const p='/app/node_modules/.prisma/client';const e=fs.readdirSync(p).filter(n=>/^libquery_engine-.*\\.so\\.node$/.test(n));if(!e.length)process.exit(1);for(const n of e)require(p+'/'+n);console.log(e.join(','))"]);
  assert.match(engines,/debian-openssl-3\.0/);passed('actual native Prisma engine loads in Debian/OpenSSL3 Node22 runtime image');
- assert.throws(()=>run(['run','--rm',image]));passed('production startup fails closed without mandatory configuration');
+ assert.throws(()=>run(['run','--rm',image]),error=>String(error.stderr||'').includes('Production JWT secrets must be distinct'));passed('production startup fails closed without mandatory configuration');
  run(['network','create',network]);ownedNetwork=true;
+ assert.throws(()=>run(['run','--rm','--network',network,...envArgs,'-e','DATABASE_URL=postgresql://isolated:isolated@127.0.0.1:1/postgres?connection_limit=3&pool_timeout=2&connect_timeout=1',image]),error=>/P1001|Can't reach database server/.test(String(error.stderr||'')));passed('startup rejects unreachable isolated database with native connection failure');
  run(['run','-d','--name',db,'--label','cloudplay.fixture=docker-native','--network',network,'-e','POSTGRES_PASSWORD='+password,'postgres:17']);ownedDb=true;
  let ready=false;for(let i=0;i<40;i++){try{run(['exec',db,'pg_isready','-h','127.0.0.1','-U','postgres']);ready=true;break;}catch{}await wait(500);}assert.ok(ready);
  for(const dir of (await readdir('apps/api/prisma/migrations')).sort()){
@@ -34,8 +35,14 @@ try{
  run(['run','-d','--init','--name',api,'--label','cloudplay.fixture=docker-native','--network',network,...envArgs,image]);ownedApi=true;await waitHealth(200);
  const probe=JSON.parse(run(['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();(async()=>{const n=await p.tenant.count();const rows=await p.$queryRaw`SELECT count(*)::int AS connections FROM pg_stat_activity WHERE datname=current_database() AND backend_type='client backend'`;console.log(JSON.stringify({tenants:n,connections:rows[0].connections}));await p.$disconnect()})().catch(()=>process.exit(1))"]));
  assert.equal(probe.tenants,0);assert.ok(probe.connections<=6);passed('running production image executes actual native Prisma model query; explicit per-process pool3 budget');
+ const held=spawn('docker',['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.$transaction(async t=>{await t.tenant.create({data:{id:'11111111-1111-4111-8111-111111111111'}});console.log('TX_READY');await t.$executeRaw`SELECT pg_sleep(10)`;},{timeout:15000}).then(()=>process.exit(1),async()=>{await p.$disconnect();console.log('TX_ABORTED');})"],{stdio:['ignore','pipe','ignore']});
+ let heldOutput='';let timer;const readyTx=new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('TX_READY_TIMEOUT')),10000);held.stdout.on('data',chunk=>{heldOutput+=chunk.toString();if(heldOutput.includes('TX_READY'))resolve();});held.once('error',()=>reject(new Error('TX_EXEC_FAILED')));});
+ const heldDone=new Promise(resolve=>held.once('exit',resolve));
+ try{await readyTx;}finally{clearTimeout(timer);}
  run(['stop','-t','5',db]);await waitHealth(503,10);passed('health/readiness returns503 during actual DB outage');
+ const aborted=await Promise.race([heldDone,wait(20000).then(()=>-1)]);assert.equal(aborted,0);assert.ok(heldOutput.includes('TX_ABORTED'));passed('real in-flight native transaction aborts during database outage');
  run(['start',db]);await waitHealth(200,40);passed('same running application reconnects after isolated DB restart');
+ assert.equal(run(['exec',api,'node','-e',"const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();p.tenant.count().then(async n=>{console.log(n);await p.$disconnect();}).catch(()=>process.exit(1))"]),'0');passed('database restart preserves committed state and rolls back interrupted fixture transaction');
  // /health is the existing database-aware readiness contract. Do not invent a
  // second endpoint or claim liveness is independent of database availability.
  const start=performance.now();run(['stop','-t','10',api]);
