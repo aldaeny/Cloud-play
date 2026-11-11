@@ -7,6 +7,9 @@ for(const name of ['storage','api']){
  const findings=(report.Results||[]).flatMap(r=>(r.Vulnerabilities||[]).map(v=>({...v,target:r.Target})));
  for(const v of findings)counts[v.Severity]=(counts[v.Severity]||0)+1;
  totals[name]=counts;
+ const urgent=findings.filter(v=>['HIGH','CRITICAL'].includes(v.Severity));
+ if(urgent.length)console.log('::warning title='+name+' unresolved HIGH CRITICAL sample::'+JSON.stringify({total:urgent.length,sample:urgent.slice(0,8).map(v=>({id:v.VulnerabilityID,pkg:v.PkgName,installed:v.InstalledVersion,fixed:v.FixedVersion||'unfixed'})),completeReport:'security-evidence/VULNERABILITY_REPORT.md; no findings suppressed'}).replaceAll('%','%25'));
+
  lines.push(`## ${name}`,`Image: ${readFileSync(`security-evidence/${name}-image-id.txt`,'utf8').trim()}`,`Counts: ${JSON.stringify(counts)}`,'','| Advisory | Package | Installed | Fixed | Severity | Action |','|---|---|---|---|---|---|');
  const clean=x=>String(x||'').replaceAll('|','/').replace(/[\r\n]/g,' ');
  for(const v of findings)lines.push(`| ${[v.VulnerabilityID,v.PkgName,v.InstalledVersion,v.FixedVersion||'not published',v.Severity,v.FixedVersion?'Rebuild with patched dependency/base; rerun lifecycle':'Track upstream; isolate exposure; replacement/legal review'].map(clean).join(' | ')} |`);

@@ -2,7 +2,14 @@
 # Existing loopback local ports remain for backwards compatibility. On a public
 # host firewall them AND deny all direct access to web/API containers.
 services:
+  auth:
+    environment:
+      API_EXTERNAL_URL: ${VOD_PUBLIC_ORIGIN:?Set exact public HTTPS origin}/auth/v1
+      GOTRUE_SITE_URL: ${VOD_PUBLIC_ORIGIN}
   web:
+    build:
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${VOD_PUBLIC_ORIGIN}
     environment:
       SELFHOST_TRUST_MTLS_EDGE: 'true'
       SELFHOST_EDGE_SECRET: ${SELFHOST_EDGE_SECRET:?Set a separate random edge key}

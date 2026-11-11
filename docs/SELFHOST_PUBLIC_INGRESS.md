@@ -50,6 +50,15 @@ operator-owned bind mounts, not world-readable keys). Never copy any key into an
 image. Use a dedicated, random 32-byte-or-longer SELFHOST_EDGE_SECRET, distinct
 from EXTERNAL_GEO_SIGNING_KEY, and an exact HTTPS VOD_PUBLIC_ORIGIN.
 
+The public edge's auth-ca.pem must be the package Auth certificate's CA/trust
+anchor (the local self-signed cert in the default fixture); /auth/v1/ is forwarded
+over verified TLS to the loopback Auth gateway, not exposed as a direct API.
+The overlay rebuilds the browser Supabase URL as VOD_PUBLIC_ORIGIN and configures
+GoTrue's external URL/site URL to that same owned HTTPS origin. Rebuild web when
+changing it; runtime env alone cannot replace Next's compiled public URL.
+Favorites/REST sync still requires separately supplied PostgREST/RLS; the overlay
+does not pretend to provide it. Internet email delivery is not configured.
+
 Set SELFHOST_INGRESS_ROOT to the absolute cert directory. Add
 `-f infra/docker/compose.ingress.yml` **after** the existing three package compose
 files. This overlay is intentionally not silently enabled by lifecycle commands.
