@@ -35,7 +35,7 @@ try {
   run('docker',['cp',`${worker}:/tmp/synthetic/hls`,'.cache/media-fixtures/']);
   console.log(cli('demo-import',source));
   const demo=JSON.parse(readFileSync('.selfhost/demo/customer-demo.json'));
-  const apiScript="const fs=require('fs');const x=JSON.parse(fs.readFileSync(0,'utf8'));fetch(x.url,{method:x.method||'GET',headers:x.headers||{},...(x.body?{body:JSON.stringify(x.body)}:{}),redirect:'error'}).then(async r=>{const bytes=Buffer.from(await r.arrayBuffer());console.log(JSON.stringify({status:r.status,mime:r.headers.get('content-type'),text:bytes.toString('utf8'),length:bytes.length}));}).catch(()=>process.exit(1))";
+  const apiScript="const fs=require('fs');const x=JSON.parse(fs.readFileSync(0,'utf8'));fetch(x.url,{method:x.method||'GET',headers:x.headers||{},...(x.body?{body:JSON.stringify(x.body)}:{}),redirect:'error'}).then(async r=>{const bytes=Buffer.from(await r.arrayBuffer());console.log(JSON.stringify({status:r.status,mime:r.headers.get('content-type'),sha256:require('crypto').createHash('sha256').update(bytes).digest('hex'),text:bytes.toString('utf8'),length:bytes.length}));}).catch(()=>process.exit(1))";
   const apiFetch=(project,input)=>JSON.parse(run('docker',[...base,'--project-name',project,'exec','-T','api','node','-e',apiScript],{env,input:JSON.stringify(input)}));
   const login=apiFetch(source,{url:'https://auth-gateway/auth/v1/token?grant_type=password',method:'POST',headers:{'Content-Type':'application/json'},body:{email:demo.email,password:demo.password}});
   assert.equal(login.status,200);
@@ -54,8 +54,19 @@ try {
   const actualSegment=apiFetch(source,{url:'http://127.0.0.1:3000'+segmentPath,headers:vodHeaders()});
   assert.equal(actualSegment.status,200);assert.ok(actualSegment.length>188);
   pass('real local GoTrue login/TLS + native API + private MinIO + generated FFmpeg VOD manifest/segment; Geo assertion is explicitly synthetic');
+  async function databaseSnapshot(p) {
+    const hash=require('crypto').createHash('sha256');
+    const tables=await p.$queryRawUnsafe("SELECT schemaname,tablename,rowsecurity FROM pg_tables WHERE schemaname IN ('public','auth') ORDER BY 1,2");
+    const quote=value=>'"'+value.replaceAll('"','""')+'"';
+    for(const table of tables){
+      const rows=await p.$queryRawUnsafe('SELECT row_to_json(t)::text AS value FROM '+quote(table.schemaname)+'.'+quote(table.tablename)+' t ORDER BY row_to_json(t)::text');
+      hash.update(JSON.stringify([table,rows]));
+    }
+    for(const sql of ["SELECT schemaname,tablename,indexname,indexdef FROM pg_indexes WHERE schemaname IN ('public','auth') ORDER BY 1,2,3", "SELECT schemaname,tablename,policyname,roles,cmd,qual,with_check FROM pg_policies WHERE schemaname IN ('public','auth') ORDER BY 1,2,3", "SELECT table_schema,table_name,grantee,privilege_type FROM information_schema.table_privileges WHERE table_schema IN ('public','auth') ORDER BY 1,2,3,4"]){hash.update(JSON.stringify(await p.$queryRawUnsafe(sql)));}
+    return hash.digest('hex');
+  }
   const payload={objectKey:`synthetic/${randomUUID()}.txt`,bytes:randomBytes(1024).toString('base64')};
-  const probe=`const {PrismaClient}=require('@prisma/client');const {S3Client,PutObjectCommand,GetObjectCommand}=require('@aws-sdk/client-s3');const fs=require('fs');const p=new PrismaClient();const s=new S3Client({endpoint:process.env.STORAGE_ENDPOINT,region:'us-east-1',forcePathStyle:true,credentials:{accessKeyId:process.env.STORAGE_ACCESS_KEY,secretAccessKey:process.env.STORAGE_SECRET_KEY}});(async()=>{const x=JSON.parse(fs.readFileSync(0,'utf8'));if(x.write)await s.send(new PutObjectCommand({Bucket:process.env.STORAGE_BUCKET,Key:x.objectKey,Body:Buffer.from(x.bytes,'base64'),ContentType:'text/plain'}));const body=await s.send(new GetObjectCommand({Bucket:process.env.STORAGE_BUCKET,Key:x.objectKey}));const data=Buffer.from(await body.Body.transformToByteArray());const t=await p.tenant.findUnique({where:{id:process.env.DEFAULT_TENANT_ID},include:{branding:true}});const staff=await p.staffUser.findMany({select:{id:true,tenantId:true}});console.log(JSON.stringify({bytes:data.toString('base64'),tenantId:t.id,name:t.branding.displayName,staff}));await p.$disconnect()})().catch(()=>process.exit(1))`;
+  const probe=`const {PrismaClient}=require('@prisma/client');const {S3Client,PutObjectCommand,GetObjectCommand}=require('@aws-sdk/client-s3');const fs=require('fs');const p=new PrismaClient();const s=new S3Client({endpoint:process.env.STORAGE_ENDPOINT,region:'us-east-1',forcePathStyle:true,credentials:{accessKeyId:process.env.STORAGE_ACCESS_KEY,secretAccessKey:process.env.STORAGE_SECRET_KEY}});(async()=>{const x=JSON.parse(fs.readFileSync(0,'utf8'));if(x.write)await s.send(new PutObjectCommand({Bucket:process.env.STORAGE_BUCKET,Key:x.objectKey,Body:Buffer.from(x.bytes,'base64'),ContentType:'text/plain'}));const body=await s.send(new GetObjectCommand({Bucket:process.env.STORAGE_BUCKET,Key:x.objectKey}));const data=Buffer.from(await body.Body.transformToByteArray());const t=await p.tenant.findUnique({where:{id:process.env.DEFAULT_TENANT_ID},include:{branding:true}});const staff=await p.staffUser.findMany({select:{id:true,tenantId:true}});console.log(JSON.stringify({bytes:data.toString('base64'),tenantId:t.id,name:t.branding.displayName,staff,databaseSha256:await (${databaseSnapshot.toString()})(p)}));await p.$disconnect()})().catch(()=>process.exit(1))`;
   const probeAt=(project,write=false)=>JSON.parse(run('docker',[...base,'--project-name',project,'exec','-T','api','node','-e',probe],{env,input:JSON.stringify({...payload,write})}));
   const before=probeAt(source,true);
   assert.equal(before.bytes,payload.bytes);assert.equal(before.staff.length,1);
@@ -70,11 +81,11 @@ try {
   const restoredAuth=apiFetch(target,{url:'https://auth-gateway/auth/v1/user',headers:{Authorization:`Bearer ${access}`}});
   assert.equal(restoredAuth.status,200);
   const restoredSegment=apiFetch(target,{url:'http://127.0.0.1:3000'+segmentPath,headers:vodHeaders()});
-  assert.equal(restoredSegment.status,200);assert.equal(restoredSegment.length,actualSegment.length);
+  assert.equal(restoredSegment.status,200);assert.equal(restoredSegment.length,actualSegment.length);assert.equal(restoredSegment.sha256,actualSegment.sha256);
   pass('restored real GoTrue session remains valid; restored private VOD segment accessible with synthetic trusted context');
   assert.deepEqual(after,before);
   assert.throws(()=>cli('restore',target,[archive]));
-  pass('actual separate-project database + MinIO restore preserves tenant, branding, staff and exact object bytes; populated restore denied');
+  pass('actual separate-project database + MinIO restore preserves all public/auth row hashes, RLS/index/grant hashes, tenant/staff/branding and exact object bytes; populated restore denied');
   const manifestPath=path.join(archive,'manifest.json'),manifest=readFileSync(manifestPath,'utf8');
   const bad=JSON.parse(manifest);bad.files['objects.tar']='0'.repeat(64);writeFileSync(manifestPath,JSON.stringify(bad));
   assert.throws(()=>cli('restore','cloudplay-local-corrupt',[archive]));

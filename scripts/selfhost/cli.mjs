@@ -38,7 +38,7 @@ try {
   if (action === 'install') {
     if (compose(['ps','-a','-q']).toString().trim()) throw new Error('Install requires a new project; use upgrade for existing installs');
     if (docker(['volume','ls','-q','--filter',`label=com.docker.compose.project=${project}`]).toString().trim()) throw new Error('Existing volumes: refusing install');
-    compose(['build','api','worker-media','web','admin','tools']);
+    compose(['build','api','worker-media','web','admin','tools','minio']);
     compose(['up','-d','--wait','postgres','redis','minio','minio-init']);
     compose(['run','--rm','--no-deps','tools','migrate']);
     // Operator credentials are passed through environment, never command-line values.
@@ -82,7 +82,7 @@ try {
     // .env is intentionally never replaced. Operator must recover matching secrets
     // securely before starting services; mismatches fail here, before resource creation.
     if (sha(path.join(root,'.env')) !== manifest.files['installation.env'] || ['cert.pem','key.pem'].some(name=>sha(path.join(root,'.selfhost/tls',name))!==manifest.files[`tls/${name}`])) throw new Error('Restore requires matching installation secrets; .env left unchanged');
-    for(const service of ['api','worker','web','admin','tools']) { const label=docker(['image','inspect','--format','{{index .Config.Labels "org.opencontainers.image.revision"}}',`cloudplay-selfhost-${service}:${release}`]).toString().trim(); if(label!==release)throw new Error('Exact retained image revision required for restore'); }
+    for(const service of ['api','worker','web','admin','tools','storage']) { const label=docker(['image','inspect','--format','{{index .Config.Labels "org.opencontainers.image.revision"}}',`cloudplay-selfhost-${service}:${release}`]).toString().trim(); if(label!==release)throw new Error('Exact retained image revision required for restore'); }
     compose(['up','-d','--wait','--no-build','--pull','never','postgres','redis','minio']);
     compose(['stop','minio']);
     docker(['exec','-i',volume('postgres'),'sh','-ec','pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error'],{stdio:[openArchive(path.join(dir,'database.dump')),'pipe','pipe']});
@@ -93,7 +93,7 @@ try {
     const dir = archivePath(archiveArg), manifest = JSON.parse(readFileSync(path.join(dir,'manifest.json')));
     if (manifest.project !== project || manifest.release === release) throw new Error('A previous-release backup of this project is required');
     for (const f of ['database.dump','objects.tar','installation.env','tls/cert.pem','tls/key.pem']) if (sha(path.join(dir,f)) !== manifest.files[f]) throw new Error('Backup corrupted');
-    compose(['build','api','worker-media','web','admin','tools']);
+    compose(['build','api','worker-media','web','admin','tools','minio']);
     compose(['stop',...writers]);
     compose(['run','--rm','--no-deps','tools','migrate']);
     compose(['up','-d','--wait','api','worker-media','web','admin','mailpit','auth','auth-gateway']);

@@ -1,0 +1,24 @@
+# Official AGPL community binaries, pinned versions + GitHub release SHA256.
+# No commercial MinIO subscription, registry login or paid download is required.
+FROM debian:bookworm-slim AS download
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+ARG TARGETARCH
+RUN set -eu; case "$TARGETARCH" in \
+ amd64) server=53e2a2cb16c5366ea6fbbc479c19ddb4c6a0948273e752f740fb1fbf27bb817c; client=ac90da87a35641be5a0ac75d49de5161ddb47d629b5ba01261b0ae9e00aea15f ;; \
+ arm64) server=6c2f3142c94240206123177f4ba1e360daa5d1e0a4962e90757ef4f92c3ab57c; client=61bb88e7435919834478ddd4d405a6de6d2c227079da5e8ee9655147398819a0 ;; \
+ *) echo 'Unsupported storage architecture' >&2; exit 1 ;; esac; \
+ curl --fail --location --retry 3 -o /minio "https://github.com/minio/minio/releases/download/RELEASE.2025-04-22T22-12-26Z/minio.linux-${TARGETARCH}.RELEASE.2025-04-22T22-12-26Z"; \
+ printf '%s  /minio\n' "$server" | sha256sum -c -; \
+ curl --fail --location --retry 3 -o /mc "https://github.com/minio/mc/releases/download/RELEASE.2025-04-16T18-13-26Z/mc.linux-${TARGETARCH}.RELEASE.2025-04-16T18-13-26Z"; \
+ printf '%s  /mc\n' "$client" | sha256sum -c -; chmod 755 /minio /mc
+FROM debian:bookworm-slim
+ARG CLOUDPLAY_RELEASE
+LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
+LABEL org.opencontainers.image.licenses=AGPL-3.0-only
+LABEL org.opencontainers.image.source=https://github.com/minio/minio
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=download /minio /usr/local/bin/minio
+COPY --from=download /mc /usr/local/bin/mc
+EXPOSE 9000 9001
+ENTRYPOINT ["/usr/local/bin/minio"]
+CMD ["server", "/data", "--console-address", ":9001"]

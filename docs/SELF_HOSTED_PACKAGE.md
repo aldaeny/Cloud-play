@@ -176,3 +176,15 @@ movie headers/titles/colors use it. Local raster logo files must be installed un
 `public/brand-assets/` in **both** viewer/admin releases. Approved custom-domain TLS
 routing, opening artwork and every editorial/legal marketing phrase still require
 operator-specific review; this is not an automated domain ownership service.
+
+## Public storage distribution fallback
+
+The legacy `minio/mc` Docker Hub repository denied anonymous pulls in CI. The
+self-hosted overlay therefore builds **the same pinned community MinIO/MC releases**
+from official GitHub binary assets, checking hardcoded SHA256 for amd64/arm64.
+No registry credential or commercial plan is used. Source and license obligations
+are upstream AGPLv3: https://github.com/minio/minio and https://github.com/minio/mc .
+A source/license/legal review and Docker OS-image vulnerability scan remain release
+gates; an npm audit does not cover these binaries. Only amd64 is exercised in CI;
+arm64 checksum configuration is not physical-device/runtime proof. Other platforms
+fail closed. Web/Admin/worker images use supported Node22, matching the tested matrix.

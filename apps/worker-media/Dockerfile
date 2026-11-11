@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app

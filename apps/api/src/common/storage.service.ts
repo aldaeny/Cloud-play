@@ -36,7 +36,10 @@ export class StorageService {
   }
   async downloadBounded(objectKey: string, maxBytes: number): Promise<Buffer> {
     const result = await this.client(this.internalEndpoint).send(new GetObjectCommand({ Bucket: this.bucket, Key: objectKey }));
-    if (!result.Body || (result.ContentLength !== undefined && result.ContentLength > maxBytes)) { result.Body?.transformToWebStream().cancel(); throw new Error('OBJECT_TOO_LARGE'); }
+    if (!result.Body || (result.ContentLength !== undefined && result.ContentLength > maxBytes)) {
+      if(result.Body){const stream=result.Body as unknown as {destroy?:()=>void};if(stream.destroy)stream.destroy();else await result.Body.transformToWebStream().cancel();}
+      throw new Error('OBJECT_TOO_LARGE');
+    }
     const parts: Buffer[] = []; let size = 0;
     for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
       size += chunk.length; if (size > maxBytes) throw new Error('OBJECT_TOO_LARGE');

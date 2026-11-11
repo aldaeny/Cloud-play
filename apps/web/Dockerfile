@@ -1,5 +1,5 @@
 # Monorepo build; this image has not been tested in Docker in this environment.
-FROM node:20-alpine
+FROM node:22-alpine
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app

@@ -1,6 +1,17 @@
 # Local/customer-owned resources only. Combine with compose.yml + compose.local.yml.
 # The lifecycle CLI forces a unique project and explicit image release.
 services:
+  minio:
+    image: cloudplay-selfhost-storage:${SELFHOST_RELEASE:?Set SELFHOST_RELEASE}
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.storage
+      args:
+        CLOUDPLAY_RELEASE: ${SELFHOST_RELEASE:?Set SELFHOST_RELEASE}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:9000/minio/health/ready"]
+  minio-init:
+    image: cloudplay-selfhost-storage:${SELFHOST_RELEASE:?Set SELFHOST_RELEASE}
   postgres:
     image: postgres:17
   api:
