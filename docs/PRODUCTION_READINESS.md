@@ -1,5 +1,10 @@
 # Cloud Play — final master readiness evaluation
 
+## Critical blockers remediation update
+
+**NOT READY — BLOCKED.** Current remediation results and open release gates are authoritative in [CRITICAL_BLOCKERS_REMEDIATION.md](CRITICAL_BLOCKERS_REMEDIATION.md). New tests use **PASS / FAIL / BLOCKED / NOT RUN**; earlier status terminology below is historical, not a replacement for this update. Actual Docker runtime at `e074e58` passed after fixing omitted API workspace dependencies; final-HEAD workflow must additionally prove enhanced outage/transaction cases. Production legacy M3U/Xtream routes are explicitly fail-closed pending session-bound migration. Trusted hosting Geo and physical-device acceptance remain unproven. No production release is authorized.
+
+
 ## Decision: **NOT READY — BLOCKED**
 
 No production certificate, deployment, migration, source activation or main merge is authorized. This decision is unchanged by successful CI: actual hosting Geo, physical devices, target capacity/operations and managed recovery still need direct evidence.

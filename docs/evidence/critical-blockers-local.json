@@ -1,0 +1,39 @@
+{
+  "scope": "local remediation checks; no production access",
+  "api": {
+    "status": "PASS",
+    "suites": 40,
+    "tests": 650
+  },
+  "web_contracts": {
+    "status": "PASS",
+    "socket_tls_tests": 35
+  },
+  "wasm_postgres": {
+    "status": "PASS",
+    "tests": 36,
+    "native_substitute": false
+  },
+  "web_build": {
+    "status": "PASS"
+  },
+  "audit_runtime": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "audit_full": {
+    "info": 0,
+    "low": 8,
+    "moderate": 10,
+    "high": 0,
+    "critical": 0,
+    "total": 18
+  },
+  "hosting_geo": "BLOCKED",
+  "physical_devices": "NOT RUN",
+  "decision": "NOT READY \u2014 BLOCKED"
+}
