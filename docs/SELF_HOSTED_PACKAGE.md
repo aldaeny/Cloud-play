@@ -232,3 +232,11 @@ Earlier release references above describe the original verified checkpoint.
 Storage/API Debian images apply available same-distribution package upgrades at
 build time; vulnerability clearance still depends on the generated final-image
 inventory. See STORAGE_DISTRIBUTION_COMPLIANCE.md for unresolved binary risks.
+
+Current source-build candidate supersedes the preceding binary checkpoint:
+MinIO October 2025 source and MC August 2025 source are archive-checksummed and
+compiled using Go 1.27.4 with unmodified upstream module pins. These are labeled
+Cloud Play builds. Main source archives/build instructions accompany the image;
+full source-compliance review and vulnerability clearance remain separate gates.
+The final SHA's lifecycle evidence, not historical release references, determines
+whether this storage implementation is verified.

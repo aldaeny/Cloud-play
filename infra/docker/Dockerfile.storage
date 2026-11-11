@@ -1,24 +1,38 @@
-# Official AGPL community binaries, pinned versions + GitHub release SHA256.
-# No commercial MinIO subscription, registry login or paid download is required.
-FROM debian:bookworm-slim AS download
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
+# Free official upstream source, exact commits/archive hashes, pinned Go compiler.
+# These are Cloud Play source builds, NOT vendor-distributed official binaries.
+FROM golang:1.27.4-bookworm AS build
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local
 ARG TARGETARCH
-RUN set -eu; case "$TARGETARCH" in \
- amd64) server=53e2a2cb16c5366ea6fbbc479c19ddb4c6a0948273e752f740fb1fbf27bb817c; client=01f866e9c5f9b87c2b09116fa5d7c06695b106242d829a8bb32990c00312e891 ;; \
- arm64) server=6c2f3142c94240206123177f4ba1e360daa5d1e0a4962e90757ef4f92c3ab57c; client=14c8c9616cfce4636add161304353244e8de383b2e2752c0e9dad01d4c27c12c ;; \
- *) echo 'Unsupported storage architecture' >&2; exit 1 ;; esac; \
- curl --fail --location --retry 3 -o /minio "https://github.com/minio/minio/releases/download/RELEASE.2025-04-22T22-12-26Z/minio.linux-${TARGETARCH}.RELEASE.2025-04-22T22-12-26Z"; \
- printf '%s  /minio\n' "$server" | sha256sum -c -; \
- curl --fail --location --retry 3 -o /mc "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-${TARGETARCH}.RELEASE.2025-08-13T08-35-41Z"; \
- printf '%s  /mc\n' "$client" | sha256sum -c -; chmod 755 /minio /mc
+RUN set -eu; case "$TARGETARCH" in amd64|arm64) ;; *) exit 1 ;; esac; \
+    mkdir -p /src/minio /src/mc /source; \
+    curl --fail --location --retry 3 https://codeload.github.com/minio/minio/tar.gz/9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a -o /source/minio.tar.gz; \
+    echo '45521908307306e925c98d629e1c17d78c8b72b6ee242b1bfb1409f7d8ee5841  /source/minio.tar.gz' | sha256sum -c -; \
+    curl --fail --location --retry 3 https://codeload.github.com/minio/mc/tar.gz/d6541ea280b73a834b64d4097e21f2be77676104 -o /source/mc.tar.gz; \
+    echo '4cea8ed209c8f96e59ea1a5cc4901019b54c2be6d6f5f16c6749ea8bdcf4172e  /source/mc.tar.gz' | sha256sum -c -; \
+    tar -xzf /source/minio.tar.gz -C /src/minio --strip-components=1; \
+    tar -xzf /source/mc.tar.gz -C /src/mc --strip-components=1
+WORKDIR /src/minio
+RUN go mod download && go mod verify
+RUN GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -buildvcs=false -trimpath -tags kqueue \
+    -ldflags '-s -w -X github.com/minio/minio/cmd.Version=2025-10-15T17:29:55Z -X github.com/minio/minio/cmd.ReleaseTag=RELEASE.2025-10-15T17-29-55Z.cloudplay-source -X github.com/minio/minio/cmd.CommitID=9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a' -o /minio .
+WORKDIR /src/mc
+RUN go mod download && go mod verify
+RUN GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -buildvcs=false -trimpath \
+    -ldflags '-s -w -X github.com/minio/mc/cmd.Version=2025-08-13T08:35:41Z -X github.com/minio/mc/cmd.ReleaseTag=RELEASE.2025-08-13T08-35-41Z.cloudplay-source -X github.com/minio/mc/cmd.CommitID=d6541ea280b73a834b64d4097e21f2be77676104' -o /mc .
 FROM debian:bookworm-slim
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.licenses=AGPL-3.0-only
 LABEL org.opencontainers.image.source=https://github.com/minio/minio
+LABEL org.opencontainers.image.description="Cloud Play source build; not an official vendor binary"
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends curl ca-certificates && rm -rf /var/lib/apt/lists/*
-COPY --from=download /minio /usr/local/bin/minio
-COPY --from=download /mc /usr/local/bin/mc
+COPY --from=build /minio /usr/local/bin/minio
+COPY --from=build /mc /usr/local/bin/mc
+# Preserve exact upstream main source archives and build instructions in conveyed images.
+# This is not legal sign-off that all corresponding dependency source obligations are met.
+COPY --from=build /source /usr/share/doc/cloudplay-storage/source
+COPY infra/docker/Dockerfile.storage /usr/share/doc/cloudplay-storage/Dockerfile.storage
+COPY docs/STORAGE_DISTRIBUTION_COMPLIANCE.md /usr/share/doc/cloudplay-storage/COMPLIANCE.md
 EXPOSE 9000 9001
 ENTRYPOINT ["/usr/local/bin/minio"]
 CMD ["server", "/data", "--console-address", ":9001"]

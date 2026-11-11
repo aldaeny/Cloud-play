@@ -63,3 +63,24 @@ support or a reason to suppress embedded-Go findings. Final counts come from the
 final-SHA CI inventory, not these initial counts. New upstream DB advisories can
 change counts even without source changes. Package upgrades cannot fix embedded
 Go libraries; those require a rebuilt/replaced binary and lifecycle retesting.
+
+## Source-build candidate replacing old prebuilt Go binaries
+
+The current candidate uses MinIO RELEASE.2025-10-15T17-29-55Z at exact commit
+9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a and MC RELEASE.2025-08-13T08-35-41Z at
+commit d6541ea280b73a834b64d4097e21f2be77676104. Official codeload archives are
+SHA256-verified in Dockerfile.storage. Go 1.27.4, CGO-disabled cross-builds,
+`-mod=readonly`, `go mod verify` and trimpath preserve an auditable build; module
+versions remain exactly those of upstream source, NOT silently upgraded. Compiler
+security fixes do not imply all old module CVEs are fixed. Output labels identify
+these as Cloud Play source builds, not vendor-distributed official binaries.
+
+Exact main source archives (including their upstream license files) and build
+instructions are carried at /usr/share/doc/cloudplay-storage inside the image.
+This improves source availability but is NOT a reviewed complete corresponding-
+source offer: dependency source availability, notices, conveyance and actual
+modification/distribution model still require the legal checklist above. Base
+images/apt repositories remain mutable inputs; retain final image digests, SBOM
+and scan database metadata. This is version/source-pinned, not a claim of bitwise
+reproducible images or legal certification. Only passing final CI can validate the
+new S3/data-format/restore/upgrade behavior against the retained baseline.
