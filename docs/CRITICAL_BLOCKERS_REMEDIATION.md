@@ -34,13 +34,22 @@ Initial **FAIL**, CI `43014805716` at `a893abd`: image engine loaded and all iso
 
 **PASS**, Docker job `130504593861`, CI `43015256648` at `e074e58`: actual production image, non-root/no baked env/canary/git/docs, native Debian/OpenSSL3 engine load, missing-config rejection, PG17 migrations, actual model query, bounded pool configuration, DB outage503, same-process reconnection, graceful SIGTERM exit0 and restart. Native PostgreSQL matrix Node22/24/26 also PASS on this SHA. This is image proof, not WASM substitution.
 
-`af7915c` extends image verification with specific missing-config cause, unreachable-DB startup and a real held transaction interrupted by DB outage plus rollback-integrity query. Results must be checked in final-HEAD CI; until then these additional cases are **NOT RUN**, not inherited PASS.
+`af7915c` extends image verification with specific missing-config cause, unreachable-DB startup and a real held transaction interrupted by DB outage plus rollback-integrity query. **PASS:** all enhanced cases executed in job `130505864150`, run `43015632385` at `a827b17`. The final documentation/status-label-only commit is separately dispatched to keep CI aligned with final HEAD.
 
 ## F — load and recovery
 
 Measured response-byte accounting and recovery-query latency were added to `test-progressive-load.mjs`. It explicitly reports unavailable internal Prisma pool queue telemetry instead of calling connection count saturation proof. The isolated Auth workflow executes 10/25/50/100-user bounded waves; it is not a soak, production ingress test, or arbitrary SLO certification.
 
-Previous measured fixture results (historical, not refreshed final-HEAD evidence): 130/325/650/1300 requests, zero errors/timeouts; five observed DB connections; 100-user RSS 526979072 bytes. Previous separate logical restore: 77 tables / 1207 rows; independent database, metadata/FK/RLS/grants checks and truncated archive rejection. See `docs/evidence/certification-*.json` and recovery runbook for original scope. Refreshed Auth/SMTP/load/restore assertions belong to matching final-HEAD CI.
+Previous measured fixture results (historical, not refreshed final-HEAD evidence): 130/325/650/1300 requests, zero errors/timeouts; five observed DB connections; 100-user RSS 526979072 bytes. Previous separate logical restore: 77 tables / 1207 rows; independent database, metadata/FK/RLS/grants checks and truncated archive rejection. See `docs/evidence/certification-*.json` and recovery runbook for original scope. **PASS (refreshed isolated evidence):** run `43015632385` at `a827b17`, Auth job `130505864434`, actual SMTP one-use recovery, refresh/logout, protected browser HLS/DASH and separate logical restore (77 tables / 1207 rows; hashes/indexes/constraints/RLS/grants/FK equal; truncated archive rejected). Load metrics below are bounded fixture observations, not an SLO:
+
+| Users | Requests | Error / timeout | Manifest p50/p95/p99 ms | Process CPU ms | RSS bytes | Measured response bytes | DB connections |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 10 | 130 | 0 / 0 | 312.781 / 365.199 / 377.007 | 3247.349 | 258187264 | 1407880 | 5 |
+| 25 | 325 | 0 / 0 | 754.931 / 911.863 / 922.047 | 7522.895 | 276250624 | 3520119 | 5 |
+| 50 | 650 | 0 / 0 | 1594.443 / 2205.797 / 2367.824 | 14695.513 | 296357888 | 7040422 | 5 |
+| 100 | 1300 | 0 / 0 | 3590.361 / 3873.474 / 3927.404 | 28543.297 | 377491456 | 14080752 | 5 |
+
+Recovery query 0.974ms, five connections before/after; complete per-operation latency percentiles and caveats retained in structured evidence. Measured byte total does not include every transport/framing byte or the untimed variant request. Existing legacy harness JSON uses VERIFIED; new progressive results now emit PASS without changing assertions. All six jobs PASS on `a827b17` (native38 checks each on22/24/26, actual Docker12 checks, Auth/SMTP/load/restore, full application/browser/Admin/build regressions).
 
 **BLOCKED:** target-environment soak, internal pool queue/saturation instrumentation, distributed quota behavior, managed backup/PITR/rollback rehearsal. Local logical restore is not managed PITR. In-flight native DB transaction interruption is not proof of in-flight HTTP drain under application termination.
 
@@ -70,7 +79,7 @@ Warnings remain visible, including action-runtime deprecation. Full application/
 
 1. Trusted hosting Geo proof through authorized SSO.
 2. Complete safe production M3U/Xtream session-bound delivery (currently explicitly disabled).
-3. Passing CI on final HEAD, including enhanced Docker interruption tests and full application/Auth suites.
+3. Preserve passing CI on final HEAD; `a827b17` passed all six jobs, including enhanced Docker interruption and full application/Auth suites. The following evidence/status-label commit is dispatched again.
 4. Target load/soak/pool/distributed limits and managed recovery/rollback evidence.
 5. Physical device matrix.
 
