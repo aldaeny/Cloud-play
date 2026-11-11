@@ -53,8 +53,9 @@ hosted ingress are not part of this proof. Existing full application CI remains.
 
 Run `43041733949`, commit `d196abf9a421e8384f5582fe647d722b9f95124b`:
 shared-quota native checks FAIL (all three Node jobs), observed503 rather than429.
-The post-restart assertion incorrectly assumed the first native stale-pool query
-must recover immediately. The corrected test allows503 only while retrying for
+The failure label did not identify which restart/retry stage returned503;
+fixed stage-only diagnostics were added. The original post-DB-restart assertion
+also assumed immediate native stale-pool recovery; that assumption is unsafe. The corrected test allows503 only while retrying for
 at most15s after DB restart; it must reach429, and **never204**. No exhausted
 allowance is reset and no error is treated as an admission. Browser tooling
 installation also failed in both application/Auth jobs before playback execution;
