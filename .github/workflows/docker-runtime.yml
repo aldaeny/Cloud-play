@@ -24,6 +24,8 @@ jobs:
         run: node apps/api/scripts/test-docker-runtime.mjs
       - name: Shipped self-hosted install and complete local database-object restore drill
         run: node scripts/selfhost/runtime-test.mjs
+      - name: Validate opt-in Compose overlay and private nginx TLS configuration
+        run: node scripts/ingress/test-compose.mjs
       - name: Build opt-in private mTLS gateway image
         run: docker build -f infra/docker/Dockerfile.ingress -t cloudplay-ingress:verification .
       - name: Inventory storage Go binaries and runtime OS vulnerabilities plus SBOM
