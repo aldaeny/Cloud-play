@@ -1,3 +1,5 @@
+import { TenantSettingsService } from './tenant-settings.service';
+import { TenantSettingsController } from './tenant-settings.controller';
 import { PrivateMediaController } from './private-media.controller';
 import { ExternalPlaybackSessionService } from './external-playback-session.service';
 import { ExternalReportsService } from './external-reports.service';
@@ -19,8 +21,8 @@ import { XtreamServersService } from './xtream-servers.service';
 import { XtreamHealthService } from './xtream-health.service';
 
 @Module({
-  controllers: [PrivateMediaController, ExternalPlaybackController, ExternalChannelsController, ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
-  providers: [ExternalPlaybackSessionService, ExternalReportsService, ExternalChannelsService, ExternalMonitorService, ExternalServersService, XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
+  controllers: [TenantSettingsController, PrivateMediaController, ExternalPlaybackController, ExternalChannelsController, ExternalServersController, AdminController, XtreamServersController, XtreamCatalogSyncController],
+  providers: [TenantSettingsService, ExternalPlaybackSessionService, ExternalReportsService, ExternalChannelsService, ExternalMonitorService, ExternalServersService, XtreamSyncRunner, XtreamProviderAdapter, AdminService, XtreamServersService, XtreamHealthService, XtreamCatalogSyncService],
   exports: [AdminService, XtreamHealthService],
 })
 export class AdminModule {}

@@ -8,8 +8,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 const require=createRequire(import.meta.url);
 export async function testExternalPlayback(client,tenant,channel,licenses,check){
- await check('actual Nest/DB/TLS synthetic playback: URL rewriting, resource user binding, scope checks and revocation during fetch (identity fixture)',async()=>{
+ await check('actual Nest/DB/TLS synthetic playback: URL rewriting, resource user binding, scope checks, subscription expiry/revoke/concurrency and rights revocation during fetch (identity fixture)',async()=>{
   const temp=await mkdtemp(path.join(tmpdir(),'external-playback-'));
+  const oldFree=process.env.FREE_ACCESS;process.env.FREE_ACCESS='false';
+  let subscriberPlan,subscriberLicense;
   const oldContext=process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY;process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY=randomUUID();
   const oldGeo=process.env.EXTERNAL_GEO_SIGNING_KEY;process.env.EXTERNAL_GEO_SIGNING_KEY=randomUUID();
   const user={id:randomUUID(),tenantId:tenant.id,profiles:[]};
@@ -37,7 +39,12 @@ export async function testExternalPlayback(client,tenant,channel,licenses,check)
    const assertion=(patch={})=>{const value=Buffer.from(JSON.stringify({userId:user.id,tenantId:tenant.id,channelId:channel.id,country:'IQ',platform:'web',expiresAt:Date.now()+60000,...patch})).toString('base64url');return value+'.'+createHmac('sha256',process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY).update(value).digest('base64url');};
    const token='fixture.'+Buffer.from(JSON.stringify({session_id:randomUUID()})).toString('base64url')+'.fixture';
    const geo=()=>{const value=Buffer.from(JSON.stringify({channelId:channel.id,tokenHash:createHash('sha256').update(token).digest('hex'),country:'IQ',platform:'web',issuedAt:Date.now(),expiresAt:Date.now()+30000,nonce:randomUUID()})).toString('base64url');return value+'.'+createHmac('sha256',process.env.EXTERNAL_GEO_SIGNING_KEY).update(value).digest('base64url');};
+   const session=()=>request(app.getHttpServer()).post(`/external-playback/${channel.id}/session`).set('Authorization',`Bearer ${token}`).set('x-external-geo',geo());
+   await session().expect(403);
+   subscriberPlan=await client.plan.create({data:{tenantId:tenant.id,code:'synthetic-playback-license',interval:'manual',priceCents:0,currency:'USD',maxStreams:1,maxDevices:2}});
+   subscriberLicense=await client.subscription.create({data:{userId:user.id,planId:subscriberPlan.id,provider:'internal-manual',status:'ACTIVE',currentPeriodEnd:new Date(Date.now()+86400000)}});
    const created=await request(app.getHttpServer()).post(`/external-playback/${channel.id}/session`).set('Authorization',`Bearer ${token}`).set('x-external-geo',geo()).expect(201);
+   await session().expect(429);
    const get=(url)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${token}`).set('x-playback-session',created.body.id).set('x-external-geo',geo());
    const url=`/external-playback/${channel.id}/manifest`;
    await request(app.getHttpServer()).get(url).expect(403);
@@ -49,12 +56,21 @@ export async function testExternalPlayback(client,tenant,channel,licenses,check)
    await get(resource).set('x-fixture-other-user','true').expect(403);
    await get(resource).set('Range','bytes=0-9').expect(206).expect('Content-Range','bytes 0-9/188');
    await get(resource).set('Range','bytes=999-').expect(416);
+   await client.subscription.update({where:{id:subscriberLicense.id},data:{status:'CANCELED'}});
+   await get(resource).expect(403);
+   await client.subscription.update({where:{id:subscriberLicense.id},data:{status:'ACTIVE',currentPeriodEnd:new Date(0)}});
+   await get(resource).expect(403);
+   await client.subscription.update({where:{id:subscriberLicense.id},data:{currentPeriodEnd:new Date(Date.now()+86400000)}});
+   await get(resource).expect(200);
    revoke=true;
    const blocked=await get(resource);assert.ok(blocked.status>=400);assert.ok(blocked.body?.length!==188);
   }finally{
    transport.pinnedProviderRequest=original;
    await client.contentLicense.update({where:{id:licenses[0].id},data:{status:'verified_authorized'}});
    await app?.close();if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}
+   if(subscriberLicense)await client.subscription.delete({where:{id:subscriberLicense.id}});
+   if(subscriberPlan)await client.plan.delete({where:{id:subscriberPlan.id}});
+   if(oldFree===undefined)delete process.env.FREE_ACCESS;else process.env.FREE_ACCESS=oldFree;
    await client.externalPlaybackLease.deleteMany({where:{userId:user.id}});await client.appUser.delete({where:{id:user.id}});
    if(oldGeo===undefined)delete process.env.EXTERNAL_GEO_SIGNING_KEY;else process.env.EXTERNAL_GEO_SIGNING_KEY=oldGeo;
    if(oldContext===undefined)delete process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY;else process.env.EXTERNAL_PLAYBACK_CONTEXT_KEY=oldContext;

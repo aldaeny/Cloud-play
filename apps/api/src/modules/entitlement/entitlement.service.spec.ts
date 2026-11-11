@@ -7,8 +7,13 @@ describe('EntitlementService', () => {
   let service: EntitlementService;
 
   const mockPrisma = {
+    appUser: { findUnique: jest.fn().mockResolvedValue({ tenantId: 'tenant-a' }), findFirst: jest.fn().mockResolvedValue({ id: 'user-id' }) },
+    title: { findFirst: jest.fn().mockResolvedValue({ id: 'title-id' }) },
+    episode: { findFirst: jest.fn() },
+    plan: { findFirst: jest.fn().mockResolvedValue({ id: 'plan-id' }) },
     subscription: {
       findMany: jest.fn(),
+      findFirst: jest.fn().mockResolvedValue({ id: 'sub-id' }),
       create: jest.fn(),
       update: jest.fn(),
     },
@@ -191,6 +196,27 @@ describe('EntitlementService', () => {
     });
   });
 
+  it('rejects a cross-tenant title before querying subscriptions', async () => {
+    mockPrisma.title.findFirst.mockResolvedValueOnce(null);
+    await expect(service.check('user-id', 'profile-id', 'device-id', 'other-title')).rejects.toThrow('Title not found');
+    expect(mockPrisma.title.findFirst).toHaveBeenLastCalledWith({ where: { id: 'other-title', tenantId: 'tenant-a', state: 'PUBLISHED' }, select: { id: true } });
+  });
+
+  it('counts streams across all profiles, not just the requesting profile', async () => {
+    await service.check('user-id', 'profile-id', 'device-id', 'title-id');
+    expect(mockPrisma.playbackSession.count).toHaveBeenLastCalledWith({ where: { userId: 'user-id', endedAt: null } });
+  });
+
+  it('cannot grant another tenant plan', async () => {
+    mockPrisma.plan.findFirst.mockResolvedValueOnce(null);
+    await expect(service.grantSubscription('tenant-a', 'user-id', 'plan-b')).rejects.toThrow('User or plan not found');
+  });
+
+  it('cannot revoke another tenant subscription', async () => {
+    mockPrisma.subscription.findFirst.mockResolvedValueOnce(null);
+    await expect(service.revokeSubscription('tenant-a', 'sub-b')).rejects.toThrow('Subscription not found');
+  });
+
   describe('grantSubscription', () => {
     it('should create a new subscription', async () => {
       mockPrisma.subscription.create.mockResolvedValue({
@@ -200,7 +226,7 @@ describe('EntitlementService', () => {
         status: 'ACTIVE',
       });
 
-      const result = await service.grantSubscription('user-id', 'plan-id');
+      const result = await service.grantSubscription('tenant-a', 'user-id', 'plan-id');
 
       expect(result).toHaveProperty('id', 'sub-id');
       expect(mockPrisma.subscription.create).toHaveBeenCalled();
@@ -214,7 +240,7 @@ describe('EntitlementService', () => {
         status: 'CANCELED',
       });
 
-      const result = await service.revokeSubscription('sub-id');
+      const result = await service.revokeSubscription('tenant-a', 'sub-id');
 
       expect(result.status).toBe('CANCELED');
     });

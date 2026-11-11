@@ -11,6 +11,9 @@ const DEFAULT_TENANT_ID = process.env.DEFAULT_TENANT_ID || '00000000-0000-0000-0
 
 async function main() {
   if (process.env.NODE_ENV === 'production') throw new Error('Demo seed is forbidden in production');
+  const seedEmail = process.env.SEED_ADMIN_EMAIL;
+  const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!seedEmail || !seedEmail.includes('@') || !seedPassword || seedPassword.length < 16) throw new Error('Set SEED_ADMIN_EMAIL and a unique SEED_ADMIN_PASSWORD of at least 16 characters');
   console.log('🌱 Seeding database...');
 
   // Create tenant
@@ -45,6 +48,7 @@ async function main() {
   console.log('  Creating admin role...');
   const adminRoleId = '00000000-0000-0000-0000-000000000001';
   const existingAdminRole = await prisma.role.findUnique({ where: { id: adminRoleId } });
+  if (existingAdminRole && existingAdminRole.tenantId !== DEFAULT_TENANT_ID) throw new Error('Seed role tenant mismatch; no permissions changed');
   let existingPermissions: string[] = [];
   if (existingAdminRole) {
     try {
@@ -58,7 +62,7 @@ async function main() {
     ...existingPermissions,
     'titles:create', 'titles:edit', 'titles:delete',
     'users:manage', 'devices:manage', 'staff:manage',
-    'rights:manage', 'home:manage', 'xtream:manage',
+    'rights:manage', 'home:manage', 'xtream:manage', 'settings:manage', 'licenses:manage',
   ])];
   await prisma.role.upsert({
     where: { id: adminRoleId },
@@ -87,17 +91,17 @@ async function main() {
 
   // Create admin staff user
   console.log('  Creating admin staff user...');
-  const adminPassword = await argon2.hash('admin123456', {
+  const adminPassword = await argon2.hash(seedPassword, {
     type: argon2.argon2id,
     memoryCost: 2 ** 16,
     timeCost: 3,
     parallelism: 1,
   });
   await prisma.staffUser.upsert({
-    where: { email: 'admin@aether.local' },
+    where: { email: seedEmail },
     update: {},
     create: {
-      email: 'admin@aether.local',
+      email: seedEmail,
       passwordHash: adminPassword,
       tenantId: DEFAULT_TENANT_ID,
       roleId: '00000000-0000-0000-0000-000000000001',
@@ -163,8 +167,7 @@ async function main() {
   });
 
   console.log('✅ Seeding complete!');
-  console.log('   Admin email: admin@aether.local');
-  console.log('   Admin password: admin123456');
+  console.log('   Admin uses the operator-supplied seed credentials (not displayed).');
   console.log('   Tenant ID:', DEFAULT_TENANT_ID);
 }
 

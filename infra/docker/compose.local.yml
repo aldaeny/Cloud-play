@@ -4,7 +4,7 @@ services:
     build: { context: ../.., dockerfile: apps/web/Dockerfile }
     environment:
       XTREAM_CATALOG_ENABLED: ${XTREAM_CATALOG_ENABLED:-false}
-      XTREAM_BASE_URL: ${XTREAM_BASE_URL:-http://redchicks.xyz:2052}
+      XTREAM_BASE_URL: ${XTREAM_BASE_URL:-}
       XTREAM_ALLOW_HTTP: ${XTREAM_ALLOW_HTTP:-false}
       XTREAM_USERNAME: ${XTREAM_USERNAME:-}
       XTREAM_PASSWORD: ${XTREAM_PASSWORD:-}

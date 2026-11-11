@@ -1,3 +1,4 @@
+import TenantSettingsPanel, { type Branding } from '../components/tenant-settings-panel';
 import ExternalChannelsPanel from '../components/external-channels-panel';
 import ExternalServersPanel from '../components/external-servers-panel';
 import React, { useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ type Title = { id: string; titleAr: string; titleEn: string; state: string };
 
 export default function AdminDashboard() {
   // Keep the short-lived token in memory only. Removing it here does not revoke it on the server.
+  const [branding, setBranding] = useState<Branding>({ displayName: 'Cloud Play', brandDark: '#0a0a0c', cyanGlow: '#00e5ff', logoUrl: null });
   const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,11 +48,12 @@ export default function AdminDashboard() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white font-inter p-6" dir="rtl">
-      <Head><title>Cloud Play — الإدارة</title></Head>
+    <div className="min-h-screen bg-[#0a0a0c] text-white font-inter p-6" style={{ backgroundColor: branding.brandDark }} dir="rtl">
+      <Head><title>{branding.displayName} — الإدارة</title></Head>
       <header className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
-        <h1 className="text-2xl font-black tracking-tight">Cloud Play <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] to-[#ff2085]">Admin</span></h1>
-        {token && <button onClick={() => { setToken(null); setTitles(null); }} className="px-4 py-2 rounded-xl bg-[#121217] border border-white/10 text-sm">مسح الجلسة من الصفحة</button>}
+        {branding.logoUrl && <img src={branding.logoUrl} alt={branding.displayName} width={64} height={64} />}
+        <h1 className="text-2xl font-black tracking-tight">{branding.displayName} <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] to-[#ff2085]" style={{ color: branding.cyanGlow }}>Admin</span></h1>
+        {token && <button onClick={() => { setToken(null); setTitles(null); setBranding({ displayName: 'Cloud Play', brandDark: '#0a0a0c', cyanGlow: '#00e5ff', logoUrl: null }); }} className="px-4 py-2 rounded-xl bg-[#121217] border border-white/10 text-sm">مسح الجلسة من الصفحة</button>}
       </header>
       {!token ? (
         <form onSubmit={login} className="max-w-md bg-[#121217] border border-white/10 rounded-2xl p-6 space-y-4">
@@ -70,6 +73,7 @@ export default function AdminDashboard() {
               <article key={title.id} className="p-4 bg-[#0a0a0c] rounded-xl border border-white/10"><p className="font-bold">{title.titleAr || title.titleEn}</p><p className="text-sm text-gray-400">الحالة: {title.state}</p></article>
             ))}</div>
           )}
+          <TenantSettingsPanel token={token} onBranding={setBranding} />
           <XtreamServersPanel token={token} />
           <ExternalServersPanel token={token} />
           <ExternalChannelsPanel token={token} />

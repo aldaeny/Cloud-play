@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import EmbeddedPostgres from 'embedded-postgres';
 import pg from 'pg';
+import { testTenantSettings } from './test-tenant-settings.mjs';
 import { testExternalCandidates } from './test-external-candidates.mjs';
 import { testRls } from './test-rls.mjs';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -350,6 +351,7 @@ try {
     assert.equal(await client.xtreamCatalogSnapshot.count(), 0);
     await client.xtreamServer.deleteMany({ where: { tenantId: tenant.id } });
   });
+  await testTenantSettings(client, api, check);
   await testExternalCandidates(client, tenant, check);
   await check('new channel/report and quarantine migrations rollback/reapply on isolated empty feature state preserve existing users', async()=>{
     const before=await client.appUser.count();

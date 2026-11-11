@@ -31,10 +31,15 @@ docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compo
 **لقاعدة محلية جديدة ومخصصة للتجارب فقط**، إن رغبت ببيانات تجريبية وحساب إدارة:
 
 ```sh
-docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.local.yml run --rm --no-deps -e NODE_ENV=development api sh -c "cd apps/api && npx prisma db seed"
+docker compose --env-file .env -f infra/docker/compose.yml -f infra/docker/compose.local.yml run --rm --no-deps -e NODE_ENV=development -e SEED_ADMIN_EMAIL -e SEED_ADMIN_PASSWORD api sh -c "cd apps/api && npx prisma db seed"
 ```
 
-بعد ذلك يمكن تجربة الدخول في صفحة الإدارة بالبريد `admin@aether.local` وكلمة المرور `admin123456`. هذه بيانات منشورة ومعروفة وليست آمنة؛ **لا تنشر هذا النظام، ولا تستخدم Cloudflare Tunnel أو أي رابط عام معه، ولا تستخدم seed للإنتاج أو لبيانات حقيقية**. الدخول يعرض عناوين المؤسسة قراءةً فقط؛ أزرار التحرير الكامل، إدارة الجلسة وإبطال الرمز لم تكتمل. مسح الجلسة من الصفحة يزيل الرمز من الذاكرة فقط ولا يبطله على الخادم.
+يجب تمرير `SEED_ADMIN_EMAIL` و`SEED_ADMIN_PASSWORD` (16 حرفاً على الأقل، فريدة) إلى أمر seed عبر بيئة محلية سرية، لا في Git أو المحادثة. لا توجد كلمة مرور افتراضية. الـseed ممنوع في `NODE_ENV=production` ولا يستبدل كلمة مرور حساب قائم. لا تعرض قيم البيئة في سجلاتك.
+
+**تصحيح الإعداد:** مولّد البيئة يختار الآن UUID للمؤسسة ومفتاح تشفير عشوائياً وحدود pool ويحدد Supabase كمرجع الهوية. يجب ضبط Supabase Auth بعنوان HTTPS وشهادة موثوقة ومفاتيحه في البيئة المحلية قبل اختبار دخول المستخدم. Compose الحالي لا يجهز Supabase/GoTrue/TLS تلقائياً؛ تشغيل الحاويات وحده لا يثبت مسار الدخول الكامل أو جاهزية self-hosted. لا تستخدم `legacy` كحل بديل لتجاوز هذا الشرط.
+
+لوحة الإدارة تتصل فعلياً بالخادم لإعداد اسم المؤسسة وألوانها ومسار شعار محلي من `apps/admin/public/brand-assets/` (PNG/JPG/WebP). الخطط Starter/Professional/Business الداخلية غير مالية وليست نظام فواتير أو تراخيص مؤسسات SaaS. تتطلب الصلاحيات `settings:manage` و`licenses:manage`. يضيفها seed للدور المحلي؛ لا يمنحها تلقائياً لأدوار موجودة في الإنتاج. مع `FREE_ACCESS=false` يتحقق البث الخارجي المحمي من الاشتراك والانتهاء والإلغاء عند كل طلب ويفرض حد الجلسات الأصغر بين الخطة وسياسة المشغّل. التجديد حالياً بإنشاء فترة يدوية جديدة، وليس تحصيلاً آلياً.
+
 
 ## 4. الإيقاف والمشكلات
 ```sh

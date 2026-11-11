@@ -49,6 +49,15 @@ export class ExternalPlaybackSessionService implements OnModuleInit, OnModuleDes
    if(!rows[0]?.active)throw new ForbiddenException('SUPABASE_SESSION_REVOKED');
   }catch(error){if(error instanceof ForbiddenException)throw error;throw new HttpException('AUTH_SESSION_CHECK_UNAVAILABLE',503);}
  }
+ /** FREE_ACCESS preserves the explicit demo mode. Paid/manual mode is enforced
+  * on every protected read, so expiry/revocation cannot retain a live lease. */
+ async subscriptionLimit(user:UserRequest, db:Pick<PrismaService,'subscription'>=this.prisma):Promise<number|undefined>{
+  if(process.env.FREE_ACCESS!=='false')return undefined;
+  const subscription=await db.subscription.findFirst({where:{userId:user.id,user:{tenantId:user.tenantId},status:'ACTIVE',currentPeriodEnd:{gt:new Date()},plan:{tenantId:user.tenantId,active:true}},include:{plan:true},orderBy:[{plan:{maxStreams:'desc'}},{currentPeriodEnd:'desc'}]});
+  if(!subscription)throw new ForbiddenException('ACTIVE_SUBSCRIPTION_REQUIRED');
+  if(!Number.isInteger(subscription.plan.maxStreams)||subscription.plan.maxStreams<1)throw new HttpException('PLAYBACK_POLICY_UNAVAILABLE',503);
+  return subscription.plan.maxStreams;
+ }
  async create(user:UserRequest,channelId:string,req:Request){
   const auth=binding(req),geo=verifyGeo(req.headers['x-external-geo'],channelId,auth.token);
   await this.assertSupabaseSession(user,auth.sessionId);
@@ -57,8 +66,10 @@ export class ExternalPlaybackSessionService implements OnModuleInit, OnModuleDes
    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${user.id}))`;
    try{await tx.externalGeoNonce.create({data:{id:geo.nonce,expiresAt:new Date(geo.expiresAt)}});}catch{throw new ForbiddenException('GEO_REPLAY_DENIED');}
    const active=await tx.externalPlaybackLease.count({where:{userId:user.id,revokedAt:null,expiresAt:{gt:new Date()}}});
-   const limit=Number(process.env.EXTERNAL_PLAYBACK_CONCURRENT_LIMIT||2);
-   if(!Number.isInteger(limit)||limit<1||limit>10)throw new HttpException('PLAYBACK_POLICY_UNAVAILABLE',503);
+   const licensedLimit=await this.subscriptionLimit(user,tx);
+   const configuredLimit=Number(process.env.EXTERNAL_PLAYBACK_CONCURRENT_LIMIT||2);
+   const limit=licensedLimit===undefined?configuredLimit:Math.min(configuredLimit,licensedLimit);
+   if(!Number.isInteger(configuredLimit)||configuredLimit<1||configuredLimit>10)throw new HttpException('PLAYBACK_POLICY_UNAVAILABLE',503);
    if(active>=limit)throw new HttpException('PLAYBACK_CONCURRENCY_LIMIT',429);
    const now=Date.now();return tx.externalPlaybackLease.create({data:{userId:user.id,tenantId:user.tenantId,channelId,authBinding:auth.binding,country:geo.country,platform:geo.platform,expiresAt:new Date(now+120000),absoluteExpiresAt:new Date(now+4*3600000)}});
   });
@@ -67,6 +78,7 @@ export class ExternalPlaybackSessionService implements OnModuleInit, OnModuleDes
   if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))throw new ForbiddenException('PLAYBACK_SESSION_REQUIRED');
   const auth=binding(req),lease=await this.prisma.externalPlaybackLease.findFirst({where:{id,userId:user.id,tenantId:user.tenantId,channelId,authBinding:auth.binding}});
   await this.assertSupabaseSession(user,auth.sessionId);
+  await this.subscriptionLimit(user);
   if(!lease||lease.revokedAt)throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');
   // Every protected read/mutation needs fresh trusted ingress context, not just
   // creation/renewal. Direct callers cannot reuse cookies after moving country.
