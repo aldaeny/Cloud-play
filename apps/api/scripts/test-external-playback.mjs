@@ -38,7 +38,7 @@ export async function testExternalPlayback(client,tenant,channel,licenses,check)
    const token='fixture.'+Buffer.from(JSON.stringify({session_id:randomUUID()})).toString('base64url')+'.fixture';
    const geo=()=>{const value=Buffer.from(JSON.stringify({channelId:channel.id,tokenHash:createHash('sha256').update(token).digest('hex'),country:'IQ',platform:'web',issuedAt:Date.now(),expiresAt:Date.now()+30000,nonce:randomUUID()})).toString('base64url');return value+'.'+createHmac('sha256',process.env.EXTERNAL_GEO_SIGNING_KEY).update(value).digest('base64url');};
    const created=await request(app.getHttpServer()).post(`/external-playback/${channel.id}/session`).set('Authorization',`Bearer ${token}`).set('x-external-geo',geo()).expect(201);
-   const get=(url)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${token}`).set('x-playback-session',created.body.id);
+   const get=(url)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${token}`).set('x-playback-session',created.body.id).set('x-external-geo',geo());
    const url=`/external-playback/${channel.id}/manifest`;
    await request(app.getHttpServer()).get(url).expect(403);
    await request(app.getHttpServer()).get(url).set('x-external-context',assertion({country:'US'})).expect(403);

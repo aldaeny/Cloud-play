@@ -10,7 +10,7 @@ export async function measurePlaybackCapacity({app,prisma,base,token,geo}){
   connections=Math.max(connections,row.connections);return row;
  };
  const before=await db();const channelId=base.split('/')[2];
- const call=(method,path,lease)=>request(app.getHttpServer())[method](path).set('Authorization',`Bearer ${token}`).set('x-playback-session',lease||'');
+ const call=(method,path,lease)=>request(app.getHttpServer())[method](path).set('Authorization',`Bearer ${token}`).set('x-playback-session',lease||'').set('x-external-geo',geo(channelId,token));
  let lease;
  try{
   for(let i=0;i<20;i++){

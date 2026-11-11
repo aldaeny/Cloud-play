@@ -1,3 +1,4 @@
+import {signHostingGeo} from '../../../../src/server/playback-geo';
 import type {NextApiRequest,NextApiResponse} from 'next';
 import {backendChannel} from '../../../../src/server/protected-live';
 import {enforceRateLimit} from '../../../../src/server/rate-limit';
@@ -20,9 +21,10 @@ export default async function handler(req:NextApiRequest,res:NextApiResponse){
   // synthesize country/platform from browser headers or forwarding headers.
   // Browser-supplied assertions are never forwarded. Geo is established by
   // the hosting boundary on session creation/renewal.
+  const geo=signHostingGeo(req,id,token);
   const range=req.headers.range;
   if(range!==undefined&&(typeof range!=='string'||range.length>100||!/^bytes=\d*-\d*$/.test(range)))return res.status(416).end();
-  const upstream=await fetch(target,{method:metrics?'POST':'GET',...(metrics?{body:JSON.stringify({event:req.body?.event,value:req.body?.value})}:{}),headers:{Authorization:`Bearer ${token}`,'x-playback-session':lease,...(range?{Range:range}:{}),...(metrics?{'Content-Type':'application/json'}:{})},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000)});
+  const upstream=await fetch(target,{method:metrics?'POST':'GET',...(metrics?{body:JSON.stringify({event:req.body?.event,value:req.body?.value})}:{}),headers:{Authorization:`Bearer ${token}`,'x-playback-session':lease,'x-external-geo':geo,...(range?{Range:range}:{}),...(metrics?{'Content-Type':'application/json'}:{})},redirect:'error',cache:'no-store',signal:AbortSignal.timeout(30000)});
   if(!upstream.ok){const cr=upstream.headers.get('content-range');if(cr&&/^bytes \*\/\d+$/.test(cr))res.setHeader('Content-Range',cr);return res.status([401,403,404,416,429].includes(upstream.status)?upstream.status:502).json({error:'PROTECTED_PLAYBACK_UNAVAILABLE'});}
   const mime=upstream.headers.get('content-type')||'';
   const reader=upstream.body?.getReader();if(!reader)throw new Error();

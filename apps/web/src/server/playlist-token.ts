@@ -24,6 +24,8 @@ export const PLAYLIST_TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 const MAX_TOKEN_CHARS = 8192;
 
 export type StreamGrant = {
+  /** Parent cap when re-sealing nested resources; never extend authorization. */
+  expiresAt?: number;
   origin: string;
   path: string;
   referrer?: string;
@@ -79,7 +81,7 @@ export function sealStream(
       p: grant.path,
       r: grant.referrer ?? '',
       u: grant.userAgent ?? '',
-      e: Date.now() + ttlMs,
+      e: Math.min(Date.now() + ttlMs, grant.expiresAt ?? Infinity),
     }),
     'utf8',
   );

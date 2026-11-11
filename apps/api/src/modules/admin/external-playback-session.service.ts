@@ -80,6 +80,10 @@ export class ExternalPlaybackSessionService implements OnModuleInit, OnModuleDes
   const auth=binding(req),lease=await this.prisma.externalPlaybackLease.findFirst({where:{id,userId:user.id,tenantId:user.tenantId,channelId,authBinding:auth.binding}});
   await this.assertSupabaseSession(user,auth.sessionId);
   if(!lease||lease.revokedAt)throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');
+  // Every protected read/mutation needs fresh trusted ingress context, not just
+  // creation/renewal. Direct callers cannot reuse cookies after moving country.
+  const geo=verifyGeo(req.headers['x-external-geo'],channelId,auth.token);
+  if(geo.country!==lease.country||geo.platform!==lease.platform)throw new ForbiddenException('PLAYBACK_CONTEXT_CHANGED');
   if(lease.expiresAt.getTime()<=Date.now()||lease.absoluteExpiresAt.getTime()<=Date.now()){playbackMetric('session_expiration',1);throw new ForbiddenException('PLAYBACK_SESSION_EXPIRED_OR_REVOKED');}
   return lease;
  }

@@ -26,7 +26,8 @@
     "test:rate-limit": "node tests/rate-limit.test.mjs",
     "test:recovery": "node tests/password-recovery.test.mjs",
     "test:protected-live": "node tests/protected-live.test.cjs",
-    "test:media-session": "node tests/media-session.test.cjs"
+    "test:media-session": "node tests/media-session.test.cjs",
+    "test:playlist-socket": "node tests/playlist-socket-security.test.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "^5.3.0",

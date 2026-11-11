@@ -6,6 +6,8 @@ on:
 permissions:
   contents: read
 jobs:
+  production-docker:
+    uses: ./.github/workflows/docker-runtime.yml
   application-regression:
     uses: ./.github/workflows/regression.yml
   isolated-auth-smtp:

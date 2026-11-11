@@ -14,3 +14,21 @@ coverage
 .npm
 .config
 *.zip
+# Never transmit environment files, Auth fixtures, keys, DB archives or reports
+# into build context. Runtime secrets must be injected by the operator.
+**/.env*
+.env*
+**/*.pem
+**/*.key
+**/*.crt
+**/*.dump
+**/*.backup
+**/*.sqlite*
+docs
+**/tests
+**/*.spec.ts
+**/*.test.*
+**/*.tsbuildinfo
+progressive-load-evidence.json
+logical-restore-evidence.json
+production-readiness-performance.json

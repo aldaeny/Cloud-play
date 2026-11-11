@@ -65,8 +65,11 @@ export async function testProtectedAuthPlayback({app,prisma,tenant,userId,sessio
   await create(assertion).expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id,token,{country:'US'})).expect(403);
   const races=await Promise.all([1,2,3,4].map(()=>create(geo(fixtures[0].channel.id))));assert.equal(races.filter(r=>r.status===201).length,1);assert.equal(races.filter(r=>r.status===429).length,3);
-  const get=(url,id=lease.body.id,bearer=token)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${bearer}`).set('x-playback-session',id);
-  await get(base+'/manifest').expect(200);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get(base+'/manifest',lease.body.id,otherSessionToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
+  const get=(url,id=lease.body.id,bearer=token)=>request(app.getHttpServer()).get(url).set('Authorization',`Bearer ${bearer}`).set('x-playback-session',id).set('x-external-geo',geo(fixtures[0].channel.id,bearer));
+  await get(base+'/manifest').expect(200);
+  await get(base+'/manifest').unset('x-external-geo').set('x-forwarded-for','8.8.8.8').set('x-vercel-ip-country','IQ').expect(403);
+  await get(base+'/manifest').set('x-external-geo',geo(fixtures[0].channel.id,token,{country:'US'})).expect(403);
+  await get(base+'/manifest').set('x-external-geo',geo(fixtures[0].channel.id,token,{expiresAt:1})).expect(403);await get(base+'/manifest',lease.body.id,secondToken).expect(403);await get(base+'/manifest',lease.body.id,otherSessionToken).expect(403);await get('/external-playback/'+fixtures[1].channel.id+'/manifest').expect(403);
   await request(app.getHttpServer()).put(base+'/session').set('Authorization',`Bearer ${token}`).set('x-playback-session',lease.body.id).set('x-external-geo',geo(fixtures[0].channel.id)).expect(200);
   await prisma.externalPlaybackLease.update({where:{id:lease.body.id},data:{expiresAt:new Date(0)}});
   await get(base+'/manifest').expect(403);

@@ -29,7 +29,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
  if(!server.listening)await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});
  const settle=async tasks=>{const results=await Promise.allSettled(tasks);const failed=results.find(r=>r.status==='rejected');if(failed)throw failed.reason;return results;};
  const channel=base.split('/')[2];
- const call=(u,method,path)=>request(app.getHttpServer())[method](path).timeout({response:10000,deadline:15000}).set('Authorization','Bearer '+u.token).set('x-playback-session',u.lease||'');
+ const call=(u,method,path)=>request(app.getHttpServer())[method](path).timeout({response:10000,deadline:15000}).set('Authorization','Bearer '+u.token).set('x-playback-session',u.lease||'').set('x-external-geo',geo(channel,u.token));
  try{
   for(const count of [10,25,50,100]){
    checkpoint='provision_'+count;safety();const login=[];

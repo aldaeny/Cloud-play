@@ -17,6 +17,15 @@ export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
  * The response never echoes the playlist URL or any raw stream URL.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Legacy private M3U capabilities do not bind every resource to a live Auth
+  // session/Geo lease. Do not expose that as protected production delivery.
+  // Keep the importer/player implementation for controlled development; the
+  // existing session-bound external playback path is the production boundary.
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Cache-Control','private, no-store');
+    return res.status(503).json({error:'SESSION_BOUND_PLAYLIST_REQUIRED'});
+  }
+
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   if (req.method !== 'POST') {
