@@ -47,3 +47,22 @@ API session context: Auth-verified subject/session id, live `auth.sessions` row,
 4. Supply six physical devices/operators later; retain NOT RUN until actual logs.
 
 No production migration/deploy/Auth policy/SSO settings/secrets/provider probes or main merge performed. Existing UI and content routes were not disabled to obtain PASS. Decision remains **NOT READY — BLOCKED**, even if final CI is green.
+
+## Follow-up candidate (2026-11-08)
+
+User clarified that atomicity/races/outage/retries and replayable CI are mandatory,
+and confirmed Staging resources are **not yet identified**. Global Auth Geo and
+SSO proof remain BLOCKED: no hosted middleware-only PASS, no direct-Auth bypass
+claim. DR remains BLOCKED, prepared acceptance gates are not restoration proof.
+Six-device 72-case CSV is prepared, every result NOT RUN.
+
+New shared-quota implementation and real two-process native CI harness are detailed
+in `SHARED_QUOTA_ACCEPTANCE.md`. These replace no successful features; production
+rollout is not enabled. Final CI handoff must report actual results separately
+from pre-run statuses. `validation/dr-staging-acceptance.json` contains no access
+secrets and permits no execution; `validation/DR_EXECUTION_GATES.md` defines required
+marker/checksum/ACL/rollback/RPO/RTO evidence for later approved execution.
+
+Overall decision remains NOT READY / BLOCKED. No completion percentage is increased
+merely for preparing templates or adding code. Baseline evidence is not re-run
+individually; full CI is required here because common API middleware changed.

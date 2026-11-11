@@ -1,0 +1,70 @@
+{
+  "status": "BLOCKED",
+  "execution_permitted": false,
+  "reason": "User confirmed isolated staging environment not yet identified",
+  "source_project_ref": null,
+  "independent_restore_destination_ref": null,
+  "storage_fixture_bucket": null,
+  "pitr_restore_timestamp_utc": null,
+  "approved_scope": null,
+  "approved_cost_ceiling": null,
+  "authorized_sso_session_reference": null,
+  "production_access_permitted": false,
+  "secrets_in_manifest_permitted": false,
+  "cases": [
+    {
+      "id": "managed-pitr-independent-restore",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    },
+    {
+      "id": "storage-object-and-metadata-restore",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    },
+    {
+      "id": "application-version-rollback",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    },
+    {
+      "id": "database-migration-rollback-isolated",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    },
+    {
+      "id": "restored-auth-acl-rls-owner-and-tenant-isolation",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    },
+    {
+      "id": "post-restore-playback-health-and-checksums",
+      "status": "BLOCKED",
+      "started_at_utc": null,
+      "completed_at_utc": null,
+      "evidence_reference": null,
+      "measured_rpo_seconds": null,
+      "measured_rto_seconds": null
+    }
+  ]
+}

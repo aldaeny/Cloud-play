@@ -1,0 +1,43 @@
+import assert from 'node:assert/strict';
+import {fork} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {setTimeout as wait} from 'node:timers/promises';
+export async function testSharedQuota(client,databaseUrl,check,clientPath,database){
+ await check('two real HTTP replicas with independent native Prisma pools share atomic quota; XFF spoof/restart cannot reset allowance',async()=>{
+  const children=[];
+  const worker=()=>new Promise((resolve,reject)=>{
+   const child=fork(fileURLToPath(new URL('./test-shared-quota-worker.cjs',import.meta.url)),[],{env:{PATH:process.env.PATH,DATABASE_URL:databaseUrl+'?connect_timeout=2&pool_timeout=2',QUOTA_FIXTURE_CLIENT:clientPath,QUOTA_FIXTURE_WINDOW_MS:'60000'},stdio:['ignore','ignore','ignore','ipc']});children.push(child);
+   const timer=setTimeout(()=>reject(new Error('QUOTA_WORKER_TIMEOUT')),15000);
+   child.once('error',reject);child.once('exit',()=>reject(new Error('QUOTA_WORKER_EXITED')));child.once('message',m=>{clearTimeout(timer);resolve({child,port:m.port});});
+  });
+  const hit=(port,path='/auth/login',n=0)=>fetch(`http://127.0.0.1:${port}${path}`,{method:path==='/auth/login'?'POST':'GET',headers:{'x-forwarded-for':`203.0.113.${n%250}`,'x-country':'IQ'},signal:AbortSignal.timeout(15000)});
+  try{
+   // Align DB window away from its boundary without weakening quota assertions.
+   const [{now}]=await client.$queryRaw`SELECT clock_timestamp() AS now`;
+   const left=60000-(now.getTime()%60000);if(left<45000)await wait(left+30);
+   const a=await worker(),b=await worker();
+   const replies=await Promise.all(Array.from({length:30},(_,i)=>hit(i%2?a.port:b.port,'/auth/login',i)));
+   assert.equal(replies.filter(r=>r.status===204).length,10);assert.equal(replies.filter(r=>r.status===429).length,20);
+   assert.ok(replies.filter(r=>r.status===429).every(r=>Number(r.headers.get('retry-after'))>=1));
+   a.child.send('stop');await new Promise(resolve=>a.child.once('exit',resolve));const restarted=await worker();
+   assert.equal((await hit(restarted.port)).status,429);
+   const general=await Promise.all(Array.from({length:100},(_,i)=>hit(i%2?restarted.port:b.port,'/fixture',i)));
+   assert.equal(general.filter(r=>r.status===204).length,90);assert.equal(general.filter(r=>r.status===429).length,10);
+   // Actual authority outage, not a mock. Both separate processes must deny
+   // rather than mint a local budget. Existing tokens are irrelevant here.
+   await database.stop();
+   try{for(const port of [b.port,restarted.port]){const denied=await hit(port);assert.equal(denied.status,503);assert.equal((await denied.json()).code,'RATE_LIMIT_AUTHORITY_UNAVAILABLE');}}
+   finally{await database.start();}
+   // Retry after ambiguous store failure/recovery MUST NOT reset consumption.
+   for(const port of [b.port,restarted.port])assert.equal((await hit(port)).status,429);
+   const [{now:resetNow}]=await client.$queryRaw`SELECT clock_timestamp() AS now`;
+   await wait(60000-(resetNow.getTime()%60000)+50);
+   assert.equal((await hit(b.port)).status,204);assert.equal((await hit(restarted.port)).status,204);
+   // Expire only disposable quota rows (never Geo anchors), then prove pruning.
+   await client.externalGeoNonce.updateMany({where:{id:{startsWith:'quota:'}},data:{expiresAt:new Date(0)}});
+   const {createRequire}=await import('node:module');const require=createRequire(import.meta.url);
+   const {PostgresRateLimiter}=require('../dist/common/shared-rate-limiter.js');
+   await new PostgresRateLimiter(client).prune();assert.equal(await client.externalGeoNonce.count({where:{id:{startsWith:'quota:'}}}),0);
+  }finally{for(const child of children)if(child.exitCode===null&&child.signalCode===null){if(child.connected)child.send('stop');await Promise.race([new Promise(resolve=>child.once('exit',resolve)),wait(3000)]);if(child.exitCode===null)child.kill('SIGKILL');}}
+ });
+}

@@ -105,6 +105,7 @@ try {
     client = new PrismaClient({ datasources: { db: { url: `postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres` } } });
   }
   await client.$connect();
+  if(native){const {testSharedQuota}=await import('./test-shared-quota.mjs');await testSharedQuota(client,`postgresql://cloudplay_test:${password}@127.0.0.1:${port}/postgres`,check,output,database);}
   if (native) await check('actual production PrismaService native initialization and teardown', async () => {
     require('reflect-metadata');
     const { Test } = require('@nestjs/testing');

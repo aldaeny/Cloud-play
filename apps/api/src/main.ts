@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import type { Request, Response } from 'express';
 
+import {PostgresRateLimiter,sharedRateLimiter} from './common/shared-rate-limiter';
 import { rateLimiter } from './common/rate-limiter';
 import { validateProductionConfig } from './common/production-config';
 
@@ -29,7 +30,8 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true, limit: '10mb' }));
 
   // Rate limiting (applied to all routes)
-  app.use(rateLimiter);
+  if(process.env.RATE_LIMIT_STORE&& !['local','postgres'].includes(process.env.RATE_LIMIT_STORE))throw new Error('RATE_LIMIT_STORE_INVALID');
+  app.use(process.env.RATE_LIMIT_STORE==='postgres'?sharedRateLimiter(new PostgresRateLimiter(prisma)):rateLimiter);
 
   // CORS configuration
   app.enableCors({
@@ -70,7 +72,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
   logger.log(`Aether API is running on port ${port}`);
   logger.log(`CORS origins: ${process.env.CORS_ORIGINS || 'localhost:3001,3002,3003'}`);
-  logger.log('Rate limiting: 100 requests/min per IP; 10 auth requests/min per IP (per instance)');
+  logger.log('Rate limiting: 100 requests/min; 10 auth requests/min; store='+ (process.env.RATE_LIMIT_STORE==='postgres'?'shared PostgreSQL':'local per-instance (not distributed)'));
 
 
 }
