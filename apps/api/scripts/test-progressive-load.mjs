@@ -13,8 +13,8 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
  assert.equal(url.hostname,'127.0.0.1');assert.equal(url.port,'5439');
  const users=[],phases=[],started=performance.now();let checkpoint='initial';let maxRss=0,minFree=Infinity;
  const safety=()=>{maxRss=Math.max(maxRss,process.memoryUsage().rss);minFree=Math.min(minFree,freemem());assert.ok(maxRss<768*1024**2,'RSS safety stop');assert.ok(minFree>256*1024**2,'free memory safety stop');assert.ok(performance.now()-started<240000,'total duration safety stop');};
- const adminPart=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')+'.'+Buffer.from(JSON.stringify({role:'service_role',aud:'authenticated',exp:Math.floor(Date.now()/1000)+600})).toString('base64url');
- const admin=adminPart+'.'+createHmac('sha256','isolated-fixture-signing-key-not-for-any-production-use').update(adminPart).digest('base64url');
+ const adminToken=()=>{const adminPart=Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url')+'.'+Buffer.from(JSON.stringify({role:'service_role',aud:'authenticated',exp:Math.floor(Date.now()/1000)+600})).toString('base64url');
+ return adminPart+'.'+createHmac('sha256','isolated-fixture-signing-key-not-for-any-production-use').update(adminPart).digest('base64url');};
  const auth=async(path,body,bearer)=>{
   const t=performance.now();const r=await fetch('http://127.0.0.1:9999'+path,{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{'content-type':'application/json',...(bearer?{Authorization:'Bearer '+bearer}:{})},body:JSON.stringify(body)});
   assert.equal(r.status,200,'isolated Auth response');return {data:await r.json(),ms:performance.now()-t};
@@ -36,7 +36,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
    while(users.length<count){
     await Promise.all(Array.from({length:Math.min(5,count-users.length)},async()=>{
      const email='load-'+randomUUID()+'@example.invalid',password=randomUUID()+'Aa1!';
-     const created=await auth('/admin/users',{email,password,email_confirm:true},admin),u={id:created.data.id};users.push(u);
+     const created=await auth('/admin/users',{email,password,email_confirm:true},adminToken()),u={id:created.data.id};users.push(u);
      await prisma.appUser.create({data:{id:u.id,tenantId:tenant,status:'active'}});
      const signed=await auth('/token?grant_type=password',{email,password});u.token=signed.data.access_token;login.push(signed.ms);
     }));safety();
@@ -75,7 +75,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
   // Disposable identities only. Never print tokens, emails or passwords.
   for(const u of users){
    await prisma.externalPlaybackLease.deleteMany({where:{userId:u.id}});await prisma.appUser.deleteMany({where:{id:u.id}});
-   const r=await fetch('http://127.0.0.1:9999/admin/users/'+u.id,{method:'DELETE',signal:AbortSignal.timeout(10000),headers:{Authorization:'Bearer '+admin}});assert.ok(r.ok);
+   const r=await fetch('http://127.0.0.1:9999/admin/users/'+u.id,{method:'DELETE',signal:AbortSignal.timeout(10000),headers:{Authorization:'Bearer '+adminToken()}});assert.ok(r.ok);
   }
  }
 }
