@@ -134,3 +134,9 @@ klauspost/compress and grpc. This follow-up pins the versions reported fixed
 (compress 1.18.7, grpc 1.83.2); their source tags and grpc Go 1.25 minimum were
 checked. These patches are candidates until full exact-HEAD CI/lifecycle and
 rescan complete. Independent review and legal signoff remain unavailable.
+
+Run 43143974755 failed the storage build before lifecycle: grpc 1.83.2
+requires OpenTelemetry 1.44.0 while the explicit pins were 1.43.0. Updated the
+five directly pinned OTel modules together to 1.44.0 based on grpc's go.mod;
+this dependency compatibility fix and the resulting image remain unverified
+until the new full run completes. No failed check was disabled.
