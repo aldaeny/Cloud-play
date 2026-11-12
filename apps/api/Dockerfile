@@ -8,7 +8,7 @@ RUN npm ci --no-audit --no-fund && npm run build --workspace aether-api \
  && test -n "$(find node_modules/.prisma/client -name 'libquery_engine-*.so.node' -print -quit)" \
  && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22-trixie-slim AS runtime
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app

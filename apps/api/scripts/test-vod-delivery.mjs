@@ -33,7 +33,10 @@ export async function testVodDelivery(client,pool,api,check) {
     let session,segmentUrl;
     const text=response=>Buffer.isBuffer(response.body)?response.body.toString():response.text;
     await check('legacy VOD actual HTTP/DB creates bound session and rewrites nested private manifests (Auth and object-store fixtures)',async()=>{
-      session=(await post().expect(201)).body;
+      const created=await post();
+      const reason=typeof created.body?.message==='string'&&/^[A-Z0-9_]{1,80}$/.test(created.body.message)?created.body.message:'NON_ENUM_DENIAL';
+      assert.equal(created.status,201,`expected 201 got ${created.status} VOD_REASON=${reason}`);
+      session=created.body;
       assert.ok(session.sessionId);
       const master=await get(session.manifestUrl).expect(200).expect('Cache-Control','private, no-store');
       const lowUrl=text(master).split('\n').find(s=>s.startsWith('/playback/'));

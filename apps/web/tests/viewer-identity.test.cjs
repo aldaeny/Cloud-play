@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),Module=require('node:module'),ts=require('typescript');
+const root=fs.existsSync('apps/web')?'apps/web/':'';
+const file=root+'src/lib/viewer-identity.ts',m=new Module(file,module);m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,file);
+const {ViewerIdentity}=m.exports;
+const identity=new ViewerIdentity();
+assert.equal(identity.update('tenant-a-user'),true);const a=identity.capture();
+assert.equal(identity.update('tenant-a-user'),false);assert.equal(identity.current(a),true);
+assert.equal(identity.update('tenant-b-user'),true);assert.equal(identity.current(a),false);const b=identity.capture();
+identity.update(null);assert.equal(identity.current(b),false);const signedOut=identity.capture();
+assert.equal(identity.update(null),false);assert.equal(identity.current(signedOut),true);
+identity.invalidate();assert.equal(identity.current(signedOut),false);
+console.log('PASS viewer identity fencing: account change, logout and unmount reject stale work; same-user refresh/focus preserves playback');

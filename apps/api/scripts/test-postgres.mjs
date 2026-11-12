@@ -46,7 +46,7 @@ async function check(name, fn) {
   catch (error) {
     const code = typeof error?.code === 'string' && /^[A-Z0-9_]{1,32}$/.test(error.code) ? error.code : 'CHECK_FAILED';
     const scalar = value => ['number','boolean'].includes(typeof value) ? String(value) : 'redacted';
-    console.log(`FAIL ${name} code=${code} actual=${scalar(error?.actual)} expected=${scalar(error?.expected)} http=${String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1).join('/')||'none'}`);
+    console.log(`FAIL ${name} code=${code} actual=${scalar(error?.actual)} expected=${scalar(error?.expected)} reason=${String(error?.message||'').match(/VOD_REASON=([A-Z0-9_]{1,80})/)?.[1]||'none'} http=${String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1).join('/')||'none'}`);
     throw error;
   }
 }
