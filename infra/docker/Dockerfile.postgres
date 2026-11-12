@@ -1,0 +1,17 @@
+# Keep PostgreSQL17 and Debian13/glibc: never silently reuse a glibc database
+# volume with musl. Rebuild the actual vulnerable privilege-drop helper instead.
+FROM golang:1.27.4-bookworm AS gosu
+ENV CGO_ENABLED=0 GOTOOLCHAIN=local GOMAXPROCS=2 GOFLAGS=-p=2
+ARG TARGETARCH
+WORKDIR /src
+RUN curl --fail --location --retry 3 https://codeload.github.com/tianon/gosu/tar.gz/6456aaa0f3c854d199d0f037f068eb97515b7513 -o /gosu-source.tar.gz \
+    && echo '33d7537d588ea49458b9509bcf4554bdf5ceacc66da71e5caa1058ea3b689c3b  /gosu-source.tar.gz' | sha256sum -c - \
+    && tar -xzf /gosu-source.tar.gz --strip-components=1 \
+    && go mod download && go mod verify \
+    && GOOS=linux GOARCH=$TARGETARCH go build -mod=readonly -trimpath -buildvcs=false -o /gosu .
+FROM postgres:17.11-trixie
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+COPY --from=gosu /gosu /usr/local/bin/gosu
+COPY --from=gosu /gosu-source.tar.gz /usr/share/doc/cloudplay-postgres/gosu-source.tar.gz
+COPY infra/docker/Dockerfile.postgres /usr/share/doc/cloudplay-postgres/Dockerfile.postgres
+RUN gosu --version && gosu nobody true

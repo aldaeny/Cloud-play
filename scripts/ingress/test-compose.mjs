@@ -19,6 +19,6 @@ try{
  assert.equal(config.services.web.build.args.NEXT_PUBLIC_SUPABASE_URL,'https://synthetic.example');
  assert.equal(config.services.ingress.ports[0].host_ip,'127.0.0.1');
  assert.equal(config.services['api-gateway'].ports,undefined);
- run('docker',['run','--rm','--add-host','api:127.0.0.1','-v',path.resolve('infra/docker/selfhost-api-tls.conf')+':/etc/nginx/conf.d/default.conf:ro','-v',path.resolve('.selfhost/tls')+':/tls:ro','nginx:1.28-alpine','nginx','-t']);
+ run('docker',['run','--rm','--add-host','api:127.0.0.1','-v',path.resolve('infra/docker/selfhost-api-tls.conf')+':/etc/nginx/conf.d/default.conf:ro','-v',path.resolve('.selfhost/tls')+':/tls:ro','cloudplay-gateway:verification','nginx','-t']);
  console.log('PASS actual Compose ingress overlay expansion, private bindings, public Auth build origin and actual nginx private API TLS config validation; synthetic config only');
 }finally{if(owned){rmSync('.env');rmSync('.selfhost',{recursive:true,force:true});}}

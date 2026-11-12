@@ -39,7 +39,7 @@ try {
   if (action === 'install') {
     if (compose(['ps','-a','-q']).toString().trim()) throw new Error('Install requires a new project; use upgrade for existing installs');
     if (docker(['volume','ls','-q','--filter',`label=com.docker.compose.project=${project}`]).toString().trim()) throw new Error('Existing volumes: refusing install');
-    compose(['build','api','worker-media','web','admin','tools','minio']);
+    compose(['build','api','worker-media','web','admin','tools','minio','postgres','auth-gateway']);
     compose(['up','-d','--wait','postgres','redis','minio']);
     compose(['run','--rm','--no-deps','minio-init']);
     compose(['run','--rm','--no-deps','tools','migrate']);
@@ -70,7 +70,7 @@ try {
     compose(['stop','minio']);
     // Leave writers stopped on any failure; never auto-resume an incomplete backup.
     toFile(path.join(dir,'database.dump'), ['exec',pg,'sh','-ec','pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc']);
-    toFile(path.join(dir,'objects.tar'), ['run','--rm','--volumes-from',`${storage}:ro`,'postgres:17','tar','-C','/data','-cf','-','.']);
+    toFile(path.join(dir,'objects.tar'), ['run','--rm','--volumes-from',`${storage}:ro`,'cloudplay-postgres:verification','tar','-C','/data','-cf','-','.']);
     mkdirSync(path.join(dir,'tls'),{mode:0o700});
     for(const name of ['cert.pem','key.pem']){copyFileSync(path.join(root,'.selfhost/tls',name),path.join(dir,'tls',name));chmodSync(path.join(dir,'tls',name),0o600);}
     copyFileSync(path.join(root,'.env'), path.join(dir,'installation.env')); chmodSync(path.join(dir,'installation.env'),0o600);
@@ -89,14 +89,14 @@ try {
     compose(['stop','minio']);
     compose(['run','--rm','--no-deps','tools','prepare-roles']);
     docker(['exec','-i',volume('postgres'),'sh','-ec','pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --exit-on-error'],{stdio:[openArchive(path.join(dir,'database.dump')),'pipe','pipe']});
-    docker(['run','--rm','-i','--volumes-from',volume('minio'),'postgres:17','tar','-C','/data','-xf','-'],{stdio:[openArchive(path.join(dir,'objects.tar')),'pipe','pipe']});
+    docker(['run','--rm','-i','--volumes-from',volume('minio'),'cloudplay-postgres:verification','tar','-C','/data','-xf','-'],{stdio:[openArchive(path.join(dir,'objects.tar')),'pipe','pipe']});
     compose(['up','-d','--wait','--no-build','--pull','never','minio','api','worker-media','web','admin','mailpit','auth','auth-gateway']);
   } else if (action === 'upgrade') {
     // Require a verified pre-upgrade backup; schema down-migrations are never run.
     const dir = archivePath(archiveArg), manifest = JSON.parse(readFileSync(path.join(dir,'manifest.json')));
     if (manifest.project !== project || manifest.release === release) throw new Error('A previous-release backup of this project is required');
     for (const f of ['database.dump','objects.tar','installation.env','tls/cert.pem','tls/key.pem']) if (sha(path.join(dir,f)) !== manifest.files[f]) throw new Error('Backup corrupted');
-    compose(['build','api','worker-media','web','admin','tools','minio']);
+    compose(['build','api','worker-media','web','admin','tools','minio','postgres','auth-gateway']);
     compose(['stop',...writers]);
     compose(['run','--rm','--no-deps','tools','migrate']);
     compose(['up','-d','--wait','api','worker-media','web','admin','mailpit','auth','auth-gateway']);

@@ -20,7 +20,10 @@ services:
     volumes:
       - ${SELFHOST_INGRESS_ROOT:?Set absolute operator-owned cert directory}/api-ca.pem:/ingress/api-ca.pem:ro
   api-gateway:
-    image: nginx:1.28-alpine
+    image: cloudplay-gateway:verification
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.gateway
     volumes:
       - ${SELFHOST_INGRESS_ROOT}/api-cert.pem:/tls/cert.pem:ro
       - ${SELFHOST_INGRESS_ROOT}/api-key.pem:/tls/key.pem:ro

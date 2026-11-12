@@ -87,6 +87,8 @@ jobs:
             sleep 1
           done
           BASE_URL=http://127.0.0.1:3002 node apps/web/tests/admin-providers-browser.mjs
+      - name: Viewer identity fencing regression
+        run: npm run test:viewer-identity --workspace aether-web
       - name: Audit report (tooling findings remain visible)
         if: always()
         shell: bash

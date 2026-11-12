@@ -1,5 +1,6 @@
 # Offline-at-runtime lifecycle image. CLI dependencies are intentionally retained.
 FROM node:22-trixie-slim
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app

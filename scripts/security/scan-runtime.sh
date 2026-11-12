@@ -12,10 +12,10 @@ release=$(git rev-parse HEAD)
 for service in storage api web admin worker tools ingress postgres redis auth auth-gateway mailpit; do
   case "$service" in
     ingress) image=cloudplay-ingress:verification ;;
-    postgres) image=postgres:17 ;;
+    postgres) image=cloudplay-postgres:verification ;;
     redis) image=redis:7-alpine ;;
     auth) image=supabase/gotrue:v2.197.0 ;;
-    auth-gateway) image=nginx:1.28-alpine ;;
+    auth-gateway) image=cloudplay-gateway:verification ;;
     mailpit) image=axllent/mailpit:v1.33.1 ;;
     *) image="cloudplay-selfhost-${service}:${release}" ;;
   esac
