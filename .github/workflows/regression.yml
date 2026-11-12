@@ -19,7 +19,7 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - name: Offline operations plan and recovery evidence safety tests
-        run: node --test scripts/ops/ops-plan.test.mjs scripts/setup-local-env.test.mjs scripts/selfhost/policy.test.mjs scripts/security/report.test.mjs
+        run: node --test scripts/ops/ops-plan.test.mjs scripts/setup-local-env.test.mjs scripts/selfhost/policy.test.mjs scripts/security/report.test.mjs apps/api/scripts/load-failure-diagnostics.test.mjs
       - name: Actual isolated mTLS ingress and spoofed forwarding rejection
         run: node scripts/ingress/test-ingress.mjs
       - name: Viewer white label validation

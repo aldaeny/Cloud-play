@@ -7,6 +7,7 @@ import {createHmac,randomUUID} from 'node:crypto';
 import {freemem} from 'node:os';
 import {setTimeout as wait} from 'node:timers/promises';
 import {writeFile} from 'node:fs/promises';
+import {loadFailureDiagnostic} from './load-failure-diagnostics.mjs';
 const require=createRequire(import.meta.url),request=require('supertest');
 export async function progressiveLoad({app,prisma,tenant,base,geo}){
  const url=new URL(process.env.AUTH_TEST_DATABASE_URL||'http://invalid');
@@ -42,7 +43,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
     }));safety();
    }
    checkpoint='requests_'+count;const phaseStart=performance.now(),cpu=process.cpuUsage(),samples={login,create:[],renew:[],channels:[],manifest:[],segment:[]};let errors=0,timeouts=0,total=0,connections=0,responseBytes=0;
-   const timed=async(kind,fn)=>{const t=performance.now();total++;try{const value=await fn();if(typeof value==='string')responseBytes+=Buffer.byteLength(value);else if(Buffer.isBuffer(value?.body))responseBytes+=value.body.length;else if(value?.body)responseBytes+=Buffer.byteLength(JSON.stringify(value.body));return value;}catch(e){errors++;if(e.timeout||e.name==='TimeoutError')timeouts++;throw e;}finally{samples[kind].push(performance.now()-t);}};
+   const timed=async(kind,fn)=>{const t=performance.now();total++;try{const value=await fn();if(typeof value==='string')responseBytes+=Buffer.byteLength(value);else if(Buffer.isBuffer(value?.body))responseBytes+=value.body.length;else if(value?.body)responseBytes+=Buffer.byteLength(JSON.stringify(value.body));return value;}catch(e){errors++;if(e.timeout||e.name==='TimeoutError')timeouts++;if(e && typeof e==='object')e.loadDiagnostic=loadFailureDiagnostic(kind,e);throw e;}finally{samples[kind].push(performance.now()-t);}};
    checkpoint='create_'+count;await settle(users.map(async u=>{
     const r=await timed('create',()=>call(u,'post',base+'/session').set('x-external-geo',geo(channel,u.token)).expect(201));u.lease=r.body.id;
    }));
@@ -69,7 +70,7 @@ export async function progressiveLoad({app,prisma,tenant,base,geo}){
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('::notice title=Progressive synthetic load::'+JSON.stringify(result));return result;
  }catch(error){
   const code=typeof error?.code==='string'&&/^[A-Z0-9_]{1,32}$/.test(error.code)?error.code:'LOAD_CHECK_FAILED';
-  const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null,http_status:typeof error?.status==='number'?error.status:null,expected_got:String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1)||null,known_reason:['Server is not running','ECONNRESET','ECONNREFUSED','socket hang up','RSS safety stop','free memory safety stop','total duration safety stop','connection recovery budget'].find(text=>String(error?.message||'').includes(text))||null};
+  const result={status:'FAILED',checkpoint,code,completed_phases:phases,created_users:users.length,diagnostic:error?.loadDiagnostic||null,error_type:['AssertionError','TypeError','Error','TimeoutError'].includes(error?.name)?error.name:'Error',actual:typeof error?.actual==='number'?error.actual:null,expected:typeof error?.expected==='number'?error.expected:null,timeout_ms:typeof error?.timeout==='number'?error.timeout:null,http_status:typeof error?.status==='number'?error.status:null,expected_got:String(error?.message||'').match(/expected (\d{3})[^\n]*got (\d{3})/)?.slice(1)||null,known_reason:['Server is not running','ECONNRESET','ECONNREFUSED','socket hang up','RSS safety stop','free memory safety stop','total duration safety stop','connection recovery budget'].find(text=>String(error?.message||'').includes(text))||null};
   await writeFile('progressive-load-evidence.json',JSON.stringify(result,null,2)+'\n');console.log('LOAD_FAILURE '+JSON.stringify(result));throw error;
  }finally{
   // Disposable identities only. Never print tokens, emails or passwords.

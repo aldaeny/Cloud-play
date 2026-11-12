@@ -140,3 +140,23 @@ requires OpenTelemetry 1.44.0 while the explicit pins were 1.43.0. Updated the
 five directly pinned OTel modules together to 1.44.0 based on grpc's go.mod;
 this dependency compatibility fix and the resulting image remain unverified
 until the new full run completes. No failed check was disabled.
+
+### a6cf25b inventory and intermittent workload failure
+Run https://github.com/aldaeny/Cloud-play/actions/runs/43145020419 failed:
+synthetic progressive workload encountered an unexplained 503 in the third
+100-user wave. The Docker lifecycle succeeded and its full 12-image scan found
+1 critical, 227 high, 334 medium, 289 low and 66 unknown occurrences, including
+storage 0 high / 0 critical. Repeating the whole workflow at the same SHA in
+https://github.com/aldaeny/Cloud-play/actions/runs/43146926376 succeeded 6/6,
+including the 100-user bursts and 600-second five-viewer soak. This does not
+prove the intermittent 503 fixed: its precise endpoint/cause was not captured.
+Both outcomes remain evidence. These tests use synthetic identities and media,
+exclude the production ingress, and do not establish production capacity.
+
+To improve future diagnosis without logging credentials, media paths, or response
+bodies, the workload evidence now includes only the failed operation, valid HTTP
+status if supplied by the test client, and a short allowlist of known failure
+codes. Unknown responses remain redacted. This changes no success criteria,
+timeouts, workload, or retries. Unit tests cover the allowlist and redaction;
+full CI on this subsequent change is still required. Root-cause resolution and
+independent security review remain open.
