@@ -98,6 +98,8 @@ try {
     for (const f of ['database.dump','objects.tar','installation.env','tls/cert.pem','tls/key.pem']) if (sha(path.join(dir,f)) !== manifest.files[f]) throw new Error('Backup corrupted');
     compose(['build','api','worker-media','web','admin','tools','minio','postgres','auth-gateway']);
     compose(['stop',...writers]);
+    // Apply the patched same-major DB runtime before migration; writers remain stopped.
+    compose(['up','-d','--wait','--no-deps','postgres']);
     compose(['run','--rm','--no-deps','tools','migrate']);
     compose(['up','-d','--wait','api','worker-media','web','admin','mailpit','auth','auth-gateway']);
 
