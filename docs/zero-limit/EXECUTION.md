@@ -113,3 +113,10 @@ package checksums were not materialized by `go get`/`go mod download` alone.
 Fix: run `go mod tidy` on each patched source tree before download/verification,
 manifest capture and readonly compilation. Do not drop readonly compilation,
 skip the build or call the partial cycle a pass. Full CI rerun required.
+
+Run43140622704 exposed an upstream test-only dependency graph inconsistency:
+`go mod tidy` traversed go-openapi/swag tests and selected a testify/v2 module
+without assert/yaml. It failed; no lifecycle/scan completion claimed. Resolve
+production import checksums with `go get .` instead of traversing dependency
+unit tests. All explicitly requested security versions, checksum verification,
+readonly compilation and application/lifecycle regression remain required.
