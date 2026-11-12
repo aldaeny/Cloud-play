@@ -9,6 +9,7 @@ ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 RUN npm ci && npm run build -w apps/web && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
+RUN sh infra/docker/strip-package-managers.sh
 ENV NODE_ENV=production
 EXPOSE 3001
-CMD ["npm", "start", "-w", "apps/web"]
+CMD ["node", "node_modules/next/dist/bin/next", "start", "apps/web", "-p", "3001", "--hostname", "0.0.0.0"]

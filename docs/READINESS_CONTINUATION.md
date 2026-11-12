@@ -74,3 +74,28 @@ old release images for safe snapshot rollback. No customer schema change occurs.
 Operator tools also move to Node22 Debian13, retaining the complete Prisma CLI
 and all required migration dependencies. Real bootstrap/migrate/upgrade/restore
 commands must pass on this runtime; no CLI is replaced by a simulated operation.
+
+## Explicit storage module remediation
+
+The intermediate actual scan identified critical CVE-2026-33186 (gRPC1.71/1.72,
+fixed1.79.3) and CVE-2026-77405/77408/77411 (amqp091-go1.10, fixed1.13). Source
+builds now explicitly request gRPC1.79.3; MinIO also requests amqp091-go1.13.0.
+Both request go-jose/v4 4.1.6, x/crypto0.59.0 and x/net0.62.0. These are documented
+security dependency modifications, NOT unchanged upstream dependency graphs.
+Go1.27.4, go.sum verification and readonly compilation remain mandatory. Patched
+go.mod/go.sum and complete resolved module lists accompany original archives and
+build instructions in /usr/share/doc/cloudplay-storage/source. This is still not
+legal compliance certification. Optional notification/SSH integrations require
+separate authorized acceptance; no external provider was contacted to test them.
+
+## Unneeded global tooling removed from serving images
+
+The actual API scan exposed vulnerable npm-bundled brace-expansion/picomatch/
+sigstore/ip-address packages outside the application's npm-audit dependency tree.
+Serving images now remove global npm/npx/Corepack/Yarn after builds, and web/admin
+invoke the same Next start CLI directly with explicit project/port/0.0.0.0 options.
+API/worker/ingress already invoke node directly. Ports and application interfaces
+are unchanged, but `docker exec ... npm` is no longer an operator interface in a
+serving image; use the dedicated tools image for migration/build tooling. Tools
+retain required dependencies and remain included in all-severity security scans.
+No vulnerability is marked fixed solely because an npm audit reports zero.

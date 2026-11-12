@@ -1,6 +1,8 @@
 FROM node:22-trixie-slim
 WORKDIR /app
 COPY scripts/ingress/gateway.mjs ./gateway.mjs
+COPY infra/docker/strip-package-managers.sh /tmp/strip-package-managers.sh
+RUN sh /tmp/strip-package-managers.sh && rm /tmp/strip-package-managers.sh
 USER node
 EXPOSE 8443
 CMD ["node", "gateway.mjs"]
