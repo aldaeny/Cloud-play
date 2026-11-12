@@ -106,3 +106,10 @@ annotations gives404 HIGH (not454 as the previous standalone report stated),
 were correct; use these recalculated totals. Counts remain occurrence-based.
 Compliance document corrected to explicitly disclose dependency patches rather
 than leaving its obsolete claim of unchanged upstream modules in place.
+
+Follow-up run43139440557 failed in readonly storage compilation: upgrading
+Prometheus pulled split go-openapi/swag, grafana/regexp and yaml modules whose
+package checksums were not materialized by `go get`/`go mod download` alone.
+Fix: run `go mod tidy` on each patched source tree before download/verification,
+manifest capture and readonly compilation. Do not drop readonly compilation,
+skip the build or call the partial cycle a pass. Full CI rerun required.
