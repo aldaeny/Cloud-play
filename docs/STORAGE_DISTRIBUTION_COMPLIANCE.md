@@ -2,14 +2,16 @@
 
 This is an engineering checklist, not legal advice or legal sign-off.
 
-Pinned official releases in Dockerfile.storage:
-- MinIO RELEASE.2025-04-22T22-12-26Z (AGPL-3.0):
-  https://github.com/minio/minio/tree/RELEASE.2025-04-22T22-12-26Z
+Pinned upstream source releases in Dockerfile.storage (Cloud Play builds):
+- MinIO RELEASE.2025-10-15T17-29-55Z (AGPL-3.0):
+  https://github.com/minio/minio/tree/RELEASE.2025-10-15T17-29-55Z
 - MC RELEASE.2025-08-13T08-35-41Z (AGPL-3.0):
   https://github.com/minio/mc/tree/RELEASE.2025-08-13T08-35-41Z
-No upstream binary/source patches are currently applied. Docker packaging and
-hardcoded architecture checksums are in infra/docker/Dockerfile.storage. Official
-GitHub downloads are free; commercial MinIO support is not included.
+Dependency security modifications ARE applied to both source builds. Exact
+requests are in infra/docker/Dockerfile.storage; resolved go.mod/go.sum/module
+lists accompany original SHA256-verified source archives in the conveyed image.
+These are not unmodified upstream dependency graphs or vendor binaries. Source
+downloads are free; commercial MinIO support is not included.
 
 ## Release gates
 
@@ -32,7 +34,7 @@ A non-AGPL replacement requires a compatible, independently tested S3 adapter an
 full backup/restore/media rerun; do not claim it is a drop-in licensed solution.
 
 Debian, Node, nginx, Go dependencies and media tooling have separate notices and
-source requirements. CI generates CycloneDX package inventory for storage/API;
+source requirements. CI generates CycloneDX package inventory for all12 scanned runtime images;
 that is not a full legal license-conflict analysis. MinIO's current upstream
 security/support lifecycle, old pinned binary findings and unfixed advisories
 must be triaged before a customer release. No commercial license was purchased.
@@ -40,7 +42,7 @@ must be triaged before a customer release. No commercial license was purchased.
 ## Security inventory
 
 scripts/security/scan-runtime.sh pins Trivy 0.76.2 by official release SHA256,
-scans the actual built storage/API images (OS and detected Go/module packages),
+scans all12 actual runtime images (OS and detected Go/module packages),
 and emits JSON findings, image IDs, CycloneDX SBOMs and VULNERABILITY_REPORT.md.
 All severities and unfixed findings remain visible. Inventory success is **not**
 release clearance; actionable HIGH/CRITICAL findings require remediation or an
@@ -49,7 +51,7 @@ fetch failure is a failed scan, not "zero vulnerabilities". Reproduce on existin
 Linux Docker hardware after the lifecycle builds retained image tags. No paid
 scanner account is required. npm audit does not cover these binaries/OS packages.
 
-## Remediation applied after first scan
+## Historical remediation after first scan (superseded counts/build state)
 
 The initial inventory reported storage HIGH224/CRITICAL10 and API HIGH44/CRITICAL1
 (dependency occurrences, not unique exploitable defects). Both Debian runtime
@@ -71,8 +73,8 @@ The current candidate uses MinIO RELEASE.2025-10-15T17-29-55Z at exact commit
 commit d6541ea280b73a834b64d4097e21f2be77676104. Official codeload archives are
 SHA256-verified in Dockerfile.storage. Go 1.27.4, CGO-disabled cross-builds,
 `-mod=readonly`, `go mod verify` and trimpath preserve an auditable build; module
-versions remain exactly those of upstream source, NOT silently upgraded. Compiler
-security fixes do not imply all old module CVEs are fixed. Output labels identify
+versions are explicitly security-patched as recorded in Dockerfile.storage and
+the conveyed resolved manifests. Compiler fixes alone do not fix module CVEs. Output labels identify
 these as Cloud Play source builds, not vendor-distributed official binaries.
 
 Exact main source archives (including their upstream license files) and build

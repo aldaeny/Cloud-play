@@ -99,3 +99,10 @@ migration. Tools require npm, so update rather than delete it: npm11.21.2 suppor
 Node^20.17 or>=22.9, exact registry version verified. Storage Prometheus modules
 request0.311.3 and thrift0.24 based on the actual follow-up scan. Compile/lifecycle
 compatibility must be proven again; no finding declared closed ahead of rescan.
+
+Historical report arithmetic correction: summing the actual39761d2 per-image
+annotations gives404 HIGH (not454 as the previous standalone report stated),
+5 CRITICAL,557 MEDIUM,453 LOW and64 UNKNOWN. Baseline individual image counts
+were correct; use these recalculated totals. Counts remain occurrence-based.
+Compliance document corrected to explicitly disclose dependency patches rather
+than leaving its obsolete claim of unchanged upstream modules in place.
