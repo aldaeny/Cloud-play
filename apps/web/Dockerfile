@@ -8,7 +8,7 @@ ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
-RUN npm ci && npm run build -w apps/web
+RUN npm ci && npm run build -w apps/web && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["npm", "start", "-w", "apps/web"]

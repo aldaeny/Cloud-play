@@ -54,3 +54,19 @@ semantics are needed for real billing. Legal source-distribution review and
 physical-device resources remain outstanding. No paid service or public production
 deployment is authorized. Runtime CVEs and unfinished viewer features must be
 reported, not hidden behind a green lifecycle.
+
+## Complete fleet inventory and smaller serving images
+
+The security job now inventories storage, API, web, admin, worker, operator tools,
+private ingress, PostgreSQL, Redis, GoTrue, nginx and Mailpit, retaining IDs, all
+findings and SBOMs for each. Operator tools intentionally retain migration/build
+CLI dependencies; findings there are not silently excluded. Scanner annotations
+are short samples; full remediation-plan.json and Markdown retain every finding.
+
+Web/admin/worker install all build dependencies and run their original builds
+before pruning development dependencies from the final serving image. No host/CI
+test dependency or test command is removed. The dedicated tools image is NOT
+pruned: lifecycle migration/bootstrap/restore support remains mandatory. Private
+Node ingress uses the same Node22 Debian13 runtime family as API. These are
+candidate image changes until the exact final Docker lifecycle passes; retain
+old release images for safe snapshot rollback. No customer schema change occurs.

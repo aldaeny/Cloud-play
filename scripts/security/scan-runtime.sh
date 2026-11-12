@@ -9,10 +9,18 @@ tar -xzf .cache/security-tools/trivy.tar.gz -C .cache/security-tools trivy
 scanner="$PWD/.cache/security-tools/trivy"
 "$scanner" --version > security-evidence/scanner-version.txt
 release=$(git rev-parse HEAD)
-for service in storage api; do
-  image="cloudplay-selfhost-${service}:${release}"
+for service in storage api web admin worker tools ingress postgres redis auth auth-gateway mailpit; do
+  case "$service" in
+    ingress) image=cloudplay-ingress:verification ;;
+    postgres) image=postgres:17 ;;
+    redis) image=redis:7-alpine ;;
+    auth) image=supabase/gotrue:v2.197.0 ;;
+    auth-gateway) image=nginx:1.28-alpine ;;
+    mailpit) image=axllent/mailpit:v1.33.1 ;;
+    *) image="cloudplay-selfhost-${service}:${release}" ;;
+  esac
   docker image inspect "$image" --format '{{.Id}}' > "security-evidence/${service}-image-id.txt"
   "$scanner" image --timeout 10m --scanners vuln --list-all-pkgs --format json --output "security-evidence/${service}-vulnerabilities.json" "$image"
   "$scanner" image --timeout 10m --format cyclonedx --output "security-evidence/${service}-sbom.cdx.json" "$image"
 done
-node scripts/security/summarize.mjs
+node scripts/security/summarize.mjs storage api web admin worker tools ingress postgres redis auth auth-gateway mailpit

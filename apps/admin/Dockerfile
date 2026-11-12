@@ -4,7 +4,7 @@ ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app
 COPY . .
-RUN npm ci && npm run build -w apps/admin
+RUN npm ci && npm run build -w apps/admin && npm prune --omit=dev --ignore-scripts --no-audit --no-fund
 ENV NODE_ENV=production
 EXPOSE 3002
 CMD ["npm", "start", "-w", "apps/admin"]
