@@ -70,3 +70,7 @@ pruned: lifecycle migration/bootstrap/restore support remains mandatory. Private
 Node ingress uses the same Node22 Debian13 runtime family as API. These are
 candidate image changes until the exact final Docker lifecycle passes; retain
 old release images for safe snapshot rollback. No customer schema change occurs.
+
+Operator tools also move to Node22 Debian13, retaining the complete Prisma CLI
+and all required migration dependencies. Real bootstrap/migrate/upgrade/restore
+commands must pass on this runtime; no CLI is replaced by a simulated operation.
