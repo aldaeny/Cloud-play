@@ -10,3 +10,13 @@ identity.update(null);assert.equal(identity.current(b),false);const signedOut=id
 assert.equal(identity.update(null),false);assert.equal(identity.current(signedOut),true);
 identity.invalidate();assert.equal(identity.current(signedOut),false);
 console.log('PASS viewer identity fencing: account change, logout and unmount reject stale work; same-user refresh/focus preserves playback');
+
+const sessionModule=new Module(root+'src/lib/viewer-session.ts',module);
+sessionModule._compile(ts.transpileModule(fs.readFileSync(root+'src/lib/viewer-session.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,root+'src/lib/viewer-session.ts');
+const calls=[];
+const end=sessionModule.exports.viewerSessionEnd('session-A','original-user-A-token',async(url,options)=>{calls.push({url,...options});return {};});
+identity.update('later-user-B');end();end();
+assert.equal(calls.length,1);assert.equal(calls[0].headers.Authorization,'Bearer original-user-A-token');
+assert.equal(calls[0].keepalive,true);assert.deepEqual(JSON.parse(calls[0].body),{sessionId:'session-A'});
+const rejectEnd=sessionModule.exports.viewerSessionEnd('expired-session','expired-token',async()=>{throw new Error('offline');});rejectEnd();
+console.log('PASS session cleanup retains original principal, is idempotent and tolerates network failure');

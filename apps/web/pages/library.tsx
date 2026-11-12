@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import SectionLayout from '../src/components/layout/SectionLayout';
 import { VideoPlayer } from '../src/components/player/VideoPlayer';
 import { ViewerIdentity } from '../src/lib/viewer-identity';
+import { viewerSessionEnd } from '../src/lib/viewer-session';
 import { getSupabase } from '../src/lib/supabase';
 type Title={id:string;titleAr:string;titleEn:string;kind?:string};
 type Option={id:string;name?:string;deviceName?:string};
@@ -11,7 +12,7 @@ export default function OrganizationLibrary(){
   const [profile,setProfile]=useState(''),[device,setDevice]=useState(''),[status,setStatus]=useState(''),[attempt,setAttempt]=useState(0),[busy,setBusy]=useState(false);
   const progressAt=useRef(0),identity=useRef(new ViewerIdentity()),pendingPlay=useRef(false);
   const [episodes,setEpisodes]=useState<Array<{id:string;titleId:string;number:number}>>([]);
-  const [playing,setPlaying]=useState<{sessionId:string;url:string;title:string;titleId:string;profileId:string;episodeId?:string;resumeAtSec:number}|null>(null);
+  const [playing,setPlaying]=useState<{sessionId:string;url:string;title:string;titleId:string;profileId:string;episodeId?:string;resumeAtSec:number;end:()=>void}|null>(null);
   async function request(action:string,body?:unknown){
     const turn=identity.current.capture();
     const auth=getSupabase();if(!auth)throw new Error('حسابات Supabase غير مهيأة.');
@@ -20,12 +21,13 @@ export default function OrganizationLibrary(){
     const res=await fetch(`/api/vod/${action}`,{method:body?'POST':'GET',headers:{Authorization:`Bearer ${data.session.access_token}`,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),cache:'no-store'});
     if(!res.ok)throw new Error('تعذر الطلب. تحقق من الجلسة والترخيص والحقوق وإعدادات HTTPS وGeo الموثوقة.');
     const result=await res.json();
+    const end=action==='session'&&typeof result.sessionId==='string'?viewerSessionEnd(result.sessionId,data.session.access_token):undefined;
     if(!identity.current.current(turn)){
       // A late session response must not become playback for the next account.
-      if(action==='session'&&typeof result.sessionId==='string')void fetch('/api/vod/end',{method:'POST',headers:{Authorization:`Bearer ${data.session.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({sessionId:result.sessionId}),keepalive:true}).catch(()=>{});
+      end?.();
       throw new Error('VIEWER_IDENTITY_CHANGED');
     }
-    return result;
+    return end?{...result,end}:result;
   }
   async function play(title:Title,episodeId?:string){
     if(pendingPlay.current)return;pendingPlay.current=true;const turn=identity.current.capture();setBusy(true);try{
@@ -34,7 +36,7 @@ export default function OrganizationLibrary(){
       const data=await request('session',{titleId:title.id,profileId:profile,deviceId:device,...(episodeId?{episodeId}:{})});
       if(typeof data.url!=='string'||!data.url.startsWith('/api/vod/media?')||typeof data.sessionId!=='string')throw new Error('Invalid session response');
       if(!identity.current.current(turn))return;
-      progressAt.current=0;setPlaying({sessionId:data.sessionId,url:data.url,title:title.titleEn,titleId:title.id,profileId:profile,episodeId,resumeAtSec:Number.isFinite(data.resumeAtSec)?data.resumeAtSec:0});setStatus('');
+      progressAt.current=0;setPlaying({sessionId:data.sessionId,end:data.end,url:data.url,title:title.titleEn,titleId:title.id,profileId:profile,episodeId,resumeAtSec:Number.isFinite(data.resumeAtSec)?data.resumeAtSec:0});setStatus('');
     }catch(error){if(identity.current.current(turn))setStatus((error as Error).message);}finally{if(identity.current.current(turn)){pendingPlay.current=false;setBusy(false);}}
   }
   useEffect(()=>{
@@ -56,7 +58,7 @@ export default function OrganizationLibrary(){
     }).catch(error=>{if(alive&&identity.current.current(turn))setStatus(error.message);});
     return()=>{alive=false;};
   },[attempt]);
-  useEffect(()=>{if(!playing)return;const sessionId=playing.sessionId,turn=identity.current.capture();let pending=false;const timer=setInterval(()=>{if(pending)return;pending=true;void request('heartbeat',{sessionId}).catch(error=>{if(identity.current.current(turn)){setStatus(error.message);setPlaying(null);}}).finally(()=>{pending=false;});},30000);return()=>{clearInterval(timer);void fetch('/api/vod/end',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId}),keepalive:true}).catch(()=>{});};},[playing]);
+  useEffect(()=>{if(!playing)return;const sessionId=playing.sessionId,turn=identity.current.capture();let pending=false;const timer=setInterval(()=>{if(pending)return;pending=true;void request('heartbeat',{sessionId}).catch(error=>{if(identity.current.current(turn)){setStatus(error.message);setPlaying(null);}}).finally(()=>{pending=false;});},30000);return()=>{clearInterval(timer);playing.end();};},[playing]);
   return <SectionLayout title={{ar:'مكتبة المؤسسة',en:'Organization library'}} noIndex>{language=><>
     <Head><meta name="robots" content="noindex,nofollow"/></Head>
     <p>المحتوى من خادم المؤسسة. لا تعني إضافته امتلاك حقوق توزيعه. الأجهزة تُجهّز من المشغّل؛ لا تُقبل هوية جهاز غير مملوكة.</p>

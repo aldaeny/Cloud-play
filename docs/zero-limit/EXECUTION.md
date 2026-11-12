@@ -74,3 +74,14 @@ checks. Final CI and actual vulnerability counts must be recorded separately.
 No new production performance/device/Geo/billing acceptance claimed. Historical
 65/100 is not automatically increased. Zero critical and unaccepted high findings
 is still a launch gate, even if every regression job succeeds.
+
+## Account-switch cleanup correction
+Review found player teardown used only the media cookie to end a session. After
+an account switch that cookie can represent a different principal. Bind a
+single-use best-effort end closure to the original session token; use it both for
+stale session responses and player teardown. Do not expose tokens in UI/logs or
+switch the new account's state. Helper regression verifies original bearer,
+idempotency, keepalive and rejected network calls; TypeScript check passes.
+This is not yet full browser acceptance of all cross-account races.
+Local baseline API rerun:48 suites/733 tests passed,12.591s Jest wall time;
+not a performance comparison or service latency measurement.
