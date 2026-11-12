@@ -85,3 +85,17 @@ idempotency, keepalive and rejected network calls; TypeScript check passes.
 This is not yet full browser acceptance of all cross-account races.
 Local baseline API rerun:48 suites/733 tests passed,12.591s Jest wall time;
 not a performance comparison or service latency measurement.
+
+## First verified iteration and follow-up (not stopping at green CI)
+SHA473dce0, run43137477207:6/6 succeeded including full lifecycle. Actual all-image
+scan: gateway72H/3C ->0H/0C; PG147H/2C ->120H/1C; storage18H ->13H;
+API unchanged46H. Remaining critical: CVE-2026-6653 in Debian libxml2,
+scanner fixed-version absent. GitHub advisory GHSA-v4qw-p44r-qhfg describes XML
+internal subset use-after-free; no accepted waiver or safe Debian patch established.
+Do not remove database XML functionality or switch existing DB volumes to musl.
+
+Follow-up: pure-JS ingress can use Node22 Alpine3.24 without native Prisma/libc
+migration. Tools require npm, so update rather than delete it: npm11.21.2 supports
+Node^20.17 or>=22.9, exact registry version verified. Storage Prometheus modules
+request0.311.3 and thrift0.24 based on the actual follow-up scan. Compile/lifecycle
+compatibility must be proven again; no finding declared closed ahead of rescan.

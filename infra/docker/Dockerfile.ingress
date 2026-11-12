@@ -1,5 +1,6 @@
-FROM node:22-trixie-slim
-RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+# Pure Node gateway: no native Prisma modules or glibc dependencies.
+FROM node:22-alpine3.24
+RUN apk upgrade --no-cache
 WORKDIR /app
 COPY scripts/ingress/gateway.mjs ./gateway.mjs
 COPY infra/docker/strip-package-managers.sh /tmp/strip-package-managers.sh

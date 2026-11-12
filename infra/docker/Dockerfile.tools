@@ -5,6 +5,7 @@ ARG CLOUDPLAY_RELEASE
 LABEL org.opencontainers.image.revision=$CLOUDPLAY_RELEASE
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN npm install --global npm@11.21.2 --no-audit --no-fund
 COPY . .
 ENV PRISMA_REQUIRE_NATIVE=true
 RUN npm ci --no-audit --no-fund && npm run prisma:generate --workspace aether-api
