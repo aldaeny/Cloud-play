@@ -120,3 +120,17 @@ without assert/yaml. It failed; no lifecycle/scan completion claimed. Resolve
 production import checksums with `go get .` instead of traversing dependency
 unit tests. All explicitly requested security versions, checksum verification,
 readonly compilation and application/lifecycle regression remain required.
+
+### Full verification at 1acde50 and next storage patch
+
+Run https://github.com/aldaeny/Cloud-play/actions/runs/43142146643 passed
+6/6 at exact 1acde507a21056dadf9d46c5576e9dc1c52ea754. Its real
+self-hosted package rehearsed cross-release upgrade, installation, backup,
+separate restore and rollback. Its twelve-image inventory reports 1 critical,
+235 high, 336 medium, 289 low and 66 unknown occurrences; no suppression or
+release clearance. The remaining critical is PostgreSQL libxml2 CVE-2026-6653,
+with no fixed Debian version recorded. Storage has 8 high occurrences, including
+klauspost/compress and grpc. This follow-up pins the versions reported fixed
+(compress 1.18.7, grpc 1.83.2); their source tags and grpc Go 1.25 minimum were
+checked. These patches are candidates until full exact-HEAD CI/lifecycle and
+rescan complete. Independent review and legal signoff remain unavailable.
