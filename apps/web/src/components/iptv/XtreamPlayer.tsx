@@ -41,7 +41,7 @@ const T: Record<Language, Record<string, string>> = {
     usernameLabel: 'اسم المستخدم',
     passwordLabel: 'كلمة المرور',
     proxyLabel: 'عنوان البروكسي (اختياري - Cloudflare Worker)',
-    proxyPlaceholder: 'https://your-worker.workers.dev',
+    proxyPlaceholder: 'https://xtream-media-proxy.scarce-python.workers.dev',
     proxyHelp: 'يُستخدم لتجاوز حجب IP السيرفر. اتركه فارغاً للاتصال المباشر.',
     saveBtn: 'حفظ والاتصال',
     savedCredentials: 'محفوظة', changeCredentials: 'تغيير البيانات',
@@ -150,7 +150,7 @@ export default function XtreamPlayer({ language }: { language: Language }) {
     server: 'http://redchicks.xyz:2052',
     username: 'adam@net',
     password: '83632625225643',
-    proxyUrl: '',
+    proxyUrl: 'https://xtream-media-proxy.scarce-python.workers.dev',
   });
   const [showSavedNotice, setShowSavedNotice] = useState(false);
   const clientRef = useRef<XtreamClient | null>(null);
