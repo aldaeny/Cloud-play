@@ -40,6 +40,7 @@ import androidx.compose.animation.core.spring
 enum class CloudPlayAppearance(val ar: String, val en: String) {
     SYSTEM("تلقائي", "Automatic"),
     DARK("داكن", "Dark"),
+    BLACK("أسود", "Black"),
     LIGHT("فاتح", "Light");
 
     companion object {
@@ -200,7 +201,7 @@ fun CloudPlayTheme(
     val systemDark = isSystemInDarkTheme()
     val dark = when (appearance) {
         CloudPlayAppearance.SYSTEM -> systemDark
-        CloudPlayAppearance.DARK -> true
+        CloudPlayAppearance.DARK, CloudPlayAppearance.BLACK -> true
         CloudPlayAppearance.LIGHT -> false
     }
     val colors = cloudPlayColors(dark)

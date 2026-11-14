@@ -94,7 +94,7 @@ export default function Home({ curatedChannelCount }: { curatedChannelCount: num
   }, [query]);
 
   const classes = [
-    'site', `theme-${appearance.theme}`,
+    'site', `theme-${appearance.theme === 'black' ? 'dark' : appearance.theme}`,
     appearance.reduceMotion ? 'motion-off' : '',
     !prefs.glow ? 'no-glow' : '',
     prefs.solidPanels ? 'solid-panels' : '',

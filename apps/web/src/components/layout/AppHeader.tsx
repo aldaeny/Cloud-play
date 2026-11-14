@@ -69,6 +69,7 @@ export default function AppHeader({
   const themeItems: MenuItem[] = [
     { value: 'system', label: t('theme.system'), description: t('theme.systemHint'), icon: <Icon name="auto" size={17} /> },
     { value: 'dark', label: t('theme.dark'), description: t('theme.darkHint'), icon: <Icon name="moon" size={17} /> },
+    { value: 'black', label: t('theme.black'), description: t('theme.blackHint'), icon: <Icon name="contrast" size={17} /> },
     { value: 'light', label: t('theme.light'), description: t('theme.lightHint'), icon: <Icon name="sun" size={17} /> },
   ];
   const languageItems: MenuItem[] = [
@@ -76,7 +77,9 @@ export default function AppHeader({
     { value: 'en', label: t('language.english'), icon: <Icon name="text" size={17} /> },
   ];
 
-  const themeIcon = appearance.mode === 'system' ? 'auto' : appearance.theme === 'dark' ? 'moon' : 'sun';
+  const themeIcon = appearance.mode === 'system'
+    ? 'auto'
+    : appearance.theme === 'dark' ? 'moon' : appearance.theme === 'black' ? 'contrast' : 'sun';
 
   return (
     <header className="app-header">
@@ -174,6 +177,7 @@ export default function AppHeader({
               options={[
                 { value: 'system', label: t('theme.system') },
                 { value: 'dark', label: t('theme.dark') },
+                { value: 'black', label: t('theme.black') },
                 { value: 'light', label: t('theme.light') },
               ]}
               size="lg"

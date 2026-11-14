@@ -23,13 +23,13 @@ d.lang=lang; d.dir=dir; d.setAttribute('data-lang',lang); d.setAttribute('data-d
 if(lang!=='ar') d.setAttribute('data-lang-pending','1');
 /* ---- appearance ---- */
 var mode=get('cloudplay-theme');
-if(mode!=='dark'&&mode!=='light') mode='system';
+if(mode!=='dark'&&mode!=='black'&&mode!=='light') mode='system';
 var mq=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)');
 var theme=mode==='system'?(mq&&mq.matches?'light':'dark'):mode;
 d.setAttribute('data-theme',theme); d.setAttribute('data-theme-mode',mode);
 d.style.colorScheme=theme;
 d.classList.toggle('theme-light',theme==='light');
-d.classList.toggle('theme-dark',theme==='dark');
+d.classList.toggle('theme-dark',theme==='dark'||theme==='black');
 if(mode==='system'&&mq){
   var sync=function(e){var next=e.matches?'light':'dark';d.setAttribute('data-theme',next);d.style.colorScheme=next;
     d.classList.toggle('theme-light',next==='light');d.classList.toggle('theme-dark',next==='dark');};

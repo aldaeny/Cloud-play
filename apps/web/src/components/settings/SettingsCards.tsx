@@ -90,10 +90,13 @@ export default function SettingsCards(_props: { language?: Language }) {
           <p className="cp-note">
             {date(new Date())} · <span className="cp-num">{n(1234567)}</span> · <span className="cp-num">{n(0.35, { style: 'percent' })}</span>
           </p>
+          <Row title={t('brand.identityShort')} desc={t('brand.identityDesc')}>
+            <Link href="/brand" className="cp-btn" data-size="sm">{t('common.details')}</Link>
+          </Row>
         </Card>
 
         {/* ---- Appearance ---- */}
-        <Card icon={appearance.theme === 'dark' ? 'moon' : 'sun'} title={t('settings.appearanceTitle')} desc={t('settings.appearanceDesc')}>
+        <Card icon={appearance.theme === 'dark' ? 'moon' : appearance.theme === 'black' ? 'contrast' : 'sun'} title={t('settings.appearanceTitle')} desc={t('settings.appearanceDesc')}>
           <Segmented
             label={t('theme.mode')}
             size="lg"
@@ -102,10 +105,11 @@ export default function SettingsCards(_props: { language?: Language }) {
             options={[
               { value: 'system', label: t('theme.system') },
               { value: 'dark', label: t('theme.dark') },
+              { value: 'black', label: t('theme.black') },
               { value: 'light', label: t('theme.light') },
             ]}
           />
-          <p className="cp-note">{t(appearance.mode === 'system' ? 'theme.systemHint' : appearance.theme === 'dark' ? 'theme.darkHint' : 'theme.lightHint')}</p>
+          <p className="cp-note">{t(appearance.mode === 'system' ? 'theme.systemHint' : appearance.theme === 'dark' ? 'theme.darkHint' : appearance.theme === 'black' ? 'theme.blackHint' : 'theme.lightHint')}</p>
           <Row title={t('settings.textSize')}>
             <Segmented
               label={t('settings.textSize')}

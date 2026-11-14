@@ -25,7 +25,8 @@ export default function IntroLayer() {
     let reduceMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     try {
       if (localStorage.getItem('cloudplay-language') === 'en') language = 'en';
-      theme = readAppearance();
+      // 'black' (OLED) shares the dark opening film.
+      theme = readAppearance() === 'light' ? 'light' : 'dark';
       if (localStorage.getItem('cloudplay-reduce-motion') === 'true') reduceMotion = true;
     } catch { /* Storage is optional. */ }
     if (reduceMotion) {
