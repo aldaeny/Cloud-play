@@ -37,7 +37,7 @@ const T: Record<Language, Record<string, string>> = {
     noResults: 'لا نتائج مطابقة للبحث.', pickGroup: 'اختر تصنيفاً لعرض محتواه.',
     credentialsTitle: 'إدخال بيانات السيرفر',
     credentialsDesc: 'بيانات الدخول تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي.',
-    serverLabel: 'عنوان السيرفر (مثال: http://redchicks.xyz:2052)',
+    serverLabel: 'عنوان السيرفر (مثال: https://your-provider.com:2053)',
     usernameLabel: 'اسم المستخدم',
     passwordLabel: 'كلمة المرور',
     proxyLabel: 'عنوان البروكسي (اختياري - Cloudflare Worker)',
@@ -74,7 +74,7 @@ const T: Record<Language, Record<string, string>> = {
     noResults: 'No matches for your search.', pickGroup: 'Pick a category to browse its content.',
     credentialsTitle: 'Enter Server Credentials',
     credentialsDesc: 'Credentials are stored only in your browser and never sent to any external server.',
-    serverLabel: 'Server URL (e.g. http://redchicks.xyz:2052)',
+    serverLabel: 'Server URL (e.g. https://your-provider.com:2053)',
     usernameLabel: 'Username',
     passwordLabel: 'Password',
     proxyLabel: 'Proxy URL (optional - Cloudflare Worker)',
@@ -149,10 +149,10 @@ export default function XtreamPlayer({ language }: { language: Language }) {
   const [playerError, setPlayerError] = useState('');
   const [filter, setFilter] = useState('');
   const [credentials, setCredentials] = useState<XtreamCredentials>({
-    server: 'http://redchicks.xyz:2052',
-    username: 'adam@net',
-    password: '83632625225643',
-    proxyUrl: 'https://xtream-media-proxy.scarce-python.workers.dev',
+    server: 'https://your-provider.com:2053',
+    username: '',
+    password: '',
+    proxyUrl: '',
   });
   const [showSavedNotice, setShowSavedNotice] = useState(false);
   const clientRef = useRef<XtreamClient | null>(null);
@@ -271,9 +271,9 @@ export default function XtreamPlayer({ language }: { language: Language }) {
     clientRef.current = null;
     setGate('credentials');
     setCredentials({
-      server: 'http://redchicks.xyz:2052',
-      username: 'adam@net',
-      password: '83632625225643',
+      server: 'https://your-provider.com:2053',
+      username: '',
+      password: '',
       proxyUrl: '',
     });
     setAccount(null);
@@ -445,7 +445,7 @@ export default function XtreamPlayer({ language }: { language: Language }) {
               type="text"
               value={credentials.server}
               onChange={e => setCredentials(c => ({ ...c, server: e.target.value }))}
-              placeholder="http://redchicks.xyz:2052"
+              placeholder="https://your-provider.com:2053"
               required
               autoComplete="off"
             />

@@ -13,13 +13,13 @@
  *
  * CONFIGURATION:
  * Set these as Worker secrets (wrangler secret put):
- * - XTREAM_BASE_URL: http://redchicks.xyz:2052
- * - XTREAM_USERNAME: adam@net
- * - XTREAM_PASSWORD: 83632625225643
+ * - XTREAM_BASE_URL: https://your-provider.com:2053
+ * - XTREAM_USERNAME: your-username
+ * - XTREAM_PASSWORD: your-password
  *
  * USAGE FROM BROWSER:
  * Instead of direct URLs like:
- *   http://redchicks.xyz:2052/live/user/pass/123.m3u8
+ *   https://your-provider.com:2053/live/user/pass/123.m3u8
  * Use the worker:
  *   https://your-worker.workers.dev/proxy/live/user/pass/123.m3u8
  *

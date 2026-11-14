@@ -15,9 +15,9 @@ let hits = 0;
 
 function settings() {
   if (process.env.XTREAM_CATALOG_ENABLED === 'false') throw new CatalogError('DISABLED');
-  const base = process.env.XTREAM_BASE_URL?.trim() || 'http://redchicks.xyz:2052';
-  const username = process.env.XTREAM_USERNAME || 'adam@net';
-  const password = process.env.XTREAM_PASSWORD || '83632625225643';
+  const base = process.env.XTREAM_BASE_URL?.trim();
+  const username = process.env.XTREAM_USERNAME;
+  const password = process.env.XTREAM_PASSWORD;
   if (!base || !username || !password) throw new CatalogError('NOT_CONFIGURED');
   let url: URL;
   try { url = new URL(base); } catch { throw new CatalogError('NOT_CONFIGURED'); }

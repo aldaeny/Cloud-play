@@ -29,8 +29,8 @@ The public site is unchanged: still free, still on licensed sources, with no lin
 | Variable | Value | ملاحظة |
 |---|---|---|
 | `XTREAM_CATALOG_ENABLED` | `true` | يفعّل الربط |
-| `XTREAM_BASE_URL` | `http://redchicks.xyz:2052` | عنوان سيرفرك، بدون `/player_api.php` |
-| `XTREAM_ALLOW_HTTP` | `true` | مطلوب لأن سيرفرك HTTP |
+| `XTREAM_BASE_URL` | `https://your-provider.com:2053` | عنوان سيرفرك، بدون `/player_api.php` — **HTTPS مطلوب للإنتاج** |
+| `XTREAM_ALLOW_HTTP` | `false` | **لا تفعّل HTTP في الإنتاج** — بيانات الدخول تمر غير مشفرة |
 | `XTREAM_USERNAME` | *(اسم المستخدم)* | سرّي |
 | `XTREAM_PASSWORD` | *(كلمة المرور)* | سرّي |
 | `XTREAM_OWNER_EMAILS` | `you@example.com` | بريد حسابك في الموقع — **مطلوب** |

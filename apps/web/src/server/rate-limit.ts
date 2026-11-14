@@ -85,6 +85,10 @@ export const RATE_BUCKETS = {
   stream: 1800,
   /** Write/import operations, which are also separately owner-limited. */
   write: 30,
+  /** Auth operations (login, logout, token refresh). */
+  auth: 60,
+  /** Billing operations (checkout, subscriptions). */
+  billing: 30,
 } as const;
 
 export type RateBucket = keyof typeof RATE_BUCKETS;
