@@ -5,6 +5,7 @@ import { Injectable, Logger, ConflictException, UnauthorizedException, ServiceUn
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma.service';
 import * as argon2 from 'argon2';
+import * as crypto from 'crypto';
 import { RegisterDto, LoginDto, LoginPhoneDto, IdentityUpdateDto } from './identity.dto';
 
 @Injectable()
@@ -25,6 +26,28 @@ export class IdentityService {
     const access = process.env.JWT_ACCESS_SECRET;
     const refresh = process.env.JWT_REFRESH_SECRET;
     if (!access || !refresh || access === refresh) throw new ServiceUnavailableException('User authentication is not configured securely');
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private async storeRefreshToken(userId: string, refreshToken: string, deviceId?: string) {
+    const tokenHash = this.hashToken(refreshToken);
+    const payload = await this.jwtService.verifyAsync(refreshToken, {
+      secret: process.env.JWT_REFRESH_SECRET,
+      algorithms: ['HS256'],
+    });
+    const expiresAt = new Date(payload.exp * 1000);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        deviceId,
+        expiresAt,
+      },
+    });
   }
 
   async register(dto: RegisterDto) {
@@ -81,6 +104,8 @@ export class IdentityService {
       expiresIn: jwtTtlSeconds('JWT_REFRESH_TTL', 604800),
     });
 
+    await this.storeRefreshToken(user.id, refreshToken);
+
     return {
       user: {
         id: user.id,
@@ -104,7 +129,7 @@ export class IdentityService {
     return { accessToken, expiresIn: 900, staff: { id: staff.id, tenantId: staff.tenantId, roleId: staff.roleId } };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, deviceId?: string) {
     this.requireTokenSecrets();
     const user = await this.prisma.appUser.findUnique({
       where: { email: dto.email },
@@ -136,6 +161,8 @@ export class IdentityService {
       expiresIn: jwtTtlSeconds('JWT_REFRESH_TTL', 604800),
     });
 
+    await this.storeRefreshToken(user.id, refreshToken, deviceId);
+
     return {
       user: {
         id: user.id,
@@ -148,7 +175,7 @@ export class IdentityService {
     };
   }
 
-  async loginWithPhone(dto: LoginPhoneDto) {
+  async loginWithPhone(dto: LoginPhoneDto, deviceId?: string) {
     this.requireTokenSecrets();
     const user = await this.prisma.appUser.findFirst({
       where: { phone: dto.phone },
@@ -180,6 +207,8 @@ export class IdentityService {
       expiresIn: jwtTtlSeconds('JWT_REFRESH_TTL', 604800),
     });
 
+    await this.storeRefreshToken(user.id, refreshToken, deviceId);
+
     return {
       user: {
         id: user.id,
@@ -192,13 +221,23 @@ export class IdentityService {
     };
   }
 
-  async refresh(refreshToken: string) {
+  async refresh(refreshToken: string, deviceId?: string) {
     this.requireTokenSecrets();
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
         algorithms: ['HS256'],
       });
+
+      // Check if token is revoked in database
+      const tokenHash = this.hashToken(refreshToken);
+      const storedToken = await this.prisma.refreshToken.findUnique({
+        where: { tokenHash },
+      });
+
+      if (!storedToken || storedToken.revokedAt) {
+        throw new UnauthorizedException('Refresh token has been revoked');
+      }
 
       const user = await this.prisma.appUser.findUnique({
         where: { id: payload.sub },
@@ -208,6 +247,12 @@ export class IdentityService {
       if (!user || user.status !== 'active') {
         throw new UnauthorizedException('Invalid refresh token');
       }
+
+      // Revoke the old token
+      await this.prisma.refreshToken.update({
+        where: { tokenHash },
+        data: { revokedAt: new Date() },
+      });
 
       const newPayload = {
         sub: user.id,
@@ -225,18 +270,51 @@ export class IdentityService {
         expiresIn: jwtTtlSeconds('JWT_REFRESH_TTL', 604800),
       });
 
+      // Store new refresh token, linking it to the old one
+      await this.storeRefreshToken(user.id, newRefreshToken, deviceId);
+
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
-    } catch {
+    } catch (e) {
+      if (e instanceof UnauthorizedException) throw e;
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async logout() {
-    // JWTs are stateless here: success would falsely claim server-side revocation.
-    throw new ServiceUnavailableException('Server-side token revocation is not implemented');
+  async logout(refreshToken?: string) {
+    this.requireTokenSecrets();
+    // If no refresh token provided, treat as successful logout (idempotent)
+    if (!refreshToken) {
+      return { success: true };
+    }
+    try {
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET,
+        algorithms: ['HS256'],
+      });
+
+      const tokenHash = this.hashToken(refreshToken);
+      await this.prisma.refreshToken.update({
+        where: { tokenHash },
+        data: { revokedAt: new Date() },
+      });
+
+      return { success: true };
+    } catch {
+      // Even if token is invalid/expired, treat as successful logout
+      return { success: true };
+    }
+  }
+
+  async revokeAllUserTokens(userId: string) {
+    this.requireTokenSecrets();
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return { success: true, message: 'All user tokens revoked' };
   }
 
   async updateIdentity(userId: string, dto: IdentityUpdateDto) {

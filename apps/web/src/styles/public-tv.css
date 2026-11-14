@@ -147,7 +147,7 @@
 /* Live TV source switch: curated (verified) vs the iptv-org world directory */
 .live-mode { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
 .live-mode-tab {
-  flex: 1; min-width: 190px; display: flex; flex-direction: column; gap: 3px;
+  flex: 1; min-width: 190px; min-height: 80px; display: flex; flex-direction: column; gap: 3px;
   padding: 14px 18px; border-radius: 15px; cursor: pointer; text-align: start; color: inherit;
   background: var(--glass-surface); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
   transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;

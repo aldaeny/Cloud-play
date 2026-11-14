@@ -32,7 +32,54 @@ const { execFileSync } = require('node:child_process');
 const apiRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(apiRoot, '../..');
 const schemaPath = path.join(apiRoot, 'prisma', 'schema.prisma');
-const prismaBin = path.join(repoRoot, 'node_modules', '.bin', 'prisma');
+const prismaBin = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'prisma.cmd' : 'prisma');
+
+// Ensure the default folder exists and copy generated files there for @prisma/client compatibility
+function ensureDefaultPrismaClient(repoRoot) {
+  const sourceDir = path.join(repoRoot, 'node_modules', '.prisma', 'client');
+  const targetDir = path.join(repoRoot, 'node_modules', '.prisma', 'client', 'default');
+
+  if (fs.existsSync(sourceDir)) {
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    // Copy all files from source to target, but skip the default directory itself
+    const files = fs.readdirSync(sourceDir);
+    for (const file of files) {
+      // Skip the default directory to avoid infinite recursion
+      if (file === 'default') continue;
+
+      const sourceFile = path.join(sourceDir, file);
+      const targetFile = path.join(targetDir, file);
+
+      if (fs.statSync(sourceFile).isFile()) {
+        fs.copyFileSync(sourceFile, targetFile);
+      } else if (fs.statSync(sourceFile).isDirectory()) {
+        // Recursively copy directories
+        copyDirSync(sourceFile, targetFile);
+      }
+    }
+  }
+}
+
+function copyDirSync(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  for (const entry of entries) {
+    // Skip the default directory to avoid infinite recursion
+    if (entry.name === 'default') continue;
+
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
 
 function log(message) {
   process.stdout.write(`[prisma-gen] ${message}\n`);
@@ -45,17 +92,29 @@ function isEngineDownloadFailure(text) {
 
 function tryNativeGenerate() {
   try {
-    execFileSync(prismaBin, ['generate', '--schema', schemaPath], {
+    const { spawnSync } = require('node:child_process');
+    const result = spawnSync('npx', ['prisma', 'generate', '--schema', schemaPath], {
       cwd: apiRoot,
       stdio: 'pipe',
       env: { ...process.env, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
+      shell: true,
     });
-    log('native `prisma generate` succeeded (engine-backed client).');
-    return true;
+    if (result.status === 0) {
+      log('native `prisma generate` succeeded (engine-backed client).');
+      // Ensure the default folder exists for @prisma/client compatibility
+      ensureDefaultPrismaClient(repoRoot);
+      return true;
+    }
+    const text = `${result.stdout ?? ''}${result.stderr ?? ''}${result.error ?? ''}`;
+    if (!isEngineDownloadFailure(text)) {
+      process.stderr.write(text);
+      throw new Error('`prisma generate` failed for a non-network reason.');
+    }
+    log('engine host unreachable — falling back to offline type generation.');
+    return false;
   } catch (error) {
     const text = `${error.stdout ?? ''}${error.stderr ?? ''}${error.message ?? ''}`;
     if (!isEngineDownloadFailure(text)) {
-      // A schema error or similar is a real defect: surface it, never mask it.
       process.stderr.write(text);
       throw new Error('`prisma generate` failed for a non-network reason.');
     }
@@ -139,6 +198,8 @@ async function generateTypesOffline() {
   log(`offline types written: ${dmmf.datamodel.models.length} models, ${fs.statSync(indexTypes).size} bytes.`);
   log('WARNING: types only, NO query engine. tsc/jest/build will work; live DB');
   log('WARNING: queries will NOT. Run real `prisma generate` before deploying.');
+  // Ensure the default folder exists for @prisma/client compatibility
+  ensureDefaultPrismaClient(repoRoot);
 }
 
 (async () => {

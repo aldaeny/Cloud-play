@@ -37,5 +37,8 @@
     "@angular-devkit/schematics-cli": {
       "inquirer": "9.3.8"
     }
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
   }
 }

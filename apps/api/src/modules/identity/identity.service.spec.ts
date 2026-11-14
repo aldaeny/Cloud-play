@@ -18,6 +18,12 @@ describe('IdentityService', () => {
       create: jest.fn(),
       update: jest.fn(),
     },
+    refreshToken: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      create: jest.fn(),
+    },
   };
 
   const mockJwt = {
@@ -63,7 +69,9 @@ describe('IdentityService', () => {
     mockPrisma.appUser.findUnique.mockResolvedValue({id:'user-id', status:'disabled', passwordHash:'unused', profiles:[]});
     await expect(service.login({email:'test@test.com',password:'password123'})).rejects.toThrow('Invalid email or password');
     mockJwt.verifyAsync.mockResolvedValueOnce({sub:'user-id'});
-    await expect(service.refresh('token')).rejects.toThrow('Invalid refresh token');
+    // The new implementation checks if token is revoked in DB first
+    mockPrisma.refreshToken.findUnique.mockResolvedValue({ revokedAt: new Date() });
+    await expect(service.refresh('token')).rejects.toThrow('Refresh token has been revoked');
   });
 
   describe('register', () => {
@@ -146,8 +154,24 @@ describe('IdentityService', () => {
   });
 
   describe('logout', () => {
-    it('does not falsely claim server-side token revocation', async () => {
-      await expect(service.logout()).rejects.toThrow('Server-side token revocation is not implemented');
+    it('should revoke refresh token', async () => {
+      mockPrisma.refreshToken.findUnique.mockResolvedValue({ id: 'token-id', revokedAt: null });
+      mockPrisma.refreshToken.update.mockResolvedValue({ id: 'token-id', revokedAt: new Date() });
+      mockJwt.verifyAsync.mockResolvedValue({ sub: 'user-id' });
+
+      const result = await service.logout('valid-refresh-token');
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should return success when called without token', async () => {
+      const result = await service.logout();
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should return success even for invalid token', async () => {
+      mockJwt.verifyAsync.mockRejectedValue(new Error('Invalid token'));
+      const result = await service.logout('invalid-token');
+      expect(result).toEqual({ success: true });
     });
   });
 });
