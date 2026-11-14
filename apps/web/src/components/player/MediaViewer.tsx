@@ -3,6 +3,7 @@ import { prepareMediaSession, releaseMediaSession } from '../../lib/media-sessio
 import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import CastControls from './CastControls';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, RotateCcw, SkipBack, SkipForward } from 'lucide-react';
 import { notifyLibraryChanged } from '../../lib/preferences';
 type Language='ar'|'en';
 type State='loading'|'ready'|'playing'|'buffering'|'blocked'|'failed';
@@ -17,6 +18,7 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  function restoreProgress(video:HTMLVideoElement){if(!progressKey)return;try{const p=JSON.parse(localStorage.getItem(`cloudplay-progress-v1-${progressKey}`)||'null');if(p&&Number.isFinite(p.position)&&p.position>=5&&Number.isFinite(video.duration)&&p.position<video.duration-10)video.currentTime=p.position;}catch{/* Ignore unavailable or invalid storage. */}}
  const hlsRef=useRef<import('hls.js').default|null>(null);const dashRef=useRef<import('dashjs').MediaPlayerClass|null>(null);const failTimerRef=useRef<number|null>(null);const [levels,setLevels]=useState<Track[]>([]);const [audio,setAudio]=useState<Track[]>([]);const [subtitles,setSubtitles]=useState<Track[]>([]);const [qualityChoice,setQualityChoice]=useState(-1);const [audioChoice,setAudioChoice]=useState(-1);const [subtitleChoice,setSubtitleChoice]=useState(-1);
  const ar=language==='ar';const videoRef=useRef<HTMLVideoElement>(null);const viewerRef=useRef<HTMLDivElement>(null);const [state,setState]=useState<State>('loading');const [slow,setSlow]=useState(false);const [attempt,setAttempt]=useState(0);
+ const [playing,setPlaying]=useState(false);const [time,setTime]=useState(0);const [duration,setDuration]=useState(0);const [muted,setMuted]=useState(preferences.startMuted);const [full,setFull]=useState(false);
  usePlaybackMetrics(url,videoRef);
  useEffect(()=>{if(initialScroll)viewerRef.current?.scrollIntoView({behavior:(viewerRef.current?.closest('.motion-off') || window.matchMedia('(prefers-reduced-motion: reduce)').matches)?'instant':'smooth',block:'center'})},[initialScroll]);
  useEffect(()=>{
@@ -43,15 +45,56 @@ export default function MediaViewer({language,title,url,kind,onClose,className='
  },[url,kind,attempt]);
  function closePlayer(){if(videoRef.current)saveProgress(videoRef.current);onClose()}
  function playFromClick(){const video=videoRef.current;if(!video)return;void video.play().catch(e=>{if(e?.name==='NotAllowedError')setState('blocked');else if(e?.name!=='AbortError')setState('failed')})}
- return <div ref={viewerRef} className={`firebase-viewer media-viewer ${className}`}><div className="firebase-viewer-top"><strong>{title}</strong><button onClick={closePlayer}>{ar?'إغلاق المشغّل':'Close player'}</button></div>
-  <video key={attempt} ref={videoRef} controls playsInline preload="metadata" onPlaying={()=>{if(failTimerRef.current)window.clearTimeout(failTimerRef.current);setState('playing')}} onWaiting={()=>setState(s=>s==='failed'?s:'buffering')} onCanPlay={()=>setState(s=>s==='playing'||s==='failed'?s:'ready')} onLoadedMetadata={e=>{if(failTimerRef.current)window.clearTimeout(failTimerRef.current);restoreProgress(e.currentTarget)}} onTimeUpdate={e=>{if(Date.now()-lastSaved.current>=5000)saveProgress(e.currentTarget)}} onPause={e=>{saveProgress(e.currentTarget);setState(s=>s==='playing'?'ready':s)}} onEnded={e=>saveProgress(e.currentTarget,true)} onError={()=>setState('failed')}/>
-  <CastControls language={language} title={title} url={url} kind={kind} videoRef={videoRef}/>
-  {(levels.length>1||audio.length>1||subtitles.length>0)&&<div className="media-tracks" aria-label={ar?'خيارات البث':'Stream options'}>
-   {levels.length>1&&<label>{ar?'الجودة':'Quality'} <select value={qualityChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current){hlsRef.current.currentLevel=n;setQualityChoice(n)}}}><option value={-1}>{ar?'تلقائي':'Auto'}</option>{levels.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
-   {audio.length>1&&<label>{ar?'الصوت':'Audio'} <select value={audioChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current&&n>=0){hlsRef.current.audioTrack=n;setAudioChoice(n)}}}><option value={-1} disabled>{ar?'اختر':'Select'}</option>{audio.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
-   {subtitles.length>0&&<label>{ar?'الترجمة':'Subtitles'} <select value={subtitleChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current){hlsRef.current.subtitleTrack=n;hlsRef.current.subtitleDisplay=n>=0;setSubtitleChoice(n)}}}><option value={-1}>{ar?'إيقاف':'Off'}</option>{subtitles.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
-  </div>}
-  <div className="media-actions">{state==='failed'?<button className="media-play" onClick={()=>setAttempt(n=>n+1)}>{ar?'↻ إعادة المحاولة':'↻ Retry'}</button>:<button className="media-play" disabled={state==='loading'} onClick={()=>{const video=videoRef.current;if(video&&!video.paused){video.pause();return}playFromClick()}}>{state==='playing'?(ar?'⏸ إيقاف مؤقت':'⏸ Pause'):(ar?'▶ تشغيل الآن':'▶ Play now')}</button>}
-  <p className={state==='failed'?'firebase-error':'firebase-note'} role="status">{state==='loading'?(slow?(ar?'التحميل يستغرق وقتاً أطول من المعتاد؛ المصدر قد يكون بطيئاً.':'Loading is taking longer than usual; the source may be slow.'):(ar?'جاري تجهيز الفيديو…':'Preparing video…')):state==='blocked'?(ar?'المتصفح يحتاج ضغطتك لبدء التشغيل. اضغط «تشغيل الآن».':'Your browser requires a tap to start. Press “Play now”.'):state==='failed'?(ar?'تعذّر تشغيل الفيديو من المصدر. قد يكون متوقفاً أو محظوراً أو غير مدعوم.':'Could not play this video. Its source may be offline, blocked or unsupported.'):state==='buffering'?(ar?'جاري تحميل البث… تحقق من الاتصال إذا استمر الانتظار.':'Buffering… check your connection if this continues.'):state==='playing'?(ar?'يعمل الآن؛ استخدم أزرار الفيديو للصوت وملء الشاشة.':'Playing; use video controls for sound and fullscreen.'):(ar?'اضغط «تشغيل الآن» إذا لم يبدأ الفيديو.':'Press “Play now” if the video does not start.')}</p></div>{footer}
+ function togglePlay(){const v=videoRef.current;if(!v)return;if(v.paused)playFromClick();else v.pause()}
+ function seekTo(value:number){const v=videoRef.current;if(v&&Number.isFinite(v.duration)){v.currentTime=Math.max(0,Math.min(v.duration,value));setTime(v.currentTime)}}
+ function toggleMute(){const v=videoRef.current;if(v){v.muted=!v.muted;setMuted(v.muted)}}
+ function toggleFull(){const stage=viewerRef.current?.querySelector('.cp-player');if(!stage)return;if(document.fullscreenElement)void document.exitFullscreen();else void (stage as HTMLElement).requestFullscreen?.()}
+ useEffect(()=>{const onChange=()=>setFull(!!document.fullscreenElement);document.addEventListener('fullscreenchange',onChange);return()=>document.removeEventListener('fullscreenchange',onChange)},[]);
+ const fmt=(value:number)=>!Number.isFinite(value)?'0:00':`${Math.floor(value/60)}:${String(Math.floor(value%60)).padStart(2,'0')}`;
+ const notice=state==='failed'?(ar?'تعذّر تشغيل الفيديو من المصدر. قد يكون متوقفاً أو محظوراً أو غير مدعوم.':'Could not play this video. Its source may be offline, blocked or unsupported.'):state==='blocked'?(ar?'المتصفح يحتاج ضغطتك لبدء التشغيل.':'Your browser requires a tap to start playback.'):slow?(ar?'التحميل يستغرق وقتاً أطول من المعتاد.':'Loading is taking longer than usual.'):'';
+ return <div ref={viewerRef} className={`cp-viewer ${className}`}>
+  <div className="cp-player" role="region" aria-label={`${ar ? 'مشغل' : 'Player'}: ${title}`} data-playback-status={state}>
+   <video key={attempt} ref={videoRef} playsInline preload="metadata"
+    onPlaying={()=>{if(failTimerRef.current)window.clearTimeout(failTimerRef.current);setState('playing');setPlaying(true)}}
+    onPlay={()=>setPlaying(true)} onPause={e=>{saveProgress(e.currentTarget);setState(s=>s==='playing'?'ready':s);setPlaying(false)}}
+    onWaiting={()=>setState(s=>s==='failed'?s:'buffering')} onCanPlay={()=>setState(s=>s==='playing'||s==='failed'?s:'ready')}
+    onLoadedMetadata={e=>{if(failTimerRef.current)window.clearTimeout(failTimerRef.current);restoreProgress(e.currentTarget);setDuration(e.currentTarget.duration);setMuted(e.currentTarget.muted)}}
+    onTimeUpdate={e=>{setTime(e.currentTarget.currentTime);setDuration(e.currentTarget.duration);if(Date.now()-lastSaved.current>=5000)saveProgress(e.currentTarget)}}
+    onVolumeChange={e=>setMuted(e.currentTarget.muted)}
+    onEnded={e=>{saveProgress(e.currentTarget,true);setPlaying(false)}} onError={()=>setState('failed')}/>
+   <div className="cp-player-top"><strong dir="auto">{title}</strong>
+    <button type="button" className="cp-player-pill" onClick={toggleFull} aria-label={ar?'ملء الشاشة':'Full screen'}>{full?<Minimize size={17}/>:<Maximize size={17}/>}</button>
+    <button type="button" className="cp-player-pill" onClick={closePlayer} aria-label={ar?'إغلاق المشغّل':'Close player'}><X size={17}/></button>
+   </div>
+   {(state==='loading'||state==='buffering')&&<div className="cp-player-status" role="status"><span className="cp-player-spinner" aria-hidden="true"/><p>{ar?'جارٍ تجهيز الفيديو…':'Preparing video…'}</p></div>}
+   {(state==='failed'||state==='blocked')&&<div className="cp-player-status" role="alert"><p>{notice}</p><button type="button" className="cp-btn" data-variant="primary" onClick={()=>state==='failed'?setAttempt(n=>n+1):playFromClick()}>{state==='failed'?<RotateCcw size={17}/>:<Play size={17}/>}{state==='failed'?(ar?'إعادة المحاولة':'Try again'):(ar?'تشغيل':'Play')}</button></div>}
+   {!playing && state!=='failed' && state!=='blocked' && <button type="button" className="cp-player-center" onClick={togglePlay} aria-label={ar?'تشغيل':'Play'}><Play size={30} fill="currentColor"/></button>}
+   <div className="cp-player-bottom">
+    <div className="cp-player-seekrow">
+     <input className="cp-player-seek" type="range" min={0} max={Number.isFinite(duration)&&duration>0?duration:0} step={0.5} value={Math.min(time,duration||0)} onChange={e=>seekTo(Number(e.target.value))} aria-label={ar?'موضع التشغيل':'Seek'} style={{['--cp-slider-progress' as string]:`${duration?(Math.min(time,duration)/duration)*100:0}%`}}/>
+     <span className="cp-player-time cp-num">{fmt(time)}</span>
+     <span className="cp-player-time cp-player-time--remaining cp-num">−{fmt(Math.max(0,(duration||0)-time))}</span>
+    </div>
+    <div className="cp-player-bar">
+     <button type="button" className="cp-player-key" onClick={togglePlay} aria-label={playing?(ar?'إيقاف مؤقت':'Pause'):(ar?'تشغيل':'Play')} disabled={state==='loading'}>{playing?<Pause size={21} fill="currentColor"/>:<Play size={21} fill="currentColor"/>}</button>
+     <button type="button" className="cp-player-skip" onClick={()=>seekTo(time-10)} aria-label={ar?'رجوع ١٠ ثوانٍ':'Back 10 seconds'}><SkipBack size={18}/></button>
+     <button type="button" className="cp-player-skip" onClick={()=>seekTo(time+10)} aria-label={ar?'تقدّم ١٠ ثوانٍ':'Forward 10 seconds'}><SkipForward size={18}/></button>
+     <button type="button" className="cp-player-key" onClick={toggleMute} aria-label={muted?(ar?'تشغيل الصوت':'Unmute'):(ar?'كتم الصوت':'Mute')} aria-pressed={muted}>{muted?<VolumeX size={19}/>:<Volume2 size={19}/>}</button>
+     <span className="cp-player-spacer"/>
+     <button type="button" className="cp-player-key" onClick={toggleFull} aria-label={full?(ar?'الخروج من ملء الشاشة':'Exit full screen'):(ar?'ملء الشاشة':'Full screen')}>{full?<Minimize size={19}/>:<Maximize size={19}/>}</button>
+    </div>
+   </div>
+  </div>
+
+  <div className="cp-viewer__meta">
+   <CastControls language={language} title={title} url={url} kind={kind} videoRef={videoRef}/>
+   {(levels.length>1||audio.length>1||subtitles.length>0)&&<div className="cp-viewer__tracks" aria-label={ar?'خيارات البث':'Stream options'}>
+    {levels.length>1&&<label>{ar?'الجودة':'Quality'}<select value={qualityChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current){hlsRef.current.currentLevel=n;setQualityChoice(n)}}}><option value={-1}>{ar?'تلقائي':'Auto'}</option>{levels.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
+    {audio.length>1&&<label>{ar?'الصوت':'Audio'}<select value={audioChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current&&n>=0){hlsRef.current.audioTrack=n;setAudioChoice(n)}}}><option value={-1} disabled>{ar?'اختر':'Select'}</option>{audio.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
+    {subtitles.length>0&&<label>{ar?'الترجمة':'Subtitles'}<select value={subtitleChoice} onChange={e=>{const n=Number(e.target.value);if(hlsRef.current){hlsRef.current.subtitleTrack=n;hlsRef.current.subtitleDisplay=n>=0;setSubtitleChoice(n)}}}><option value={-1}>{ar?'إيقاف':'Off'}</option>{subtitles.map(x=><option key={x.id} value={x.id}>{x.label}</option>)}</select></label>}
+   </div>}
+   {notice&&state!=='failed'&&state!=='blocked'&&<p className="cp-viewer__status" role="status">{notice}</p>}
+   {footer}
+  </div>
  </div>;
 }

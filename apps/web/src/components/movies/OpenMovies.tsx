@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import MediaViewer from '../player/MediaViewer';
+import Icon from '../icons/Icon';
+import FilmCard from './FilmCard';
 import { LIBRARY_EVENT, notifyLibraryChanged } from '../../lib/preferences';
 import { matchesSearch } from '../../lib/search-normalize';
 import { PUBLIC_FILMS, absoluteWatchUrl, filmPoster, type FilmGenre, type PublicFilm } from '../../server/public-films';
@@ -9,6 +11,8 @@ import { PUBLIC_FILMS, absoluteWatchUrl, filmPoster, type FilmGenre, type Public
 type Language = 'ar' | 'en';
 type LibraryFilter = 'all' | 'favorites' | 'continue';
 type GenreFilter = 'all' | FilmGenre;
+
+const ART_HUES = [232, 268, 292, 318, 344, 24, 62, 148, 172, 198];
 
 const GENRES: { key: GenreFilter; ar: string; en: string }[] = [
   { key: 'all', ar: 'كل الأنواع', en: 'All genres' },
@@ -31,8 +35,13 @@ const T = {
     search: 'ابحث عن فيلم…', count: 'فيلم', empty: 'لا توجد أفلام مطابقة.',
     watch: '▶ شاهد الفيلم', resume: '▶ استكمال المشاهدة', details: 'التفاصيل',
     addFav: 'إضافة إلى المفضلة', removeFav: 'إزالة من المفضلة',
+    more: 'المزيد من المكتبة', breadcrumb: 'الأفلام', related: 'قد يعجبك أيضاً',
     source: 'المصدر', license: 'الترخيص', back: 'كل الأفلام',
     note: 'يُحفظ التقدم والمفضلة على هذا الجهاز، وتُزامَن مع حسابك المجاني عند تسجيل الدخول.',
+    headingFavorites: 'مفضّلتك', headingContinue: 'متابعة المشاهدة',
+    emptyFavorites: 'اضغط النجمة على أي فيلم ليظهر هنا.',
+    emptyContinue: 'ابدأ مشاهدة أي فيلم وسنحفظ لك موضع التوقف.',
+    emptyAll: 'لا توجد أفلام مطابقة لبحثك.', browse: 'تصفّح الأفلام',
     attribution: 'الأفلام من مجموعة الملك العام في Internet Archive ومن أفلام Blender المفتوحة. التشغيل يتصل بالمصدر مباشرة ويعتمد على توفره.',
     playbackHelp: 'إذا لم يبدأ الفيلم فوراً فالمصدر بطيء أو غير متاح حالياً. جرّب مرة أخرى أو افتح صفحة المصدر.',
     clear: 'مسح',
@@ -45,8 +54,13 @@ const T = {
     search: 'Search films…', count: 'films', empty: 'No matching films.',
     watch: '▶ Watch film', resume: '▶ Resume watching', details: 'Details',
     addFav: 'Add to favorites', removeFav: 'Remove favorite',
+    more: 'More from the library', breadcrumb: 'Movies', related: 'You may also like',
     source: 'Source', license: 'License', back: 'All films',
     note: 'Progress and favorites are saved on this device and synced to your free account when you sign in.',
+    headingFavorites: 'Your favorites', headingContinue: 'Continue watching',
+    emptyFavorites: 'Tap the star on any film and it will appear here.',
+    emptyContinue: 'Start any film and we will remember where you paused.',
+    emptyAll: 'No films match your search.', browse: 'Browse films',
     attribution: 'Films come from the Internet Archive public-domain collection and the Blender open movies. Playback connects directly to the source and depends on its availability.',
     playbackHelp: 'If a film does not start right away the source is slow or temporarily unavailable. Retry, or open its source page.',
     clear: 'Clear',
@@ -114,10 +128,20 @@ export default function OpenMovies({
 
   function poster(film: PublicFilm) {
     const broken = brokenPosters.includes(film.id);
+    let hash = 0;
+    for (let index = 0; index < film.id.length; index += 1) hash = (hash * 31 + film.id.charCodeAt(index)) % 360;
+    // Curated hues keep generated poster art inside the brand gamut.
+    const artHue = ART_HUES[hash % ART_HUES.length];
     return (
       <div className="film-poster">
         {broken
-          ? <span className="film-poster-fallback" aria-hidden="true">{film.title.slice(0, 1)}</span>
+          ? <span className="film-poster-fallback" style={{ ['--cp-art-hue' as string]: artHue }} aria-hidden="true">
+              <span className="film-poster-fallback__letter">{(language === 'ar' ? film.titleAr : film.title).slice(0, 1)}</span>
+              <span className="film-poster-fallback__foot">
+                <span>{language === 'ar' ? film.titleAr : film.title}</span>
+                <span className="cp-num">{film.year}</span>
+              </span>
+            </span>
           : <>
             <Image
               src={filmPoster(film)}
@@ -162,31 +186,82 @@ export default function OpenMovies({
     const film = PUBLIC_FILMS.find(f => f.id === onlyId);
     if (!film) return null;
     const isFavorite = favorites.includes(film.id);
+    let hue = 0;
+    for (let index = 0; index < film.id.length; index += 1) hue = (hue * 31 + film.id.charCodeAt(index)) % 360;
+    const related = PUBLIC_FILMS.filter(item => item.id !== film.id).slice(0, 8);
     return (
-      <section className="open-movies shell reveal-on-scroll" id="movies-library" aria-labelledby="open-movies-title">
-        <div className="film-detail">
-          <div className="film-detail-art">{poster(film)}</div>
-          <div className="film-detail-copy">
-            <div className="eyebrow"><span className="tiny-line" />{t.eyebrow}</div>
-            <h1 id="open-movies-title">{ar ? film.titleAr : film.title}</h1>
-            <p className="film-detail-meta">{film.title} · {film.year} · {genreLabel(film.genre)} · {film.licenseLabel}</p>
-            <p className="film-detail-desc">{film[language]}</p>
-            <div className="film-detail-actions">
-              <button className="film-play" onClick={() => setChosen(film)}>{progress[film.id] ? t.resume : t.watch}</button>
-              <button className="film-star" aria-pressed={isFavorite} onClick={() => toggleFavorite(film.id)}>
-                {isFavorite ? '★' : '☆'} {isFavorite ? t.removeFav : t.addFav}
-              </button>
-            </div>
-            <small className="film-credit">
-              {film.credit} · <a href={film.licenseUrl} target="_blank" rel="noreferrer">{film.licenseLabel}</a> ·{' '}
-              <a href={film.source} target="_blank" rel="noreferrer">{t.source}</a>
-            </small>
-            <Link className="film-back" href="/movies">← {t.back}</Link>
+      <>
+        <section
+          className="cp-detail"
+          id="movies-library"
+          aria-labelledby="open-movies-title"
+          style={{ ['--cp-art-hue' as string]: hue }}
+        >
+          <div className="cp-detail__scene" aria-hidden="true">
+            {film.still
+              ? <Image src={film.still} alt="" fill priority sizes="100vw" />
+              : <span className="cp-detail__scene-art" />}
+            <span className="cp-detail__scrim" />
+            <span className="cp-orb cp-orb--violet" />
           </div>
-        </div>
+
+          <div className="cp-detail__inner">
+            <div className="cp-detail__copy cp-on-media">
+              <nav className="cp-detail__crumbs" aria-label={t.breadcrumb}>
+                <Link href="/movies" className="cp-chip"><Icon name="arrow" size={13} />{t.back}</Link>
+              </nav>
+              <span className="cp-type-micro cp-detail__kicker">{t.eyebrow}</span>
+              <h1 id="open-movies-title" className="cp-detail__title">{ar ? film.titleAr : film.title}</h1>
+              <p className="cp-detail__meta cp-num">
+                <span>{film.title}</span><span aria-hidden="true">·</span><span>{film.year}</span><span aria-hidden="true">·</span><span>{genreLabel(film.genre)}</span>
+              </p>
+              <p className="cp-detail__desc">{film[language]}</p>
+
+              <div className="cp-detail__chips">
+                <span className="cp-badge">{film.licenseLabel}</span>
+                <span className="cp-badge">{genreLabel(film.genre)}</span>
+                <span className="cp-badge cp-num">{film.year}</span>
+              </div>
+
+              <div className="cp-detail__actions">
+                <button type="button" className="cp-btn film-play" data-variant="primary" data-size="lg" onClick={() => setChosen(film)}>
+                  <span className="cp-btn__glyph"><Icon name="play" size={13} /></span>
+                  {progress[film.id] ? t.resume.replace('▶ ', '') : t.watch.replace('▶ ', '')}
+                </button>
+                <button type="button" className="cp-btn film-star" data-variant="glass" data-size="lg" aria-pressed={isFavorite} onClick={() => toggleFavorite(film.id)}>
+                  <Icon name="star" size={17} />
+                  {isFavorite ? t.removeFav : t.addFav}
+                </button>
+              </div>
+
+              <p className="cp-detail__credit">
+                {film.credit} · <a href={film.licenseUrl} target="_blank" rel="noreferrer">{film.licenseLabel}</a> ·{' '}
+                <a href={film.source} target="_blank" rel="noreferrer">{t.source}</a>
+              </p>
+            </div>
+
+            <div className="cp-detail__art">{poster(film)}</div>
+          </div>
+        </section>
+
+        <section className="cp-rail-section shell" aria-label={t.related}>
+          <div className="cp-rail-head">
+            <div>
+              <h2>{t.related}</h2>
+              <p>{t.intro}</p>
+            </div>
+            <Link href="/movies" className="cp-chip">{t.back}<Icon name="arrow" size={14} /></Link>
+          </div>
+          <div className="cp-rail" role="list">
+            {related.map(item => (
+              <div role="listitem" key={item.id}><FilmCard film={item} progress={progress[item.id]} /></div>
+            ))}
+          </div>
+        </section>
+
         {chosen && viewer(chosen)}
-        <p className="firebase-note">{t.attribution}</p>
-      </section>
+        <p className="firebase-note shell">{t.attribution}</p>
+      </>
     );
   }
 
@@ -196,8 +271,8 @@ export default function OpenMovies({
       <div className="section-head">
         <div>
           <div className="eyebrow"><span className="tiny-line" />{t.eyebrow}</div>
-          <h2 id="open-movies-title">{t.heading}</h2>
-          <p>{t.intro}</p>
+          <h2 id="open-movies-title">{filter === 'favorites' ? t.headingFavorites : filter === 'continue' ? t.headingContinue : t.heading}</h2>
+          <p>{filter === 'favorites' ? t.emptyFavorites : filter === 'continue' ? t.emptyContinue : t.intro}</p>
         </div>
       </div>
 
@@ -249,7 +324,14 @@ export default function OpenMovies({
           );
         })}
       </div>
-      {filtered.length === 0 && <p className="film-empty">{t.empty}</p>}
+      {filtered.length === 0 && (
+        <div className="cp-empty" role="status">
+          <span className="cp-empty__icon" aria-hidden="true"><Icon name={filter === 'favorites' ? 'star' : filter === 'continue' ? 'clock' : 'film'} size={22} /></span>
+          <h3>{filter === 'favorites' ? t.headingFavorites : filter === 'continue' ? t.headingContinue : t.empty}</h3>
+          <p>{filter === 'favorites' ? t.emptyFavorites : filter === 'continue' ? t.emptyContinue : t.emptyAll}</p>
+          <Link href="/movies" className="cp-btn" data-variant="primary">{t.browse}<Icon name="arrow" size={15} /></Link>
+        </div>
+      )}
 
       <p className="firebase-note">{t.note}</p>
       <p className="firebase-note">{t.attribution}</p>

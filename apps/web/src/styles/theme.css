@@ -1,0 +1,372 @@
+/* ============================================================================
+   CLOUD PLAY — THEME (semantic layer)
+   ----------------------------------------------------------------------------
+   tokens.generated.css holds the raw values from packages/ui-tokens/tokens.json.
+   This file maps them to semantic variables, applies them to <html data-theme>,
+   and defines the universal base: canvas, ambient light, type, focus, utilities.
+
+   Direction is never assumed: every rule uses logical properties, and the
+   theme lives on <html> so the floating dock (rendered outside `.site`) and
+   portals (sheets, menus, player) inherit the same appearance.
+   ========================================================================== */
+
+:root {
+  /* ---- Semantic colour · dark (default) ---- */
+  --cp-bg: var(--cp-dark-canvas);
+  --cp-bg-raised: var(--cp-dark-canvas-raised);
+  --cp-bg-sunken: var(--cp-dark-canvas-sunken);
+  --cp-ink: var(--cp-dark-text-primary);
+  --cp-ink-2: var(--cp-dark-text-secondary);
+  --cp-ink-3: var(--cp-dark-text-tertiary);
+  --cp-on-accent: var(--cp-dark-text-on-accent);
+
+  --cp-glass-fill: var(--cp-dark-glass-1);
+  --cp-glass-fill-2: var(--cp-dark-glass-2);
+  --cp-glass-fill-3: var(--cp-dark-glass-3);
+  --cp-glass-solid: var(--cp-dark-glass-solid);
+  --cp-glass-rim: var(--cp-dark-glass-rim);
+  --cp-glass-rim-strong: var(--cp-dark-glass-rim-strong);
+  --cp-glass-highlight: var(--cp-dark-glass-highlight);
+  --cp-glass-shadow: var(--cp-dark-glass-shadow);
+
+  --cp-accent: var(--cp-dark-accent);
+  --cp-accent-strong: var(--cp-dark-accent-strong);
+  --cp-accent-soft: var(--cp-dark-accent-soft);
+  --cp-accent-magenta: var(--cp-dark-accent-magenta);
+  --cp-success: var(--cp-dark-success);
+  --cp-warning: var(--cp-dark-warning);
+  --cp-danger: var(--cp-dark-danger);
+  --cp-focus: var(--cp-dark-focus);
+
+  --cp-ambient-blue: var(--cp-dark-ambient-blue);
+  --cp-ambient-violet: var(--cp-dark-ambient-violet);
+  --cp-ambient-magenta: var(--cp-dark-ambient-magenta);
+
+  /* Legacy bridge: the original hand-written CSS reads these names. */
+  --bg: var(--cp-bg);
+  --panel: var(--cp-glass-solid);
+  --muted: var(--cp-ink-3);
+  --line: var(--cp-glass-rim);
+  --cp-accent-hover: var(--cp-accent-strong);
+  /* Legacy material names still consumed by pre-system components. */
+  --glass-surface: var(--cp-glass-fill);
+  --glass-border: var(--cp-glass-rim);
+  --glass-shadow: var(--cp-elev-1);
+  --glass-hover: var(--cp-elev-2);
+  --liquid-surface: var(--cp-glass-fill-2);
+  --liquid-border: var(--cp-glass-rim-strong);
+  --liquid-shadow: inset 0 1px 0 var(--cp-glass-highlight);
+  --liquid-inset: inset 0 1px 1px var(--cp-glass-rim);
+
+  /* ---- Materials ---- */
+  --cp-material-thin: blur(var(--cp-blur-thin)) saturate(var(--cp-blur-saturate));
+  --cp-material: blur(var(--cp-blur-regular)) saturate(var(--cp-blur-saturate));
+  --cp-material-thick: blur(var(--cp-blur-thick)) saturate(var(--cp-blur-saturate));
+  --cp-sheen: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.10) 0%,
+    rgba(255, 255, 255, 0.02) 38%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  --cp-rim-gradient: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.30),
+    rgba(255, 255, 255, 0.06) 40%,
+    rgba(255, 255, 255, 0.02) 62%,
+    rgba(255, 255, 255, 0.18)
+  );
+  --cp-aurora: linear-gradient(120deg, #6f9cff 0%, #a074ff 48%, #ff6aa8 100%);
+
+  --cp-elev-1: var(--cp-elevation-1);
+  --cp-elev-2: var(--cp-elevation-2);
+  --cp-elev-3: var(--cp-elevation-3);
+
+  --cp-font-body: var(--cp-font-arabic);
+  --cp-safe-top: env(safe-area-inset-top, 0px);
+  --cp-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --cp-safe-left: env(safe-area-inset-left, 0px);
+  --cp-safe-right: env(safe-area-inset-right, 0px);
+  --cp-header-height: 72px;
+  --cp-dock-space: 104px;
+}
+
+/* Light Liquid Glass */
+:root[data-theme='light'] {
+  --cp-bg: var(--cp-light-canvas);
+  --cp-bg-raised: var(--cp-light-canvas-raised);
+  --cp-bg-sunken: var(--cp-light-canvas-sunken);
+  --cp-ink: var(--cp-light-text-primary);
+  --cp-ink-2: var(--cp-light-text-secondary);
+  --cp-ink-3: var(--cp-light-text-tertiary);
+  --cp-on-accent: var(--cp-light-text-on-accent);
+
+  --cp-glass-fill: var(--cp-light-glass-1);
+  --cp-glass-fill-2: var(--cp-light-glass-2);
+  --cp-glass-fill-3: var(--cp-light-glass-3);
+  --cp-glass-solid: var(--cp-light-glass-solid);
+  --cp-glass-rim: var(--cp-light-glass-rim);
+  --cp-glass-rim-strong: var(--cp-light-glass-rim-strong);
+  --cp-glass-highlight: var(--cp-light-glass-highlight);
+  --cp-glass-shadow: var(--cp-light-glass-shadow);
+
+  --cp-accent: var(--cp-light-accent);
+  --cp-accent-strong: var(--cp-light-accent-strong);
+  --cp-accent-soft: var(--cp-light-accent-soft);
+  --cp-accent-magenta: var(--cp-light-accent-magenta);
+  --cp-success: var(--cp-light-success);
+  --cp-warning: var(--cp-light-warning);
+  --cp-danger: var(--cp-light-danger);
+  --cp-focus: var(--cp-light-focus);
+
+  --cp-ambient-blue: var(--cp-light-ambient-blue);
+  --cp-ambient-violet: var(--cp-light-ambient-violet);
+  --cp-ambient-magenta: var(--cp-light-ambient-magenta);
+
+  --cp-sheen: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.92) 0%,
+    rgba(255, 255, 255, 0.42) 42%,
+    rgba(255, 255, 255, 0.66) 100%
+  );
+  --cp-rim-gradient: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.98),
+    rgba(19, 33, 62, 0.06) 45%,
+    rgba(19, 33, 62, 0.04) 64%,
+    rgba(255, 255, 255, 0.90)
+  );
+  --cp-aurora: linear-gradient(120deg, #2f5fd0 0%, #7a3cf0 52%, #c2185b 100%);
+  color-scheme: light;
+}
+
+/* The page-level `.site` keeps its legacy theme classes in sync with <html>. */
+:root[data-theme='light'] body,
+.site.theme-light,
+:root[data-theme='light'] .site {
+  color-scheme: light;
+}
+
+/* ---- Reset / base --------------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--cp-bg);
+  scroll-behavior: smooth;
+  scroll-padding-top: calc(var(--cp-header-height) + 24px);
+}
+
+html,
+body { min-height: 100%; }
+
+body {
+  margin: 0;
+  color: var(--cp-ink);
+  background: var(--cp-bg);
+  font-family: var(--cp-font-body);
+  font-size: var(--cp-text-body);
+  line-height: var(--cp-leading-normal);
+  font-weight: var(--cp-weight-regular);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+/* Latin-first typography in English; Arabic stays on the Arabic face. */
+:root[lang='en'] body { font-family: var(--cp-font-latin); }
+:root[lang='en'] { --cp-font-body: var(--cp-font-latin); }
+
+/* ---- Ambient canvas -------------------------------------------------------
+   Three colour fields (blue, violet, magenta) sit behind every screen. They are
+   fixed, pointer-transparent and re-tinted for light mode, so hero images never
+   pick up a muddy cast.
+   -------------------------------------------------------------------------- */
+body::before {
+  content: '';
+  position: fixed;
+  inset: -10vmax;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(48vmax 38vmax at 18% 12%, color-mix(in srgb, var(--cp-ambient-blue) 58%, transparent), transparent 68%),
+    radial-gradient(52vmax 40vmax at 84% 26%, color-mix(in srgb, var(--cp-ambient-violet) 52%, transparent), transparent 70%),
+    radial-gradient(46vmax 36vmax at 62% 92%, color-mix(in srgb, var(--cp-ambient-magenta) 42%, transparent), transparent 72%);
+  opacity: 0.9;
+  filter: blur(4px);
+  transition: opacity var(--cp-duration-slow) var(--cp-ease-standard);
+}
+:root[data-theme='light'] body::before { opacity: 0.55; }
+:root.no-glow body::before { opacity: 0; }
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+:root[data-theme='light'] body::after { opacity: 0.02; }
+
+#__next,
+body > div,
+.site { position: relative; z-index: 1; }
+
+.site {
+  min-height: 100vh;
+  background: transparent;
+  color: var(--cp-ink);
+  overflow: hidden;
+  overflow: clip;
+}
+
+.shell {
+  width: min(1240px, calc(100% - 64px));
+  margin-inline: auto;
+}
+
+/* ---- Typography ----------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: inherit;
+  font-weight: var(--cp-weight-semibold);
+  line-height: var(--cp-leading-tight);
+  letter-spacing: -0.02em;
+  /* Legacy baselines hard-coded a light heading colour; headings follow tokens. */
+  color: var(--cp-ink);
+}
+:root[lang='ar'] :is(h1, h2, h3, h4, h5, h6) {
+  line-height: var(--cp-leading-arabic);
+  letter-spacing: normal;
+}
+p { margin: 0; }
+strong, b { font-weight: var(--cp-weight-semibold); }
+
+/* Arabic must never inherit Latin negative tracking from legacy rules. */
+:root[lang='ar'] :is(p, a, button, span, strong, small, li, label, input, select, textarea, time) {
+  letter-spacing: normal;
+}
+:root[dir='rtl'] { text-align: start; }
+
+.cp-type-display { font-size: var(--cp-text-display); font-weight: var(--cp-weight-bold); line-height: 1.06; letter-spacing: -0.03em; }
+.cp-type-title1 { font-size: var(--cp-text-title1); font-weight: var(--cp-weight-semibold); }
+.cp-type-title2 { font-size: var(--cp-text-title2); font-weight: var(--cp-weight-semibold); }
+.cp-type-title3 { font-size: var(--cp-text-title3); font-weight: var(--cp-weight-semibold); }
+.cp-type-headline { font-size: var(--cp-text-headline); font-weight: var(--cp-weight-semibold); }
+.cp-type-body { font-size: var(--cp-text-body); }
+.cp-type-callout { font-size: var(--cp-text-callout); color: var(--cp-ink-2); }
+.cp-type-caption { font-size: var(--cp-text-caption); color: var(--cp-ink-2); }
+.cp-type-micro {
+  font-size: var(--cp-text-micro);
+  font-weight: var(--cp-weight-semibold);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--cp-ink-3);
+}
+:root[lang='ar'] .cp-type-micro { letter-spacing: normal; text-transform: none; font-size: var(--cp-text-caption); }
+
+.cp-gradient-text {
+  background: var(--cp-aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Numbers stay Latin-friendly and isolated from RTL reordering. */
+.cp-num { font-variant-numeric: tabular-nums; unicode-bidi: isolate; }
+
+/* ---- Focus / selection ---------------------------------------------------- */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--cp-focus);
+  outline-offset: 3px;
+  border-radius: var(--cp-radius-xs);
+}
+::selection { background: color-mix(in srgb, var(--cp-accent) 42%, transparent); color: var(--cp-ink); }
+
+/* ---- Scrollbars ----------------------------------------------------------- */
+* { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--cp-ink) 22%, transparent) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--cp-radius-pill);
+  background-clip: content-box;
+  background-color: color-mix(in srgb, var(--cp-ink) 20%, transparent);
+}
+*::-webkit-scrollbar-thumb:hover { background-color: color-mix(in srgb, var(--cp-ink) 34%, transparent); }
+
+/* ---- Universal helpers ---------------------------------------------------- */
+.cp-visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.cp-stack { display: flex; flex-direction: column; gap: var(--cp-space-4); }
+.cp-row { display: flex; align-items: center; gap: var(--cp-space-3); flex-wrap: wrap; }
+.cp-row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--cp-space-4); }
+.cp-divider { height: 1px; border: 0; margin: 0; background: var(--cp-glass-rim); }
+
+/* Long Latin tokens (URLs, emails) must never widen an Arabic card. */
+.cp-wrap-anywhere { overflow-wrap: anywhere; word-break: break-word; }
+
+/* Text size preference */
+:root.text-large body { font-size: 1.0625rem; }
+:root.text-large { --cp-text-body: 1rem; --cp-text-callout: 0.9375rem; }
+
+/* High-contrast preference (used by Settings) */
+:root.high-contrast {
+  --cp-ink-2: color-mix(in srgb, var(--cp-ink) 86%, transparent);
+  --cp-ink-3: color-mix(in srgb, var(--cp-ink) 70%, transparent);
+  --cp-glass-rim: color-mix(in srgb, var(--cp-ink) 34%, transparent);
+}
+:root.high-contrast[data-theme='dark'] { --cp-glass-fill: rgba(255, 255, 255, 0.10); }
+
+/* Solid-panels preference: drop translucency while keeping the geometry. */
+:root.solid-panels {
+  --cp-material-thin: none;
+  --cp-material: none;
+  --cp-material-thick: none;
+}
+:root.solid-panels[data-theme='dark'] { --cp-glass-fill: #14161e; --cp-glass-fill-2: #191c26; --cp-glass-fill-3: #20242f; }
+:root.solid-panels[data-theme='light'] { --cp-glass-fill: #ffffff; --cp-glass-fill-2: #ffffff; --cp-glass-fill-3: #ffffff; }
+
+/* TV: ten-foot UI — larger type and focus rings, no hover-only affordances. */
+:root[data-device='tv'] { --cp-text-body: 1.0625rem; --cp-header-height: 96px; }
+:root[data-device='tv'] :focus-visible { outline-width: 3px; outline-offset: 4px; }
+
+/* Touch devices: no 300ms delay, no tap highlight, no accidental text select. */
+:root[data-platform='ios'] body,
+:root[data-platform='android'] body { -webkit-tap-highlight-color: transparent; }
+:root[data-platform='ios'] :is(button, a, [role='button'], .cp-tap) { -webkit-touch-callout: none; }
+
+@media (max-width: 720px) {
+  .shell { width: calc(100% - 32px); }
+  :root { --cp-header-height: 62px; }
+}
+@media (min-width: 1600px) {
+  .shell { width: min(1440px, calc(100% - 96px)); }
+}
+
+/* Backdrop-filter is required for the liquid glass look; when it is missing we
+   fall back to solid materials so text never sits on a transparent surface. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root {
+    --cp-material-thin: none;
+    --cp-material: none;
+    --cp-material-thick: none;
+  }
+  :root[data-theme='dark'] { --cp-glass-fill: #12141b; --cp-glass-fill-2: #171a23; --cp-glass-fill-3: #1e2230; }
+  :root[data-theme='light'] { --cp-glass-fill: #ffffff; --cp-glass-fill-2: #ffffff; --cp-glass-fill-3: #ffffff; }
+}

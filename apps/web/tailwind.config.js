@@ -20,21 +20,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Requested IPTV dark palette; the surrounding app keeps its own tokens.
-        ink: '#0f0f10',
-        panel: '#1f1f22',
-        panelHover: '#2a2a2e',
-        line: '#33333a',
-        muted: '#a1a1aa',
-        accent: '#d01b7f',
-        accentHover: '#b0155c',
-        violet: '#8b5cf6',
-        brandDark: '#0a0a0c',
-        brandCard: '#121217',
-        cyanGlow: '#00e5ff',
-        magentaGlow: '#ff2085',
-        violetGlow: '#7b30ff',
-        amberGlow: '#ffb000',
+        // Channel UI follows the Liquid Glass semantic layer instead of owning a
+        // second palette: dark/light, Arabic/English share one set of variables.
+        ink: 'var(--cp-ink)',
+        panel: 'var(--cp-glass-fill)',
+        panelHover: 'var(--cp-glass-fill-3)',
+        line: 'var(--cp-glass-rim)',
+        muted: 'var(--cp-ink-3)',
+        accent: 'var(--cp-accent)',
+        accentHover: 'var(--cp-accent-strong)',
+        violet: 'var(--cp-glass-rim-strong)',
+        brandDark: 'var(--cp-bg)',
+        brandCard: 'var(--cp-glass-solid)',
+        cyanGlow: 'var(--cp-accent)',
+        magentaGlow: 'var(--cp-accent-magenta)',
+        violetGlow: 'var(--cp-accent-strong)',
+        amberGlow: 'var(--cp-warning)',
       },
       fontFamily: {
         cairo: ['Cairo', 'sans-serif'],
