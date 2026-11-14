@@ -1,15 +1,17 @@
 /**
  * Appearance — one appearance model for Web, iOS and Android.
  *
- *  · mode    = the user's choice: 'system' | 'dark' | 'light'
+ *  · mode    = the user's choice: 'system' | 'dark' | 'black' | 'light'
  *  · theme   = the resolved appearance that is actually painted
+ *
+ * 'black' is the OLED variant of dark: identical ink, pure-black canvas.
  *
  * `cloudplay-theme` keeps its historical key so existing devices and every
  * hand-written rule (`.theme-light`) stay valid. A stored 'dark'/'light' is a
  * manual choice; anything else means "follow the device".
  */
-export type ThemeMode = 'system' | 'dark' | 'light';
-export type Theme = 'dark' | 'light';
+export type ThemeMode = 'system' | 'dark' | 'black' | 'light';
+export type Theme = 'dark' | 'black' | 'light';
 export type Platform = 'ios' | 'android' | 'web';
 export type Device = 'phone' | 'tablet' | 'desktop' | 'tv';
 
@@ -21,7 +23,7 @@ export function readThemeMode(): ThemeMode {
   if (!isBrowser()) return 'system';
   try {
     const raw = localStorage.getItem(THEME_KEY);
-    if (raw === 'dark' || raw === 'light' || raw === 'system') return raw;
+    if (raw === 'dark' || raw === 'black' || raw === 'light' || raw === 'system') return raw;
   } catch { /* Storage is optional. */ }
   return 'system';
 }

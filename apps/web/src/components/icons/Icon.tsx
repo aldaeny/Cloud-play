@@ -7,7 +7,7 @@ export type IconName =
   | 'home' | 'film' | 'user' | 'sun' | 'moon' | 'auto' | 'text' | 'sparkle'
   | 'rotate' | 'star' | 'clock' | 'trash' | 'check' | 'chevron' | 'menu'
   | 'volume' | 'mute' | 'expand' | 'info' | 'share' | 'download' | 'library'
-  | 'lock' | 'wifi' | 'airplay' | 'speed' | 'subtitles';
+  | 'lock' | 'wifi' | 'airplay' | 'speed' | 'subtitles' | 'contrast' | 'copy' | 'sound' | 'devices';
 
 const PATHS: Record<IconName, ReactNode> = {
   search: <><circle cx="10.8" cy="10.8" r="7" /><path d="m16 16 4.2 4.2" /></>,
@@ -45,6 +45,10 @@ const PATHS: Record<IconName, ReactNode> = {
   airplay: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="m12 13 5 7H7l5-7Z" fill="currentColor" stroke="none" /></>,
   speed: <><circle cx="12" cy="13" r="8" /><path d="M12 13l4-4M9 3h6" /></>,
   subtitles: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M7 14h4M13 14h4M7 10.5h2M11 10.5h6" /></>,
+  contrast: <><circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18V3Z" fill="currentColor" stroke="none" /></>,
+  copy: <><rect x="9" y="9" width="11" height="11" rx="2.4" /><path d="M15 6.5V5a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h1.4" /></>,
+  sound: <><path d="M11 5 6.5 9H3v6h3.5L11 19V5Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" /></>,
+  devices: <><rect x="2.5" y="5" width="12" height="9" rx="1.6" /><path d="M6 18h5" /><rect x="16" y="9" width="5.5" height="10" rx="1.4" /></>,
 };
 
 export default function Icon({

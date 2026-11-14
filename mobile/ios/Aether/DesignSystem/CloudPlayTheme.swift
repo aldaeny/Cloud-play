@@ -40,7 +40,7 @@ extension Color {
 
 /// Mirrors the web `cloudplay-theme` preference: `system` follows the device.
 public enum CloudPlayAppearance: String, CaseIterable, Identifiable {
-    case system, dark, light
+    case system, dark, black, light
 
     public var id: String { rawValue }
 
@@ -48,6 +48,7 @@ public enum CloudPlayAppearance: String, CaseIterable, Identifiable {
         switch self {
         case .system: return ("تلقائي", "Automatic")
         case .dark: return ("داكن", "Dark")
+        case .black: return ("أسود", "Black")
         case .light: return ("فاتح", "Light")
         }
     }
@@ -56,7 +57,7 @@ public enum CloudPlayAppearance: String, CaseIterable, Identifiable {
     public func colorScheme(system: ColorScheme) -> ColorScheme {
         switch self {
         case .system: return system
-        case .dark: return .dark
+        case .dark, .black: return .dark
         case .light: return .light
         }
     }

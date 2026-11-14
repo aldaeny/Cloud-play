@@ -12,7 +12,7 @@ export const LIBRARY_EVENT = 'cloudplay-library-changed';
 import { readThemeMode, resolveTheme, type ThemeMode } from './appearance';
 
 export type Language = 'ar' | 'en';
-export type Theme = 'dark' | 'light';
+export type Theme = 'dark' | 'black' | 'light';
 export type { ThemeMode };
 
 // Cached snapshot for useSyncExternalStore: a stable reference until prefs change.
@@ -47,7 +47,7 @@ export type Prefs = {
   language: Language;
   /** Resolved appearance that is currently painted. */
   theme: Theme;
-  /** The user's choice: system | dark | light. */
+  /** The user's choice: system | dark | black | light. */
   themeMode: ThemeMode;
   reduceMotion: boolean;
   textSize: 'normal' | 'large';

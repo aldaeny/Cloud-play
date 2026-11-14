@@ -38,7 +38,7 @@ export default function SectionLayout({ title, children, noIndex = false, compac
   const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
 
   const classes = [
-    'site', 'section-site', `theme-${appearance.theme}`,
+    'site', 'section-site', `theme-${appearance.theme === 'black' ? 'dark' : appearance.theme}`,
     appearance.reduceMotion ? 'motion-off' : '',
     !prefs.glow ? 'no-glow' : '',
     prefs.solidPanels ? 'solid-panels' : '',

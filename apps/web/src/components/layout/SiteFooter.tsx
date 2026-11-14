@@ -42,6 +42,7 @@ export default function SiteFooter() {
             <Link href="/search">{t('common.search')}</Link>
             <Link href="/login">{t('common.signIn')}</Link>
             <Link href="/library">{t('footer.library')}</Link>
+            <Link href="/brand">{t('brand.identityShort')}</Link>
           </div>
         </nav>
       </div>

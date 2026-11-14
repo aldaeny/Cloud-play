@@ -90,6 +90,21 @@ durations to ~0 ms and stop decorative loops. Native sides use
 
 ## 6. Player
 
+Appearance has three painted themes plus `system`:
+
+| Mode | Canvas | Use |
+| --- | --- | --- |
+| `dark` | `#08090d` with blue/violet ambient | default cinematic glass |
+| `black` | `#000000`, dimmer glass fills | OLED panels, cinema rooms, lowest power |
+| `light` | `#f4f6fb` with white glass | daylight |
+| `system` | follows the OS | resolves to dark/light |
+
+`black` is stored under the same `cloudplay-theme` key and is understood by the
+boot script, the runtime provider, the settings page and both native enums — so
+a device that chose OLED never falls back to a different appearance.
+
+## 7. Player
+
 `VideoPlayer` (streams, Xtream) and `MediaViewer` (public films) share the same
 chrome: floating top bar with title/LIVE/close, centred play target, seek row
 with a liquid-glass slider, control bar (play, ±10 s, mute, volume, settings,
@@ -97,13 +112,27 @@ fullscreen), glass settings sheet. On touch, double-tap the left/right third of
 the picture to jump ±10 s. The control surface is always LTR — Arabic labels,
 but scrubbing never mirrors.
 
-## 7. Verification
+## 8. Identity board (`/brand`)
+
+`pages/brand.tsx` renders the identity: the drawn mark (`BrandMark`), the
+`Cloud Play · ENTERTAINMENT ANYWHERE` lockup, the Arabic tagline, the palette
+with live hex values, four content scenes and the appearance/language platform
+matrix. Its controls write the same preferences as the header, so the board is a
+preview of the product rather than a static mock.
+
+`BrandIntro` holds the reveal: staged mark → wordmark → rule → tagline with a
+synthesised WebAudio chime (no audio asset, silent under reduced motion), in two
+modes — `intro` (self-dismisses) and `identity` (held until closed). Links live
+in the footer and in Settings → appearance.
+
+## 9. Verification
 
 ```bash
 cd apps/web
 npm run test:design   # direction/theme matrix, runtime switching, a11y, player
 npm run test:layout   # dock + Live TV layout regression
 npm run test:browser  # route smoke
+npm run test:brand    # identity board + OLED theme (no browser needed)
 ```
 
 `tests/design-system.mjs` is the guard for this work: 3 viewports × 2 languages ×

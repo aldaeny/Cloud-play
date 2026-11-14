@@ -92,7 +92,8 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setMode(prefs.theme === 'dark' ? 'light' : 'dark');
+    // Cycle the two extremes; 'black' collapses into dark on a quick toggle.
+    setMode(prefs.theme === 'light' ? 'dark' : 'light');
   }, [prefs.theme, setMode]);
 
   const value = useMemo<Appearance>(() => ({
@@ -129,7 +130,7 @@ function applyToRoot({ mode, theme, reduceMotion, textLarge, highContrast, solid
   root.setAttribute('data-theme-mode', mode);
   root.style.colorScheme = theme;
   root.classList.toggle('theme-light', theme === 'light');
-  root.classList.toggle('theme-dark', theme === 'dark');
+  root.classList.toggle('theme-dark', theme === 'dark' || theme === 'black');
   root.classList.toggle('motion-off', reduceMotion);
   root.classList.toggle('text-large', textLarge);
   root.classList.toggle('high-contrast', highContrast);

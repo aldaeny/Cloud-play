@@ -139,6 +139,40 @@
   color-scheme: light;
 }
 
+/* OLED Black — the dark system on a true-black canvas (OLED / cinema room). */
+:root[data-theme='black'] {
+  --cp-bg: #000000;
+  --cp-bg-raised: #060709;
+  --cp-bg-sunken: #000000;
+
+  --cp-glass-fill: rgba(255, 255, 255, 0.045);
+  --cp-glass-fill-2: rgba(255, 255, 255, 0.07);
+  --cp-glass-fill-3: rgba(255, 255, 255, 0.1);
+  --cp-glass-solid: #05060a;
+  --cp-glass-rim: rgba(255, 255, 255, 0.085);
+  --cp-glass-rim-strong: rgba(255, 255, 255, 0.16);
+  --cp-glass-highlight: rgba(255, 255, 255, 0.16);
+
+  --cp-sheen: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.012) 40%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  color-scheme: dark;
+}
+:root[data-theme='black'] body,
+:root[data-theme='black'] .site {
+  background: #000;
+  color-scheme: dark;
+}
+:root[data-theme='black'] body::before { opacity: 0.55; }
+:root[data-theme='black'] .site {
+  background:
+    radial-gradient(ellipse 50% 30% at 70% 12%, rgba(90, 70, 160, 0.16), transparent 70%),
+    #000;
+}
+
 /* The page-level `.site` keeps its legacy theme classes in sync with <html>. */
 :root[data-theme='light'] body,
 .site.theme-light,
