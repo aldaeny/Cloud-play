@@ -14,7 +14,7 @@ export default function MovieDetails({ id }: { id: string }) {
   const film = PUBLIC_FILMS.find(item => item.id === id);
   if (!film) return null;
   return (
-    <SectionLayout title={{ ar: film.titleAr, en: film.title }}>
+    <SectionLayout title={{ ar: film.titleAr, en: film.title }} bare>
       {language => <OpenMovies language={language} onlyId={id} />}
     </SectionLayout>
   );

@@ -9,8 +9,11 @@
 export const PREFS_EVENT = 'cloudplay-prefs-changed';
 export const LIBRARY_EVENT = 'cloudplay-library-changed';
 
+import { readThemeMode, resolveTheme, type ThemeMode } from './appearance';
+
 export type Language = 'ar' | 'en';
 export type Theme = 'dark' | 'light';
+export type { ThemeMode };
 
 // Cached snapshot for useSyncExternalStore: a stable reference until prefs change.
 let prefsSnapshot: Prefs | null = null;
@@ -42,7 +45,10 @@ function read(key: string): string | null {
 
 export type Prefs = {
   language: Language;
+  /** Resolved appearance that is currently painted. */
   theme: Theme;
+  /** The user's choice: system | dark | light. */
+  themeMode: ThemeMode;
   reduceMotion: boolean;
   textSize: 'normal' | 'large';
   glow: boolean;
@@ -58,15 +64,17 @@ export type Prefs = {
 
 /** Stable SSR/hydration snapshot. Never read device storage while rendering. */
 export const SERVER_PREFS: Prefs = {
-  language: 'ar', theme: 'dark', reduceMotion: false, textSize: 'normal', glow: true,
+  language: 'ar', theme: 'dark', themeMode: 'system', reduceMotion: false, textSize: 'normal', glow: true,
   autoCarousel: true, highContrast: false, solidPanels: false, hideCover: false,
   staticCover: false, playbackAuto: true, playbackMuted: false, scrollToPlayer: true,
 };
 
 export function readPrefs(): Prefs {
+  const themeMode = readThemeMode();
   return {
     language: read('cloudplay-language') === 'en' ? 'en' : 'ar',
-    theme: read('cloudplay-theme') === 'light' ? 'light' : 'dark',
+    theme: resolveTheme(themeMode),
+    themeMode,
     reduceMotion: read('cloudplay-reduce-motion') === 'true',
     textSize: read('cloudplay-text-size') === 'large' ? 'large' : 'normal',
     glow: read('cloudplay-glow') !== 'false',

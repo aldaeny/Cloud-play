@@ -1,13 +1,20 @@
-import PagesBrandingProvider from '../src/components/brand/PagesBrandingProvider';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
 import { useEffect } from 'react';
+import PagesBrandingProvider from '../src/components/brand/PagesBrandingProvider';
 import PageTransition from '../src/components/motion/PageTransition';
 import GlobalNav from '../src/components/nav/GlobalNav';
 import PagesShell from '../src/components/navigation/PagesShell';
+import SkipLink from '../src/components/navigation/SkipLink';
 import { AccountProvider } from '../src/components/account/AccountProvider';
+import { AppProviders } from '../src/lib/use-appearance';
 import '../src/styles';
 
+/**
+ * Pages Router shell. Providers are mounted once here (and once in the App
+ * Router layout), so language, appearance and platform state are global — no
+ * page owns a copy, and switching never reloads the document.
+ */
 export default function App({ Component, pageProps }: AppProps) {
   // Remove only the offline worker introduced in the rolled-back design.
   useEffect(() => {
@@ -24,5 +31,22 @@ export default function App({ Component, pageProps }: AppProps) {
       }
     }).catch(() => {});
   }, []);
-  return <><Head><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="icon" href="/cloudplay-icon.png" type="image/png"/></Head><PagesBrandingProvider><PagesShell><AccountProvider><PageTransition><Component {...pageProps}/></PageTransition><GlobalNav/></AccountProvider></PagesShell></PagesBrandingProvider></>;
+  return (
+    <AppProviders>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="color-scheme" content="dark light" />
+        <link rel="icon" href="/cloudplay-icon.png" type="image/png" />
+      </Head>
+      <PagesBrandingProvider>
+        <PagesShell>
+          <AccountProvider>
+            <SkipLink />
+            <PageTransition><Component {...pageProps} /></PageTransition>
+            <GlobalNav />
+          </AccountProvider>
+        </PagesShell>
+      </PagesBrandingProvider>
+    </AppProviders>
+  );
 }

@@ -15,7 +15,14 @@ struct AetherApp: App {
 struct ContentView: View {
     @State private var isLoggedIn = false
     @State private var authToken: String?
+    /// Same preference key as the web app (`cloudplay-theme`).
+    @AppStorage("cloudplay-theme") private var appearanceRaw = CloudPlayAppearance.system.rawValue
+    @Environment(\.colorScheme) private var systemScheme
     let api = AetherAPI.shared
+
+    private var appearance: CloudPlayAppearance {
+        CloudPlayAppearance(rawValue: appearanceRaw) ?? .system
+    }
 
     var body: some View {
         Group {
@@ -31,16 +38,22 @@ struct ContentView: View {
                 })
             }
         }
+        .cpCanvas()
+        .preferredColorScheme(appearance == .system ? nil : appearance.colorScheme(system: systemScheme))
+        .tint(CloudPlayTheme(colorScheme: appearance.colorScheme(system: systemScheme)).accent)
+        // The interface mirrors automatically; Arabic is the reference locale.
+        .environment(\.layoutDirection, Locale.current.language.languageCode?.identifier == "ar" ? .rightToLeft : .leftToRight)
     }
 }
 
-// Shared app theme colors
+// Legacy palette name still referenced by the hand-written screens. It now
+// resolves through the shared tokens, so light mode and Arabic stay consistent.
 enum AetherColors {
-    static let brandDark = Color(hex: "#0a0a0c")
-    static let brandCard = Color(hex: "#121217")
-    static let cyanGlow = Color(hex: "#00e5ff")
-    static let magentaGlow = Color(hex: "#ff2085")
-    static let violetGlow = Color(hex: "#7b30ff")
-    static let amberGlow = Color(hex: "#ffb000")
-    static let gray = Color(hex: "#888888")
+    static let brandDark = CloudPlayTokens.Color.canvas
+    static let brandCard = CloudPlayTokens.Color.glassSolid
+    static let cyanGlow = CloudPlayTokens.Color.accent
+    static let magentaGlow = CloudPlayTokens.Color.accentMagenta
+    static let violetGlow = CloudPlayTokens.Color.accentStrong
+    static let amberGlow = CloudPlayTokens.Color.warning
+    static let gray = CloudPlayTokens.Color.textTertiary
 }

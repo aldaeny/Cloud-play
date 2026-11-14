@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import com.aether.android.designsystem.CloudPlayAppearance
+import com.aether.android.designsystem.CloudPlayTheme
 import com.aether.android.network.AetherClient
 import com.aether.android.ui.AuthScreen
 import com.aether.android.ui.PlayerScreen
@@ -29,7 +31,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AetherTheme {
+            // Appearance follows the same `cloudplay-theme` preference as web/iOS.
+            val prefs = remember { getSharedPreferences("cloudplay", MODE_PRIVATE) }
+            var appearance by remember { mutableStateOf(CloudPlayAppearance.from(prefs.getString("cloudplay-theme", null))) }
+            CloudPlayTheme(appearance = appearance) {
                 val navController = rememberNavController()
                 val api = AetherClient.api
                 var authToken by remember { mutableStateOf<String?>(null) }
@@ -49,20 +54,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-}
-
-@Composable
-private fun AetherTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = darkColorScheme(
-            primary = Color(0xFF00E5FF),
-            secondary = Color(0xFFFF2085),
-            tertiary = Color(0xFF7B30FF),
-            background = Color(0xFF0A0A0C),
-            surface = Color(0xFF121217)
-        ),
-        content = content
-    )
 }
 
 @Composable

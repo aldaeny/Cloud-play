@@ -1,0 +1,74 @@
+/* ============================================================================
+   CLOUD PLAY — DIRECTION AUDIT
+   ----------------------------------------------------------------------------
+   The design system is authored with logical properties, so most of RTL is free.
+   This file covers the exceptions that cannot be logical:
+     · directional glyphs (arrows, chevrons) that must mirror,
+     · Latin-only fields that must stay LTR inside an Arabic page,
+     · legacy rules that used physical offsets,
+     · bidi isolation for mixed titles, numbers and brand marks.
+   ========================================================================== */
+
+/* ---- Directional glyphs mirror in RTL ------------------------------------ */
+:root[dir='rtl'] :is(
+  .cp-flip-rtl, .outline-button svg, .card-bottom svg, .home-card-link svg,
+  .home-live-go svg, .section-empty a svg, .home-about-link svg,
+  .carousel-arrow svg, .modal-close svg, .cp-nav-search svg
+) { transform: scaleX(-1); }
+
+/* Chevrons in the dock popover already point up; nothing to mirror there. */
+
+/* ---- Latin-only fields stay LTR ------------------------------------------ */
+:root[dir='rtl'] :is(
+  input[type='email'], input[type='tel'], input[type='url'], input[type='password'],
+  input[type='number'], input[type='search'][dir='ltr'], .cp-latin, .cp-kbd, .cp-num
+) { direction: ltr; }
+:root[dir='rtl'] :is(input[type='email'], input[type='tel'], input[type='url'], input[type='number']) { text-align: start; }
+
+/* The brand is Latin by design and must never be reversed. */
+.cloudplay-brand { direction: ltr; unicode-bidi: isolate; text-align: start; }
+
+/* Mixed titles must not inherit a forced direction from their container. */
+:is(.film-title, .film-sub, .ptv-name, .live-card-name, .cp-film-card__meta strong,
+    .cp-hero__copy h1, .section-hero__copy h1, .cp-suggest__copy strong) {
+  unicode-bidi: plaintext;
+}
+
+/* ---- Legacy physical offsets -------------------------------------------- */
+:root[dir='rtl'] .nav-active:after { background: linear-gradient(270deg, var(--cyan), var(--purple), var(--pink)); }
+:root[dir='rtl'] .poster-content,
+:root[dir='rtl'] .collection-caption { text-align: right; }
+:root[dir='rtl'] .poster,
+:root[dir='rtl'] .collection-card { text-align: right; }
+:root[dir='rtl'] .main-nav a::after { transform-origin: right; }
+:root[dir='rtl'] .hero-description { margin-inline-start: 0; }
+
+/* Sliders move with the reading direction (native range follows `direction`). */
+:root[dir='rtl'] .cp-slider { direction: rtl; }
+
+/* Scroll snapping and rails follow the direction of the document by default;
+   the arrows in Rail already invert their scroll delta. */
+:root[dir='rtl'] .cp-rail { direction: rtl; }
+
+/* ---- Arabic type rules --------------------------------------------------- */
+:root[lang='ar'] :is(h1, h2, h3, h4, h5, h6) { text-wrap: balance; }
+:root[lang='ar'] :is(.cp-btn, .cp-chip, .cp-badge, .cp-segmented__item, .cp-nav-label) { letter-spacing: 0; }
+:root[lang='ar'] :is(.cp-type-micro, .cp-menu__label) { text-transform: none; letter-spacing: 0; }
+
+/* Arabic text inside LTR-context islands (dates, counts) is rare, but numbers
+   must always render in the same order as the surrounding sentence. */
+:root[lang='ar'] time, :root[lang='ar'] .cp-num { font-variant-numeric: tabular-nums; }
+
+/* ---- Sheet handle / close button ---------------------------------------- */
+:root[dir='rtl'] .cp-sheet__head { flex-direction: row; }
+:root[dir='rtl'] .cp-sheet__foot { justify-content: flex-start; }
+
+/* The Cloud Play wordmark is Latin and must never reorder next to Arabic. */
+.app-header-brand,
+.app-header-brand * ,
+.cp-brand,
+.site-footer .brand,
+.footer .brand {
+  direction: ltr;
+  unicode-bidi: isolate;
+}

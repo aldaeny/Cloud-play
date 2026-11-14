@@ -1,0 +1,8 @@
+
+/* Sheet exit animations (the component delays unmount by 220ms). */
+.cp-sheet-scrim.is-closing { animation: cp-fade-out var(--cp-duration-fast) var(--cp-ease-exit) forwards; }
+.cp-sheet.is-closing { animation: cp-sheet-down var(--cp-duration-fast) var(--cp-ease-exit) forwards; }
+.cp-sheet--center.is-closing { animation: cp-sheet-pop-out var(--cp-duration-fast) var(--cp-ease-exit) forwards; }
+@keyframes cp-fade-out { to { opacity: 0; } }
+@keyframes cp-sheet-down { to { transform: translateY(102%); } }
+@keyframes cp-sheet-pop-out { to { opacity: 0; transform: translate(-50%, -46%) scale(0.97); } }

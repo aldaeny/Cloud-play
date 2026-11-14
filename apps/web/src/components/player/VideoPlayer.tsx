@@ -3,13 +3,14 @@ import {usePrivateMediaUrl,PRIVATE_MEDIA_DENIED} from '../../lib/use-private-med
 import { usePlaybackMetrics } from '../../lib/use-playback-metrics';
 import { prepareMediaSession, releaseMediaSession } from '../../lib/media-session';
 
-import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, RotateCcw } from 'lucide-react';
+import { useCallback, useContext, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, RotateCcw, SkipBack, SkipForward, X } from 'lucide-react';
 import type Hls from 'hls.js';
 import type { MediaPlayerClass } from 'dashjs';
 import type { StreamType } from '../../types/channel';
 import { PlaybackPreferencesContext } from './PlaybackPreferences';
 import { getPrefsSnapshot } from '../../lib/preferences';
+import { useI18n } from '../../lib/i18n';
 
 type Track = { id: number; label: string };
 type Props = {
@@ -34,6 +35,7 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
   const privateResume=useRef<{input:string;time:number;paused:boolean}|null>(null);
   useEffect(() => () => { if(src.startsWith('/api/external/'))void releaseMediaSession(src).catch(()=>{}); },[src]);
   const preferences = useContext(PlaybackPreferencesContext);
+  const { t } = useI18n();
   const saved = getPrefsSnapshot();
   const shouldAutoPlay = autoPlay ?? (preferences.autoPlay && saved.playbackAuto);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -60,6 +62,9 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [offline, setOffline] = useState(false);
+  const [flash, setFlash] = useState<'back' | 'forward' | null>(null);
+  const lastTap = useRef<{ at: number; x: number } | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusRef = useRef(status);
   useEffect(() => { callbacks.current = { onError, onReady, onQualityChange, onProgress }; }, [onError, onReady, onQualityChange, onProgress]);
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -276,9 +281,35 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
   };
   const hasSettings = tracks.qualities.length > 1 || tracks.audio.length > 1 || tracks.subtitles.length > 0;
   const busy = status === 'loading' || status === 'buffering';
-  return <div ref={containerRef} className="cp-player media-player" dir="ltr" tabIndex={0} role="region" aria-label={`مشغل ${title}`} onKeyDown={onKeyDown} onPointerMove={showControls} onPointerDown={showControls} onFocusCapture={showControls} data-controls-hidden={!controlsVisible && status === 'playing' && !settingsOpen} data-playback-status={status}>
+  const hudClock = (value: number) => (!Number.isFinite(value) ? '0:00' : `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, '0')}`);
+  const remaining = Number.isFinite(duration) ? Math.max(0, duration - time) : 0;
+
+  /** Double-tap the left/right third of the picture to jump 10 seconds (iOS/Android). */
+  const onVideoPointerUp = (event: ReactPointerEvent<HTMLVideoElement>) => {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    if (!coarse || isLive) { if (!coarse) togglePlay(); return; }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const now = Date.now();
+    if (lastTap.current && now - lastTap.current.at < 320) {
+      const forward = x > rect.width / 2;
+      seek((videoRef.current?.currentTime ?? 0) + (forward ? 10 : -10));
+      setFlash(forward ? 'forward' : 'back');
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlash(null), 620);
+      lastTap.current = null;
+      showControls();
+      return;
+    }
+    lastTap.current = { at: now, x };
+    showControls();
+  };
+  useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
+
+  return <div ref={containerRef} className="cp-player media-player" dir="ltr" tabIndex={0} role="region" aria-label={`${t('common.play')} — ${title}`} onKeyDown={onKeyDown} onPointerMove={showControls} onPointerDown={showControls} onFocusCapture={showControls} data-controls-hidden={!controlsVisible && status === 'playing' && !settingsOpen} data-playback-status={status}>
     <video ref={videoRef} poster={poster} playsInline preload="metadata" muted={muted} aria-label={title}
-      onClick={() => { if (window.matchMedia('(pointer: coarse)').matches) showControls(); else togglePlay(); }}
+      onClick={() => { if (!window.matchMedia('(pointer: coarse)').matches) togglePlay(); }}
+      onPointerUp={onVideoPointerUp}
       onLoadedMetadata={() => { setDuration(videoRef.current?.duration ?? 0); if (type === 'mp4' || (type === 'hls' && !hlsRef.current)) { setStatus(current => current === 'blocked' || current === 'error' ? current : 'ready'); callbacks.current.onReady?.(); if (shouldAutoPlay&&!(privateResume.current?.input===requestedSrc&&privateResume.current.paused)) void play(); } }}
       onPlay={() => { setStatus('playing'); showControls(); }}
       onPlaying={() => { setStatus('playing'); setOffline(false); showControls(); }}
@@ -289,25 +320,55 @@ export function VideoPlayer({ src:requestedSrc, type, poster, title, isLive, aut
       onTimeUpdate={() => {const video=videoRef.current;setTime(video?.currentTime??0);if(video&&!isLive&&Number.isFinite(video.duration))callbacks.current.onProgress?.(Math.floor(video.currentTime),Math.floor(video.duration));}}
       onDurationChange={() => setDuration(videoRef.current?.duration ?? 0)}
       onEnded={() => setStatus('paused')}
-      onError={() => fail('تعذر قراءة الفيديو. قد يكون المصدر متوقفاً أو غير مدعوم أو محظوراً بواسطة CORS.')}/>
-    <div className="cp-player-top"><strong dir="auto">{title}</strong>{isLive && <span className="live-badge live-badge-live">LIVE</span>}</div>
-    {busy && <div className="cp-player-status" role="status"><span className="cp-player-spinner" aria-hidden="true"/><p>{offline ? 'بانتظار عودة الاتصال بالإنترنت…' : status === 'loading' ? 'جاري الاتصال بالبث…' : 'جاري تحميل البث…'}</p></div>}
-    {status === 'error' && <div className="cp-player-status" role="alert"><p>{error}</p><button type="button" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={18}/> إعادة المحاولة</button></div>}
-    {status === 'blocked' && <div className="cp-player-status" role="status"><p>اضغط تشغيل لبدء البث؛ المتصفح يحتاج تفاعلك أولاً.</p><button type="button" onClick={() => void play()}><Play size={18}/> تشغيل</button></div>}
-    {settingsOpen && hasSettings && <div className="cp-player-settings" role="group" aria-label="إعدادات البث" dir="rtl">
-      {tracks.qualities.length > 1 && <label>الجودة<select value={quality} onChange={event => chooseQuality(Number(event.target.value))}><option value={-1}>تلقائي</option>{tracks.qualities.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
-      {tracks.audio.length > 1 && <label>مسار الصوت<select value={audio} onChange={event => chooseAudio(Number(event.target.value))}>{tracks.audio.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
-      {tracks.subtitles.length > 0 && <label>الترجمة<select value={subtitle} onChange={event => chooseSubtitle(Number(event.target.value))}><option value={-1}>إيقاف</option>{tracks.subtitles.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
+      onError={() => fail(t('player.error'))}/>
+
+    <div className="cp-player-top">
+      <strong dir="auto">{title}</strong>
+      {isLive && <span className="live-badge live-badge-live"><span className="tw-live-dot" aria-hidden="true" />{t('player.live')}</span>}
+      <button type="button" className="cp-player-pill" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? t('player.exitFullscreen') : t('player.fullscreen')}>
+        {fullscreen ? <Minimize size={17} /> : <Maximize size={17} />}
+      </button>
+    </div>
+
+    {flash && <div className={`cp-player-flash cp-player-flash--${flash}`} aria-hidden="true"><span>{flash === 'forward' ? '+10' : '−10'}</span></div>}
+
+    {(status === 'paused' || status === 'ready') && (
+      <button type="button" className="cp-player-center" onClick={togglePlay} aria-label={t('player.play')}>
+        <Play size={30} fill="currentColor" />
+      </button>
+    )}
+
+    {busy && <div className="cp-player-status" role="status"><span className="cp-player-spinner" aria-hidden="true"/><p>{offline ? t('player.offline') : status === 'loading' ? t('player.loading') : t('player.buffering')}</p></div>}
+    {status === 'error' && <div className="cp-player-status" role="alert"><p>{error}</p><button type="button" className="cp-btn" data-variant="primary" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={18}/>{t('player.retry')}</button></div>}
+    {status === 'blocked' && <div className="cp-player-status" role="status"><p>{t('player.blocked')}</p><button type="button" className="cp-btn" data-variant="primary" onClick={() => void play()}><Play size={18}/>{t('player.play')}</button></div>}
+
+    {settingsOpen && hasSettings && <div className="cp-player-settings" role="dialog" aria-label={t('player.settings')} dir="auto">
+      <div className="cp-player-settings__head"><strong>{t('player.settings')}</strong><button type="button" className="cp-icon-btn" data-size="sm" onClick={() => setSettingsOpen(false)} aria-label={t('common.close')}><X size={15}/></button></div>
+      {tracks.qualities.length > 1 && <label>{t('player.quality')}<select value={quality} onChange={event => chooseQuality(Number(event.target.value))}><option value={-1}>{t('player.auto')}</option>{tracks.qualities.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
+      {tracks.audio.length > 1 && <label>{t('player.audio')}<select value={audio} onChange={event => chooseAudio(Number(event.target.value))}>{tracks.audio.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
+      {tracks.subtitles.length > 0 && <label>{t('player.subtitles')}<select value={subtitle} onChange={event => chooseSubtitle(Number(event.target.value))}><option value={-1}>{t('player.off')}</option>{tracks.subtitles.map(track => <option key={track.id} value={track.id}>{track.label}</option>)}</select></label>}
     </div>}
-    <div className="cp-player-bottom">
-      {!isLive && Number.isFinite(duration) && duration > 0 && <input className="cp-player-seek" type="range" min={0} max={duration} step={1} value={Math.min(time, duration)} onChange={event => seek(Number(event.target.value))} aria-label="موضع التشغيل" aria-valuetext={`${clock(time)} من ${clock(duration)}`}/>}
-      <button type="button" onClick={togglePlay} aria-label={status === 'playing' ? 'إيقاف مؤقت' : 'تشغيل'} disabled={status === 'loading' || status === 'error'}>{status === 'playing' ? <Pause size={23}/> : <Play size={23}/>}</button>
-      <button type="button" onClick={toggleMute} aria-label={muted ? 'إلغاء كتم الصوت' : 'كتم الصوت'} aria-pressed={muted}>{muted || volume === 0 ? <VolumeX size={20}/> : <Volume2 size={20}/>}</button>
-      <input className="cp-player-volume" type="range" min={0} max={1} step={.05} value={muted ? 0 : volume} onChange={event => changeVolume(Number(event.target.value))} aria-label="مستوى الصوت"/>
-      {!isLive && <span className="cp-player-time">{clock(time)} / {clock(duration)}</span>}
-      <span className="cp-player-spacer"/>
-      {hasSettings && <button type="button" onClick={() => setSettingsOpen(value => !value)} aria-label="إعدادات الجودة والصوت والترجمة" aria-expanded={settingsOpen}><Settings size={20}/></button>}
-      <button type="button" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}>{fullscreen ? <Minimize size={20}/> : <Maximize size={20}/>}</button>
+
+    <div className="cp-player-bottom" dir="auto">
+      {!isLive && Number.isFinite(duration) && duration > 0 && (
+        <div className="cp-player-seekrow">
+          <input className="cp-player-seek" type="range" min={0} max={duration} step={0.5} value={Math.min(time, duration)} onChange={event => seek(Number(event.target.value))} aria-label={t('player.seek')} aria-valuetext={`${hudClock(time)} / ${hudClock(duration)}`} style={{ ['--cp-slider-progress' as string]: `${duration ? (Math.min(time, duration) / duration) * 100 : 0}%` }} />
+          <span className="cp-player-time cp-num">{hudClock(time)}</span>
+          <span className="cp-player-time cp-player-time--remaining cp-num">−{hudClock(remaining)}</span>
+        </div>
+      )}
+      <div className="cp-player-bar">
+        <button type="button" className="cp-player-key" onClick={togglePlay} aria-label={status === 'playing' ? t('player.pause') : t('player.play')} disabled={status === 'loading' || status === 'error'}>
+          {status === 'playing' ? <Pause size={21} fill="currentColor" /> : <Play size={21} fill="currentColor" />}
+        </button>
+        {!isLive && <button type="button" className="cp-player-skip" onClick={() => seek(time - 10)} aria-label={t('player.back10')}><SkipBack size={18} /></button>}
+        {!isLive && <button type="button" className="cp-player-skip" onClick={() => seek(time + 10)} aria-label={t('player.forward10')}><SkipForward size={18} /></button>}
+        <button type="button" className="cp-player-key" onClick={toggleMute} aria-label={muted ? t('player.unmute') : t('player.mute')} aria-pressed={muted}>{muted || volume === 0 ? <VolumeX size={19} /> : <Volume2 size={19} />}</button>
+        <input className="cp-player-volume cp-slider" type="range" min={0} max={1} step={0.05} value={muted ? 0 : volume} onChange={event => changeVolume(Number(event.target.value))} aria-label={t('player.volume')} style={{ ['--cp-slider-progress' as string]: `${(muted ? 0 : volume) * 100}%` }} />
+        <span className="cp-player-spacer" />
+        {hasSettings && <button type="button" className="cp-player-key" onClick={() => setSettingsOpen(value => !value)} aria-label={t('player.settings')} aria-expanded={settingsOpen}><Settings size={19} /></button>}
+        <button type="button" className="cp-player-key cp-player-fullscreen" onClick={() => void toggleFullscreen()} aria-label={fullscreen ? t('player.exitFullscreen') : t('player.fullscreen')}>{fullscreen ? <Minimize size={19} /> : <Maximize size={19} />}</button>
+      </div>
     </div>
   </div>;
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { XtreamClient, XtreamCredentials, XtreamCategory, XtreamStream, XtreamMovie, XtreamSeries, XtreamEpisode, XtreamError, XtreamErrorCode, createClientFromStorage, saveCredentials, clearCredentials, hasStoredCredentials } from '../../lib/xtream-client';
-import type { Language } from './PublicTv';
+type Language = 'ar' | 'en';
 import { VideoPlayerModal } from '../player/VideoPlayerModal';
 import { getStreamType } from '../../lib/player-utils';
 import type { Channel } from '../../types/channel';
@@ -109,13 +109,15 @@ function toPlayerChannel(source: Playing, name: string): Channel {
     logo: '',
     streamUrl: source.url,
     streamType: source.hls ? 'hls' : source.container === 'mp4' ? 'mp4' : 'hls',
-    category: source.kind,
+    category: source.kind === 'live' ? 'general' : source.kind === 'movie' ? 'movies' : 'series',
     sourceGroup: source.kind,
     country: '',
     countryCode: '',
     language: '',
     isLive: source.kind === 'live',
     playable: true,
+    quality: '',
+    qualityLabel: '',
     epgId: '',
   };
 }
@@ -158,21 +160,6 @@ export default function XtreamPlayer({ language }: { language: Language }) {
 
   const message = useCallback((code: string) => t[code] || t.connectionError, [language, t]);
 
-  // Initialize: check for stored credentials
-  useEffect(() => {
-    const stored = createClientFromStorage();
-    if (stored) {
-      clientRef.current = stored;
-      const creds = stored.getCredentials();
-      setCredentials(creds);
-      setGate('ready');
-      setShowSavedNotice(true);
-      // Auto-load categories
-      loadGroups();
-    } else {
-      setGate('credentials');
-    }
-  }, []);
 
   const loadGroups = useCallback(async () => {
     const client = clientRef.current;
@@ -222,6 +209,24 @@ export default function XtreamPlayer({ language }: { language: Language }) {
       if (clientRef.current && current === requestId.current) setBusy(false);
     }
   }, [kind, gate]);
+
+  // Initialize: check for stored credentials (one-time, after mount).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- restoring a saved Xtream session after mount */
+    const stored = createClientFromStorage();
+    if (stored) {
+      clientRef.current = stored;
+      const creds = stored.getCredentials();
+      setCredentials(creds);
+      setGate('ready');
+      setShowSavedNotice(true);
+      // Auto-load categories
+      loadGroups();
+    } else {
+      setGate('credentials');
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
 
   const handleSaveCredentials = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -355,11 +360,11 @@ export default function XtreamPlayer({ language }: { language: Language }) {
         for (const ep of eps) {
           allEpisodes.push({
             id: ep.id,
-            name: ep.title || ep.info?.title || `Episode ${ep.episode_num}`,
+            name: ep.title || `Episode ${ep.id}`,
             icon: ep.info?.movie_image,
             ext: ep.container_extension,
             season: String(season),
-            episode: String(ep.episode_num),
+            episode: String(ep.id),
             plot: ep.info?.plot,
           });
         }
@@ -617,6 +622,8 @@ export default function XtreamPlayer({ language }: { language: Language }) {
               key={playing.url}
               channel={toPlayerChannel(playing, playing.name)}
               language={language}
+              favorite={false}
+              onFavoriteToggle={() => {}}
               onClose={() => { setPlaying(null); setPlayerError(''); }}
             />
             {playerError && <p className="pp-error">{t.playerError}</p>}

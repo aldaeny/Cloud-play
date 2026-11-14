@@ -20,7 +20,8 @@ if (!executable) {
   try {
     const sparticuz = (await import('@sparticuz/chromium')).default;
     executable = await sparticuz.executablePath();
-    args = sparticuz.args;
+    // `--single-process` crashes Chromium when a second context is opened.
+    args = [...sparticuz.args, '--disable-gpu', '--disable-dev-shm-usage'].filter(arg => arg !== '--single-process');
     if (existsSync('/tmp/al2023/lib')) env = { ...env, LD_LIBRARY_PATH: '/tmp/al2023/lib', FONTCONFIG_PATH: '/tmp/fonts' };
   } catch { executable = chromium.executablePath(); }
 }
