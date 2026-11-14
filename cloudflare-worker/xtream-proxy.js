@@ -39,13 +39,34 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 };
 
-// Helper to build upstream URL preserving query parameters
+// Helper to build upstream URL - extracts credentials from Xtream path format
+// Xtream paths: /live/username/password/stream_id.ts or /movie/username/password/stream_id.mp4
 function buildUpstreamUrl(baseUrl, path, searchParams) {
-  const url = new URL(path, baseUrl);
+  // Extract username/password from Xtream path format: /type/username/password/stream_id.ext
+  const pathMatch = path.match(/^\/(live|movie|series)\/([^\/]+)\/([^\/]+)\/(.+)$/);
+  let username = '';
+  let password = '';
+  let cleanPath = path;
+
+  if (pathMatch) {
+    username = pathMatch[2];
+    password = pathMatch[3];
+    cleanPath = '/' + pathMatch[1] + '/' + pathMatch[4];
+  }
+
+  const url = new URL(cleanPath, baseUrl);
+
+  // Add username/password to query if extracted from path
+  if (username && password) {
+    url.searchParams.set('username', username);
+    url.searchParams.set('password', password);
+  }
+
   // Copy all query parameters from the original request
   searchParams.forEach((value, key) => {
     url.searchParams.set(key, value);
   });
+
   return url;
 }
 
@@ -97,8 +118,10 @@ function rewritePlaylist(body, baseUrl, workerUrl) {
     .join('\n');
 }
 
-// Fetch from upstream with redirect handling (max 3 redirects, same origin only)
-async function fetchUpstream(url, headers, signal, maxRedirects = 3) {
+// Fetch from upstream with redirect handling (max 3 redirects)
+// For playlists: only same-origin redirects (security)
+// For binary media: allow cross-origin redirects (CDN segments)
+async function fetchUpstream(url, headers, signal, maxRedirects = 3, allowCrossOrigin = false) {
   let currentUrl = url;
   const origin = url.origin;
 
@@ -134,8 +157,9 @@ async function fetchUpstream(url, headers, signal, maxRedirects = 3) {
         throw new Error('Invalid redirect URL');
       }
 
-      // Only follow same-origin redirects
-      if (nextUrl.origin !== origin) {
+      // For playlists: only follow same-origin redirects (security)
+      // For binary media: allow cross-origin redirects (CDN segments)
+      if (nextUrl.origin !== origin && !allowCrossOrigin) {
         throw new Error('Cross-origin redirect blocked');
       }
 
@@ -242,7 +266,10 @@ export default {
         };
         if (rangeHeader) upstreamHeaders['Range'] = rangeHeader;
 
-        const upstreamResponse = await fetchUpstream(upstreamUrl, upstreamHeaders, controller.signal);
+        // For playlists: only same-origin redirects (security)
+    // For binary media: allow cross-origin redirects (CDN segments)
+    const allowCrossOrigin = !isPlaylistRequest;
+    const upstreamResponse = await fetchUpstream(upstreamUrl, upstreamHeaders, controller.signal, 3, allowCrossOrigin);
 
         // Handle upstream errors
         if (upstreamResponse.status === 401 || upstreamResponse.status === 403) {
