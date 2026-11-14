@@ -152,13 +152,13 @@ function PrivateVideo({ source, onError }: { source: Playing; onError: (message:
   return <video ref={ref} className="pp-video" controls autoPlay playsInline />;
 }
 
-export default function PrivatePlayer({ language }: { language: Language }) {
+export default function PrivatePlayer({ language, initialKind = 'live' }: { language: Language; initialKind?: Kind }) {
   const t = T[language];
   const { user, loading: accountLoading } = useAccount();
   const [gate, setGate] = useState<Gate>('loading');
   const [reason, setReason] = useState('');
   const [account, setAccount] = useState<AccountStatus | null>(null);
-  const [kind, setKind] = useState<Kind>('live');
+  const [kind, setKind] = useState<Kind>(initialKind);
   const [groups, setGroups] = useState<Group[]>([]);
   const [category, setCategory] = useState<Group | null>(null);
   const [items, setItems] = useState<Item[]>([]);

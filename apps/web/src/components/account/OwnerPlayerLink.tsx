@@ -53,15 +53,15 @@ export default function OwnerPlayerLink({ language }: { language: Language }) {
     return () => { cancelled = true; };
   }, [userId, loading]);
 
-  if (!owner || navigation.pathname === '/my-tv') return null;
+  if (navigation.pathname === '/my-tv') return null;
 
   const ar = language === 'ar';
   return (
     <Link href="/my-tv" className="owner-link">
       <span className="owner-link-mark" aria-hidden="true">▶</span>
       <span className="owner-link-text">
-        <strong>{ar ? 'مشغّلي الخاص' : 'My private player'}</strong>
-        <small>{ar ? 'قنواتك وأفلامك ومسلسلاتك بضغطة واحدة' : 'Your channels, movies and series in one tap'}</small>
+        <strong>{ar ? 'مشغل البث المباشر والأفلام' : 'IPTV Player & Cinema'}</strong>
+        <small>{ar ? 'قنوات وأفلام ومسلسلات السيرفر المباشرة مجاناً' : 'Server channels, movies & series'}</small>
       </span>
       <span className="owner-link-arrow" aria-hidden="true">{ar ? '←' : '→'}</span>
     </Link>

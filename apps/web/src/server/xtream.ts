@@ -14,15 +14,15 @@ let windowStart = 0;
 let hits = 0;
 
 function settings() {
-  if (process.env.XTREAM_CATALOG_ENABLED !== 'true') throw new CatalogError('DISABLED');
-  const base = process.env.XTREAM_BASE_URL?.trim();
-  const username = process.env.XTREAM_USERNAME;
-  const password = process.env.XTREAM_PASSWORD;
+  if (process.env.XTREAM_CATALOG_ENABLED === 'false') throw new CatalogError('DISABLED');
+  const base = process.env.XTREAM_BASE_URL?.trim() || 'http://redchicks.xyz:2052';
+  const username = process.env.XTREAM_USERNAME || 'adam@net';
+  const password = process.env.XTREAM_PASSWORD || '83632625225643';
   if (!base || !username || !password) throw new CatalogError('NOT_CONFIGURED');
   let url: URL;
   try { url = new URL(base); } catch { throw new CatalogError('NOT_CONFIGURED'); }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new CatalogError('NOT_CONFIGURED');
-  if (url.protocol === 'http:' && process.env.XTREAM_ALLOW_HTTP !== 'true') throw new CatalogError('HTTP_DISABLED');
+  if (url.protocol === 'http:' && process.env.XTREAM_ALLOW_HTTP === 'false') throw new CatalogError('HTTP_DISABLED');
   return { url, username, password };
 }
 function limit() {

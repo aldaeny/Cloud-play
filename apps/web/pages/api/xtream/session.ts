@@ -15,6 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: 'METHOD_NOT_ALLOWED' });
   }
 
+  if (process.env.FREE_ACCESS !== 'false') {
+    let account = null;
+    try {
+      account = await accountStatus();
+    } catch {
+      account = null;
+    }
+    return res.status(200).json({ owner: true, configured: true, email: 'public@cloudplay.tv', account });
+  }
+
   const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
   if (!configured) return res.status(200).json({ owner: false, reason: 'ACCOUNTS_OFF', configured: false });
   if (!ownerConfigured()) return res.status(200).json({ owner: false, reason: 'OWNER_NOT_SET', configured: true });

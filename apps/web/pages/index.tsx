@@ -164,10 +164,16 @@ export default function Home({curatedChannelCount}:{curatedChannelCount:number})
         <span className="home-live-go">{language === 'ar' ? 'شاهد الآن' : 'Watch now'} <span aria-hidden="true">↗</span></span>
       </Link>
       <Link href="/movies" className="home-live-card home-films-card">
-        <span className="home-live-badge home-films-badge">{language === 'ar' ? 'مجاني بالكامل' : 'COMPLETELY FREE'}</span>
-        <strong>{language === 'ar' ? `مكتبة أفلام · ${movies.length} فيلماً` : `Film library · ${movies.length} films`}</strong>
-        <small>{language === 'ar' ? 'أفلام كاملة من الملك العام: كلاسيكيات، كوميديا، نوار، رعب ومغامرة. بدون تسجيل دخول ولا اشتراك.' : 'Full public-domain features: classics, comedy, noir, horror and adventure. No sign-in, no subscription.'}</small>
+        <span className="home-live-badge home-films-badge">{language === 'ar' ? 'أفلام السيرفر' : 'IPTV MOVIES'}</span>
+        <strong>{language === 'ar' ? 'مكتبة أفلام VOD مباشرة' : 'VOD movie library'}</strong>
+        <small>{language === 'ar' ? 'أحدث الأفلام وتصنيفات متنوعة مع تشغيل فوري وسريع.' : 'Latest movies with multiple categories and instant playback.'}</small>
         <span className="home-live-go">{language === 'ar' ? 'تصفّح الأفلام' : 'Browse films'} <span aria-hidden="true">↗</span></span>
+      </Link>
+      <Link href="/series" className="home-live-card">
+        <span className="home-live-badge">{language === 'ar' ? 'مسلسلات' : 'SERIES'}</span>
+        <strong>{language === 'ar' ? 'مسلسلات ومواسم كاملة' : 'Full series and seasons'}</strong>
+        <small>{language === 'ar' ? 'تصفّح كل الحلقات والمواسم من سيرفر البث مجاناً بدون تسجيل دخول.' : 'Browse all episodes and seasons free with no sign-in.'}</small>
+        <span className="home-live-go">{language === 'ar' ? 'مشاهدة المسلسلات' : 'Watch series'} <span aria-hidden="true">↗</span></span>
       </Link>
     </div>
     <section className="home-highlights shell reveal-on-scroll" aria-labelledby="home-highlights-title">
