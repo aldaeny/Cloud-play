@@ -33,6 +33,16 @@ export const COMMUNITY_PROJECT_URL = 'https://github.com/iptv-org/iptv';
  */
 export const MAX_COMMUNITY_CHANNELS = 20000;
 
+/**
+ * Pseudo-region grouping the Arab states, whatever their geographic region.
+ * The guide opens on it so Iraqi and Arab viewers reach their channels first.
+ */
+export const ARAB_COUNTRY_CODES = [
+  'iq','sa','ae','bh','qa','kw','om','jo','lb','sy','ps',
+  'ye','eg','sd','ly','tn','dz','ma','mr','so','dj','km',
+];
+const ARAB = new Set(ARAB_COUNTRY_CODES);
+
 export type CommunityChannel = {
   /** Stable slug, safe to use as a React key and a favorites id. */
   id: string;
@@ -170,6 +180,7 @@ export function buildCommunityIndex(channels: CommunityChannel[]): CommunityInde
 }
 
 export type CommunityQuery = {
+  region?: string;
   country?: string;
   category?: string;
   q?: string;
@@ -189,6 +200,7 @@ export type CommunityPage = {
 
 /** Filter + paginate a parsed index. Pure, so the route stays thin and testable. */
 export function queryCommunity(index: CommunityIndex, query: CommunityQuery): CommunityPage {
+  const region = (query.region ?? '').toLowerCase().trim();
   const country = (query.country ?? '').toLowerCase().trim();
   const category = (query.category ?? '').toLowerCase().trim();
   const needle = (query.q ?? '').toLowerCase().trim().slice(0, 120);
@@ -200,6 +212,7 @@ export function queryCommunity(index: CommunityIndex, query: CommunityQuery): Co
   const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
 
   const matched = index.channels.filter(channel => {
+    if (region === 'arab' && !ARAB.has(channel.country)) return false;
     if (country && channel.country !== country) return false;
     if (category && !channel.categories.some(c => c.toLowerCase() === category)) return false;
     if (needle && !`${channel.name} ${channel.categories.join(' ')} ${channel.country}`.toLowerCase().includes(needle)) return false;
