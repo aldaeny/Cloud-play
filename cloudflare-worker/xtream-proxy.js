@@ -26,17 +26,9 @@
  * The worker will:
  * 1. Rewrite HLS manifests to proxy all segment URLs through itself
  * 2. Proxy binary media (TS segments, MP4, images) with Range support
- * 3. Cache manifests for 30s, segments for 5min
+ * 3. Cache manifests for 30s, segments for 5min (when KV enabled)
  * 4. Add CORS headers for browser playback
  */
-
-// Types for KV metadata
-interface CacheMetadata {
-  contentType: string;
-  contentLength?: number;
-  lastModified?: string;
-  etag?: string;
-}
 
 // CORS headers for browser playback
 const CORS_HEADERS = {
@@ -47,19 +39,23 @@ const CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 };
 
-// Helper to build upstream URL
-function buildUpstreamUrl(baseUrl: string, path: string): URL {
+// Helper to build upstream URL preserving query parameters
+function buildUpstreamUrl(baseUrl, path, searchParams) {
   const url = new URL(path, baseUrl);
+  // Copy all query parameters from the original request
+  searchParams.forEach((value, key) => {
+    url.searchParams.set(key, value);
+  });
   return url;
 }
 
 // Helper to check if URL is a playlist
-function isPlaylist(url: URL, contentType: string): boolean {
+function isPlaylist(url, contentType) {
   return url.pathname.toLowerCase().endsWith('.m3u8') || /mpegurl/i.test(contentType);
 }
 
 // Rewrite playlist to proxy all references
-function rewritePlaylist(body: string, baseUrl: string, workerUrl: string): string {
+function rewritePlaylist(body, baseUrl, workerUrl) {
   const base = new URL(baseUrl);
   const worker = new URL(workerUrl);
 
@@ -71,7 +67,7 @@ function rewritePlaylist(body: string, baseUrl: string, workerUrl: string): stri
 
       if (trimmed.startsWith('#')) {
         // Handle EXT-X-KEY, EXT-X-MAP, EXT-X-MEDIA with URI="..."
-        return line.replace(/URI="([^"]*)"/g, (_match, uri: string) => {
+        return line.replace(/URI="([^"]*)"/g, (_match, uri) => {
           try {
             const absolute = new URL(uri, base);
             // Only proxy same-origin references
@@ -102,12 +98,7 @@ function rewritePlaylist(body: string, baseUrl: string, workerUrl: string): stri
 }
 
 // Fetch from upstream with redirect handling (max 3 redirects, same origin only)
-async function fetchUpstream(
-  url: URL,
-  headers: HeadersInit,
-  signal: AbortSignal,
-  maxRedirects = 3
-): Promise<Response> {
+async function fetchUpstream(url, headers, signal, maxRedirects = 3) {
   let currentUrl = url;
   const origin = url.origin;
 
@@ -130,13 +121,13 @@ async function fetchUpstream(
     // Handle redirects manually
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
-      response.body?.cancel().catch(() => {});
+      response.body?.cancel?.().catch(() => {});
 
       if (!location) {
         throw new Error('Redirect without location header');
       }
 
-      let nextUrl: URL;
+      let nextUrl;
       try {
         nextUrl = new URL(location, currentUrl);
       } catch {
@@ -159,9 +150,10 @@ async function fetchUpstream(
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
+    const searchParams = url.searchParams;
 
     // Handle OPTIONS for CORS preflight
     if (request.method === 'OPTIONS') {
@@ -176,6 +168,23 @@ export default {
       return Response.json({ status: 'ok', timestamp: Date.now() });
     }
 
+    // Debug endpoint to test proxy with httpbin
+    if (path === '/debug/httpbin') {
+      try {
+        const resp = await fetch('https://httpbin.org/get', {
+          headers: { 'User-Agent': 'CloudPlay-Proxy/1.0' },
+          cf: { cacheTtl: 60 },
+        });
+        const text = await resp.text();
+        return new Response(text, {
+          status: resp.status,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        });
+      } catch (e) {
+        return Response.json({ error: e.message }, { status: 502 });
+      }
+    }
+
     // Proxy endpoint: /proxy/<path>
     if (path.startsWith('/proxy/')) {
       const proxyPath = path.slice(7); // Remove '/proxy/'
@@ -185,10 +194,10 @@ export default {
         return new Response('Server not configured', { status: 503 });
       }
 
-      // Build upstream URL
-      let upstreamUrl: URL;
+      // Build upstream URL with query parameters
+      let upstreamUrl;
       try {
-        upstreamUrl = buildUpstreamUrl(baseUrl, proxyPath);
+        upstreamUrl = buildUpstreamUrl(baseUrl, proxyPath, searchParams);
       } catch {
         return new Response('Invalid path', { status: 400 });
       }
@@ -206,12 +215,13 @@ export default {
       const timeout = setTimeout(() => controller.abort(), 30000);
 
       try {
-        // Check KV cache for playlists (30s TTL)
+        // Check KV cache for playlists (30s TTL) - only if KV is available
         const cacheKey = `playlist:${upstreamUrl.toString()}`;
         const isPlaylistRequest = upstreamUrl.pathname.toLowerCase().endsWith('.m3u8');
+        const hasKV = !!env.XTREAM_CACHE;
 
-        if (isPlaylistRequest && request.method === 'GET' && !rangeHeader) {
-          const cached = await env.XTREAM_CACHE.get(cacheKey, { type: 'json' }) as CacheMetadata & { body: string } | null;
+        if (hasKV && isPlaylistRequest && request.method === 'GET' && !rangeHeader) {
+          const cached = await env.XTREAM_CACHE.get(cacheKey, { type: 'json' });
           if (cached && cached.body) {
             const rewritten = rewritePlaylist(cached.body, baseUrl, url.origin);
             return new Response(rewritten, {
@@ -226,7 +236,7 @@ export default {
         }
 
         // Forward request to upstream
-        const upstreamHeaders: Record<string, string> = {
+        const upstreamHeaders = {
           'Accept': '*/*',
           'User-Agent': 'CloudPlay-Proxy/1.0',
         };
@@ -239,7 +249,7 @@ export default {
           return new Response('Upstream authentication failed', { status: 502 });
         }
         if (!upstreamResponse.ok && upstreamResponse.status !== 206) {
-          return new Response('Upstream error', { status: 502 });
+          return new Response('Upstream error: ' + upstreamResponse.status, { status: 502 });
         }
 
         const contentType = upstreamResponse.headers.get('content-type') || '';
@@ -250,11 +260,13 @@ export default {
           const body = await upstreamResponse.text();
           const rewritten = rewritePlaylist(body, baseUrl, url.origin);
 
-          // Cache playlist in KV for 30 seconds
-          await env.XTREAM_CACHE.put(cacheKey, JSON.stringify({
-            body: rewritten,
-            contentType: 'application/vnd.apple.mpegurl; charset=utf-8',
-          }), { expirationTtl: 30 });
+          // Cache playlist in KV for 30 seconds (if KV available)
+          if (hasKV) {
+            await env.XTREAM_CACHE.put(cacheKey, JSON.stringify({
+              body: rewritten,
+              contentType: 'application/vnd.apple.mpegurl; charset=utf-8',
+            }), { expirationTtl: 30 });
+          }
 
           return new Response(rewritten, {
             status: 200,
@@ -294,7 +306,7 @@ export default {
         if (error instanceof DOMException && error.name === 'AbortError') {
           return new Response('Upstream timeout', { status: 504 });
         }
-        return new Response('Proxy error', { status: 502 });
+        return new Response('Proxy error: ' + error.message, { status: 502 });
       } finally {
         clearTimeout(timeout);
       }
@@ -304,11 +316,3 @@ export default {
     return new Response('Not found', { status: 404 });
   },
 };
-
-// Environment bindings (configured in wrangler.toml)
-interface Env {
-  XTREAM_BASE_URL: string;
-  XTREAM_USERNAME: string;
-  XTREAM_PASSWORD: string;
-  XTREAM_CACHE: KVNamespace;
-}

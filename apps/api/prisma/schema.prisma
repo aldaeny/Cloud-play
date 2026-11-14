@@ -94,6 +94,7 @@ model FeatureFlag {
 
 model AppUser {
   playbackLeases ExternalPlaybackLease[]
+  refreshTokens  RefreshToken[]
   id              String @id @default(uuid()) @db.Uuid
   tenantId        String @db.Uuid
   tenant          Tenant @relation(fields: [tenantId], references: [id])
@@ -137,6 +138,23 @@ model Device {
   lastSeenAt    DateTime? @db.Timestamptz
   revokedAt     DateTime? @db.Timestamptz
   playbackSessions PlaybackSession[]
+  refreshTokens   RefreshToken[]
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  user        AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String   @db.Text @unique
+  deviceId    String?  @db.Uuid
+  device      Device?  @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  issuedAt    DateTime @default(now()) @db.Timestamptz
+  expiresAt   DateTime @db.Timestamptz
+  revokedAt   DateTime? @db.Timestamptz
+  replacedBy  String?  @db.Uuid
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 model Plan {

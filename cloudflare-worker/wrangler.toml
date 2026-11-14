@@ -3,24 +3,19 @@ main = "xtream-proxy.js"
 compatibility_date = "2024-11-14"
 compatibility_flags = ["nodejs_compat"]
 
-# KV Namespace for caching playlists (30s) and segments (5min)
-# Run: wrangler kv:namespace create "XTREAM_CACHE"
-# Then update the id below
-[[kv_namespaces]]
-binding = "XTREAM_CACHE"
-id = "your-kv-namespace-id-here"
-preview_id = "your-preview-kv-namespace-id-here"
+# KV Namespace - disabled for now
+# [[kv_namespaces]]
+# binding = "XTREAM_CACHE"
+# id = "your-kv-namespace-id-here"
+# preview_id = "your-preview-kv-namespace-id-here"
 
-# Environment variables (set as secrets with: wrangler secret put VAR_NAME)
-# XTREAM_BASE_URL = "http://redchicks.xyz:2052"
-# XTREAM_USERNAME = "adam@net"
-# XTREAM_PASSWORD = "83632625225643"
+# Environment variables (vars - not secrets, for temporary deployment)
+[vars]
+XTREAM_BASE_URL = "http://redchicks.xyz:2052"
+XTREAM_USERNAME = "adam@net"
+XTREAM_PASSWORD = "83632625225643"
 
 # Optional: Custom domain (configure in Cloudflare dashboard after deploy)
 # routes = [
 #   { pattern = "xtream-proxy.yourdomain.com/*", zone_name = "yourdomain.com" }
 # ]
-
-# Limits
-[limits]
-cpu_ms = 50000
