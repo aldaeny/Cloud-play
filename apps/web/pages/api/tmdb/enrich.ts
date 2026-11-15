@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { enforceRateLimit } from '../../src/server/rate-limit';
+import { enforceRateLimit } from '../../../src/server/rate-limit';
 
 /**
  * GET /api/tmdb/enrich?title=&year=&kind=movie|series
