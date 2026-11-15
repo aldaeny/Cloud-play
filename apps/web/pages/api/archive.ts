@@ -26,6 +26,14 @@ function asText(value: unknown): string {
   return '';
 }
 
+/**
+ * Family-safe filter — mirrors the community directory's ADULT pattern and
+ * extends it for this collection, where exploitation and nudist titles are
+ * common. The site is public and free for all ages, so we drop these entries
+ * ourselves rather than trusting the upstream collection to be clean.
+ */
+const ADULT = /\b(xxx|adult|porn|pornographic|erotic|erotica|sex|sexy|nudist|nude|nudity|molester|exploitation)\b/i;
+
 async function fetchJson(url: string): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -103,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const docs = Array.isArray(body.response?.docs) ? body.response.docs : [];
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
     return res.status(200).json({
-      data: docs.map(toRow).filter(row => row.id),
+      data: docs.map(toRow).filter(row => row.id).filter(row => !ADULT.test(row.title)),
       total: Number(body.response?.numFound) || docs.length,
       page,
     });
