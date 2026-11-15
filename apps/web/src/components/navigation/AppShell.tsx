@@ -9,10 +9,18 @@ import AppHeader from '../layout/AppHeader';
 import GlobalNav from '../nav/GlobalNav';
 import PageTransition from '../motion/PageTransition';
 import { NavigationProvider, isAppRoute, type NavigationAdapter } from './NavigationProvider';
-import { getPrefsSnapshot, SERVER_PREFS, subscribePrefs, setPref, notifyPrefsChanged } from '../../lib/preferences';
-import { readAppearance } from '../../lib/appearance';
+import { getPrefsSnapshot, SERVER_PREFS, subscribePrefs } from '../../lib/preferences';
+import { useAppearance } from '../../lib/use-appearance';
+import SkipLink from './SkipLink';
 
-
+/**
+ * App Router shell (/live and /live/[id]).
+ *
+ * It supplies the router adapter, the account context, the shared header, the
+ * page transition and the floating dock. Appearance and language come from the
+ * providers mounted in the root layout — this shell only mirrors the viewing
+ * preferences onto `.site` for the legacy stylesheet.
+ */
 export default function AppShell({ children }: { children: ReactNode }) {
   const brand = useBranding();
   const router = useRouter();
@@ -20,13 +28,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = currentPath ?? '/live';
   const listeners = useRef(new Set<() => void>());
   const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
-  useEffect(() => { readAppearance(); notifyPrefsChanged(); }, []);
-  useEffect(() => {
-    document.documentElement.lang = prefs.language;
-    document.documentElement.dir = prefs.language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.style.colorScheme = prefs.theme;
-  }, [prefs.language, prefs.theme]);
+  const appearance = useAppearance();
+
   useEffect(() => { listeners.current.forEach(listener => listener()); }, [pathname]);
+
   const navigation = useMemo<NavigationAdapter>(() => ({
     pathname,
     push: async href => {
@@ -35,22 +40,31 @@ export default function AppShell({ children }: { children: ReactNode }) {
     },
     subscribe: listener => {
       listeners.current.add(listener);
-      return () => listeners.current.delete(listener);
+      return () => { listeners.current.delete(listener); };
     },
   }), [pathname, router]);
-  const ar = prefs.language === 'ar';
-  const classes = ['site', 'section-site', `theme-${prefs.theme}`, prefs.reduceMotion ? 'motion-off' : '', !prefs.glow ? 'no-glow' : '', prefs.solidPanels ? 'solid-panels' : '', prefs.textSize === 'large' ? 'text-large' : '', prefs.highContrast ? 'high-contrast' : ''].filter(Boolean).join(' ');
-  return <NavigationProvider value={navigation}>
-    <AccountProvider>
-      <PageTransition>
-        <div className={classes} style={brandingStyle(brand,prefs.theme)} dir={ar ? 'rtl' : 'ltr'}>
-          <AppHeader language={prefs.language} theme={prefs.theme}
-            onToggleLanguage={() => setPref('cloudplay-language', ar ? 'en' : 'ar')}
-            onToggleTheme={() => setPref('cloudplay-theme', prefs.theme === 'dark' ? 'light' : 'dark')} />
-          {children}
-        </div>
-      </PageTransition>
-      <GlobalNav />
-    </AccountProvider>
-  </NavigationProvider>;
+
+  const classes = [
+    'site', 'section-site', `theme-${appearance.theme === 'black' ? 'dark' : appearance.theme}`,
+    appearance.reduceMotion ? 'motion-off' : '',
+    !prefs.glow ? 'no-glow' : '',
+    prefs.solidPanels ? 'solid-panels' : '',
+    prefs.textSize === 'large' ? 'text-large' : '',
+    prefs.highContrast ? 'high-contrast' : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <NavigationProvider value={navigation}>
+      <AccountProvider>
+        <SkipLink />
+        <PageTransition>
+          <div className={classes} style={brandingStyle(brand, appearance.theme)}>
+            <AppHeader accountHref="/login" />
+            <div id="main">{children}</div>
+          </div>
+        </PageTransition>
+        <GlobalNav />
+      </AccountProvider>
+    </NavigationProvider>
+  );
 }

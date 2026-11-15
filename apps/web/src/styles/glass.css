@@ -1,0 +1,340 @@
+/* ============================================================================
+   CLOUD PLAY — LIQUID GLASS MATERIALS
+   ----------------------------------------------------------------------------
+   One material recipe for every surface: a translucent fill, a moving sheen, a
+   1px light rim and a soft ambient shadow. Depth is expressed with light, never
+   with heavy borders — the Apple glass language, tuned for Arabic and English,
+   for dark and light, for touch and pointers.
+
+   Classes are additive (`cp-glass cp-glass--thick`), so any component can opt in
+   without adopting a whole layout.
+   ========================================================================== */
+
+.cp-glass {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--cp-glass-rim);
+  border-radius: var(--cp-radius-lg);
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  transition:
+    background-color var(--cp-duration-base) var(--cp-ease-standard),
+    border-color var(--cp-duration-base) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard),
+    transform var(--cp-duration-fast) var(--cp-ease-spring);
+}
+
+/* Specular rim: a thin conic highlight that reads as a polished edge. It is
+   painted with a mask so it never covers the content or the blur. */
+.cp-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: var(--cp-rim-gradient);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.85;
+}
+
+.cp-glass--thin {
+  background-color: var(--cp-glass-fill);
+  -webkit-backdrop-filter: var(--cp-material-thin);
+  backdrop-filter: var(--cp-material-thin);
+  border-radius: var(--cp-radius-md);
+  box-shadow: var(--cp-elev-1);
+}
+.cp-glass--thick {
+  background-color: var(--cp-glass-fill-2);
+  -webkit-backdrop-filter: var(--cp-material-thick);
+  backdrop-filter: var(--cp-material-thick);
+  border-radius: var(--cp-radius-xl);
+  box-shadow: var(--cp-elev-2), inset 0 1px 0 var(--cp-glass-highlight);
+}
+.cp-glass--solid {
+  background-image: none;
+  background-color: var(--cp-glass-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.cp-glass--flush { box-shadow: none; }
+.cp-glass--pill { border-radius: var(--cp-radius-pill); }
+.cp-glass--round { border-radius: 50%; }
+.cp-glass--flat { background-image: none; }
+
+/* Interactive glass: lifts on hover, compresses on press, in every direction. */
+.cp-glass--interactive { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) {
+  .cp-glass--interactive:hover {
+    background-color: var(--cp-glass-fill-2);
+    border-color: var(--cp-glass-rim-strong);
+    box-shadow: var(--cp-elev-2), inset 0 1px 0 var(--cp-glass-highlight);
+    transform: translateY(-1px);
+  }
+}
+.cp-glass--interactive:active {
+  transform: scale(0.985);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  transition-duration: var(--cp-duration-instant);
+}
+.cp-glass--interactive:focus-visible {
+  outline: 2px solid var(--cp-focus);
+  outline-offset: 3px;
+}
+:root[data-platform='android'] .cp-glass--interactive:active { transform: none; }
+
+/* ---- Ambient colour orbs (decorative, never block input) ------------------ */
+.cp-orb {
+  position: absolute;
+  z-index: 0;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.55;
+  background: var(--cp-aurora);
+}
+.cp-orb--blue { background: var(--cp-ambient-blue); }
+.cp-orb--violet { background: var(--cp-ambient-violet); }
+.cp-orb--magenta { background: var(--cp-ambient-magenta); }
+:root.no-glow .cp-orb { display: none; }
+
+/* ---- Surface shells ------------------------------------------------------- */
+.cp-surface {
+  position: relative;
+  border-radius: var(--cp-radius-xl);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1);
+  overflow: hidden;
+}
+.cp-surface--padding { padding: clamp(20px, 2.4vw, 32px); }
+
+.cp-panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--cp-space-3); margin-block-end: var(--cp-space-4); }
+.cp-panel-title { font-size: var(--cp-text-title3); font-weight: var(--cp-weight-semibold); letter-spacing: -0.01em; }
+.cp-panel-sub { font-size: var(--cp-text-caption); color: var(--cp-ink-2); margin-block-start: 4px; }
+
+/* ---- Chips & badges ------------------------------------------------------- */
+.cp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background: var(--cp-glass-fill);
+  -webkit-backdrop-filter: var(--cp-material-thin);
+  backdrop-filter: var(--cp-material-thin);
+  color: var(--cp-ink-2);
+  font-size: var(--cp-text-micro);
+  font-weight: var(--cp-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:root[lang='ar'] .cp-badge { letter-spacing: normal; text-transform: none; font-size: var(--cp-text-caption); }
+.cp-badge--accent {
+  color: var(--cp-ink);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--cp-accent) 26%, transparent), color-mix(in srgb, var(--cp-accent-strong) 22%, transparent)),
+    var(--cp-glass-fill);
+  border-color: color-mix(in srgb, var(--cp-accent) 42%, transparent);
+}
+.cp-badge--live { color: #fff; background: color-mix(in srgb, #ff2d6f 82%, #000); border-color: rgba(255, 255, 255, 0.28); }
+.cp-badge__dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.cp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background: var(--cp-glass-fill);
+  -webkit-backdrop-filter: var(--cp-material-thin);
+  backdrop-filter: var(--cp-material-thin);
+  color: var(--cp-ink-2);
+  font-size: var(--cp-text-callout);
+  font-weight: var(--cp-weight-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--cp-duration-fast) var(--cp-ease-standard),
+              background-color var(--cp-duration-fast) var(--cp-ease-standard),
+              border-color var(--cp-duration-fast) var(--cp-ease-standard),
+              transform var(--cp-duration-fast) var(--cp-ease-spring);
+}
+@media (hover: hover) { .cp-chip:hover { color: var(--cp-ink); border-color: var(--cp-glass-rim-strong); } }
+.cp-chip:active { transform: scale(0.97); }
+.cp-chip[aria-pressed='true'],
+.cp-chip.is-selected,
+.cp-chip[data-selected='true'] {
+  color: var(--cp-ink);
+  border-color: color-mix(in srgb, var(--cp-accent) 55%, transparent);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--cp-accent) 30%, transparent), color-mix(in srgb, var(--cp-accent-strong) 26%, transparent)),
+    var(--cp-glass-fill-2);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cp-accent) 18%, transparent), 0 10px 30px -18px color-mix(in srgb, var(--cp-accent) 80%, transparent);
+}
+
+.cp-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--cp-radius-pill);
+  background: var(--cp-accent-soft);
+  color: var(--cp-ink);
+  font-size: var(--cp-text-micro);
+  font-weight: var(--cp-weight-semibold);
+}
+
+/* ---- Media ----------------------------------------------------------------- */
+.cp-media {
+  position: relative;
+  overflow: hidden;
+  background: var(--cp-glass-fill-2);
+  border-radius: var(--cp-radius-md);
+}
+.cp-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cp-media__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(3, 5, 10, 0.92) 0%, rgba(3, 5, 10, 0.35) 42%, transparent 72%);
+}
+:root[data-theme='light'] .cp-media__scrim {
+  background: linear-gradient(to top, rgba(8, 16, 32, 0.78) 0%, rgba(8, 16, 32, 0.22) 46%, transparent 74%);
+}
+
+/* ---- Hero scrim ----------------------------------------------------------- */
+.cp-hero-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(4, 6, 12, 0.94) 0%, rgba(4, 6, 12, 0.70) 42%, rgba(4, 6, 12, 0.18) 72%, transparent 100%),
+    linear-gradient(to top, var(--cp-bg) 0%, transparent 42%);
+}
+:root[dir='rtl'] .cp-hero-scrim {
+  background:
+    linear-gradient(-100deg, rgba(4, 6, 12, 0.94) 0%, rgba(4, 6, 12, 0.70) 42%, rgba(4, 6, 12, 0.18) 72%, transparent 100%),
+    linear-gradient(to top, var(--cp-bg) 0%, transparent 42%);
+}
+:root[data-theme='light'] .cp-hero-scrim {
+  background:
+    linear-gradient(100deg, rgba(6, 12, 26, 0.86) 0%, rgba(6, 12, 26, 0.52) 46%, rgba(6, 12, 26, 0.06) 78%, transparent 100%),
+    linear-gradient(to top, var(--cp-bg) 0%, transparent 38%);
+}
+:root[data-theme='light'][dir='rtl'] .cp-hero-scrim {
+  background:
+    linear-gradient(-100deg, rgba(6, 12, 26, 0.86) 0%, rgba(6, 12, 26, 0.52) 46%, rgba(6, 12, 26, 0.06) 78%, transparent 100%),
+    linear-gradient(to top, var(--cp-bg) 0%, transparent 38%);
+}
+.cp-on-media { color: #f7f9ff; }
+.cp-on-media :is(p, small, .cp-type-callout) { color: rgba(240, 245, 255, 0.78); }
+
+/* ---- Rails / grids -------------------------------------------------------- */
+.cp-rail {
+  display: flex;
+  gap: var(--cp-space-4);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding-block: 4px 12px;
+  padding-inline: max(0px, calc((100vw - 1240px) / 2));
+  scroll-padding-inline-start: max(0px, calc((100vw - 1240px) / 2));
+}
+.cp-rail::-webkit-scrollbar { display: none; }
+.cp-rail > * { scroll-snap-align: start; flex: 0 0 auto; }
+@media (max-width: 1240px) {
+  .cp-rail { padding-inline: 16px; scroll-padding-inline-start: 16px; }
+}
+
+.cp-grid {
+  display: grid;
+  gap: var(--cp-space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+
+/* ---- Skeleton / loading --------------------------------------------------- */
+.cp-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--cp-glass-fill);
+  border-radius: var(--cp-radius-md);
+}
+.cp-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--cp-ink) 10%, transparent), transparent);
+  animation: cp-shimmer 1.6s var(--cp-ease-standard) infinite;
+}
+:root[dir='rtl'] .cp-skeleton::after { animation-direction: reverse; }
+@keyframes cp-shimmer { to { transform: translateX(100%); } }
+
+/* ---- Portals, sheets, scrims --------------------------------------------- */
+.cp-portal { position: relative; z-index: 120; }
+.cp-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  background: color-mix(in srgb, #02040a 62%, transparent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: cp-fade var(--cp-duration-base) var(--cp-ease-enter) both;
+}
+:root[data-theme='light'] .cp-scrim { background: color-mix(in srgb, #16233c 42%, transparent); }
+@keyframes cp-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Glass elevation utilities used by menus/popovers. */
+.cp-popover {
+  position: fixed;
+  /* Until the anchoring pass writes coordinates the menu must not paint in its
+     static position (end of the document). */
+  opacity: 1;
+  z-index: 130;
+  min-width: 180px;
+  padding: 6px;
+  border-radius: var(--cp-radius-md);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill-3);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material-thick);
+  backdrop-filter: var(--cp-material-thick);
+  box-shadow: var(--cp-elev-3), inset 0 1px 0 var(--cp-glass-highlight);
+  animation: cp-pop-in var(--cp-duration-base) var(--cp-ease-spring) both;
+  transform-origin: var(--cp-origin, top center);
+}
+@keyframes cp-pop-in {
+  from { opacity: 0; transform: scale(0.94) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.cp-popover--measuring {
+  opacity: 0;
+  pointer-events: none;
+  animation: none;
+}

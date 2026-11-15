@@ -1,193 +1,182 @@
 'use client';
 
-import { Tv } from 'lucide-react';
 import Link from 'next/link';
-import { useNavigation } from '../navigation/NavigationProvider';
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import {
+  useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+} from 'react';
 import Icon from '../icons/Icon';
+import { useNavigation } from '../navigation/NavigationProvider';
+import { useI18n } from '../../lib/i18n';
 import { NAV_ROUTES, activeRoute, type NavRoute } from '../../lib/nav-routes';
+import { haptic } from '../../lib/appearance';
 
 /**
- * GLOBAL NAVIGATION — rendered once in `_app`, so it persists across every
- * client-side navigation (never remounts, never disappears on scroll). It is a
- * sibling of `.site`, so the page fold/unfold transition happens behind it while
- * the bar stays fixed.
+ * GLOBAL DOCK — rendered once, outside `.site`, so it persists across every
+ * client-side navigation and both routers.
  *
- * Shape follows the reference: a single black floating pill where the ACTIVE
- * destination expands into an icon + label capsule and the rest stay icon-only.
- * The capsule morphs between items with a CSS flex-grow transition (no DOM
- * measuring, no timer tween), so it is correct in RTL and LTR, through the page
- * fold/unfold, and on every platform.
+ * A single floating glass pill: the active destination expands into an icon +
+ * label capsule, the rest stay icon-only. The capsule is pure CSS (the active
+ * item's padding and the label's max-width animate), so the row reflows
+ * correctly in RTL and LTR with no measuring and no timer tween.
+ *
+ * Platform behaviour:
+ *   · iPhone  — spring press feedback, springy capsule travel
+ *   · Android — ripple-free press (no scale), 48dp targets
+ *   · TV      — enlarged targets, arrow-key focus roving, visible focus ring
  */
 export default function GlobalNav() {
   const navigation = useNavigation();
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [lang, setLang] = useState<'ar' | 'en'>('ar');
-  const [flags, setFlags] = useState({ motionOff: false, noGlow: false, solid: false });
+  const { t } = useI18n();
   const [playerOpen, setPlayerOpen] = useState(false);
   const [popover, setPopover] = useState<NavRoute | null>(null);
-  const [anchor, setAnchor] = useState<{ x: number; y: number; placement: 'top' | 'bottom' } | null>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const btnRefs = useRef<Map<string, HTMLAnchorElement>>(new Map());
-  const barRef = useRef<HTMLElement | null>(null);
-  const pendingPopover = useRef<string | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingPopover = useRef<string | null>(null);
 
   const pathname = navigation.pathname;
   const active = activeRoute(pathname);
-  const ar = lang === 'ar';
 
-  // Keep theme / language / viewing preferences in sync with the active page
-  // (pages own `.site` classes and <html lang/dir>; we observe, never duplicate).
-  useEffect(() => {
-    const sync = () => {
-      const site = document.querySelector('.site');
-      setTheme(site?.classList.contains('theme-light') ? 'light' : 'dark');
-      setLang(document.documentElement.lang === 'en' ? 'en' : 'ar');
-      setFlags({
-        motionOff: !!site?.classList.contains('motion-off'),
-        noGlow: !!site?.classList.contains('no-glow'),
-        solid: !!site?.classList.contains('solid-panels'),
-      });
-    };
-    sync();
-    const htmlObs = new MutationObserver(sync);
-    htmlObs.observe(document.documentElement, { attributes: true, attributeFilter: ['lang', 'dir'] });
-    let siteObs: MutationObserver | null = null;
-    const attach = () => {
-      siteObs?.disconnect();
-      const site = document.querySelector('.site');
-      if (site) { siteObs = new MutationObserver(sync); siteObs.observe(site, { attributes: true, attributeFilter: ['class'] }); }
-      sync();
-    };
-    attach();
-    const unsubscribeAttach = navigation.subscribe(attach);
-    return () => { htmlObs.disconnect(); siteObs?.disconnect(); unsubscribeAttach(); };
-  }, [navigation]);
-
-  // Reserve space + hide the legacy per-page nav rows while this bar is mounted.
+  // Reserve space and hide legacy per-page nav rows while the dock is mounted.
   useEffect(() => {
     document.body.classList.add('cp-has-global-nav');
     return () => document.body.classList.remove('cp-has-global-nav');
   }, []);
 
-  // Hide the bar while a media player is open so it never covers player controls.
+  // Hide the dock while a media player is open (a minimised player keeps it).
   useEffect(() => {
-    // A minimized floating player keeps playing while browsing: it must not hide the dock.
-    const check = () => setPlayerOpen([...document.querySelectorAll('.media-viewer, .cp-player')].some(node => !node.closest('[data-mini-player="true"]')));
+    const check = () => setPlayerOpen(
+      [...document.querySelectorAll('.media-viewer, .cp-player')].some(node => !node.closest('[data-mini-player="true"]')),
+    );
     check();
-    const obs = new MutationObserver(check);
-    obs.observe(document.body, { childList: true, subtree: true });
-    const unsubscribeCheck = navigation.subscribe(check);
-    return () => { obs.disconnect(); unsubscribeCheck(); };
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true });
+    const unsubscribe = navigation.subscribe(check);
+    return () => { observer.disconnect(); unsubscribe(); };
   }, [navigation]);
 
   const showPopover = useCallback((route: NavRoute) => {
-    const el = btnRefs.current.get(route.href);
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    // The dock is fixed at the bottom on every platform, so the card always
-    // unfolds upward from the active button.
-    setAnchor({ x: r.left + r.width / 2, y: r.top, placement: 'top' });
+    const element = btnRefs.current.get(route.href);
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    setAnchor({ x: rect.left + rect.width / 2, y: rect.top });
     setPopover(route);
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => setPopover(null), 4200);
+    hideTimer.current = setTimeout(() => setPopover(null), 4600);
   }, []);
 
-  // After a nav-button navigation completes, pop the detail card from the now-active button.
+  // After navigating from a dock button, pop the detail card from its new home.
   useEffect(() => {
-    const onComplete = () => {
+    const complete = () => {
       const href = pendingPopover.current;
       pendingPopover.current = null;
       if (!href) return;
-      const route = NAV_ROUTES.find(r => r.href === href);
+      const route = NAV_ROUTES.find(item => item.href === href);
       const current = activeRoute(window.location.pathname);
-      if (route && current?.href === route.href) setTimeout(() => showPopover(route), 80);
+      if (route && current?.href === route.href) window.setTimeout(() => showPopover(route), 90);
     };
-    const unsubscribe = navigation.subscribe(onComplete);
-    return () => { unsubscribe(); };
+    return navigation.subscribe(complete);
   }, [navigation, showPopover]);
 
-  // Dismiss on outside interaction or Escape.
   useEffect(() => {
     if (!popover) return;
-    const onDown = (e: PointerEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest('.cp-global-nav')) setPopover(null);
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target as HTMLElement).closest('.cp-global-nav')) setPopover(null);
     };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPopover(null); };
-    document.addEventListener('pointerdown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setPopover(null); };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
   }, [popover]);
 
   useEffect(() => () => { if (hideTimer.current) clearTimeout(hideTimer.current); }, []);
 
-  const onNavClick = (route: NavRoute) => (e: MouseEvent) => {
-    if (active?.href === route.href) { e.preventDefault(); showPopover(route); return; }
-    // Queue the detail card; PageTransition performs the animated push. The
-    // route-match check in onComplete guarantees only one card, for the page we
-    // actually land on (rapid presses during a transition are ignored by the lock).
+  const onNavClick = (route: NavRoute) => (event: MouseEvent) => {
+    haptic('light');
+    if (active?.href === route.href) {
+      event.preventDefault();
+      showPopover(route);
+      return;
+    }
     pendingPopover.current = route.href;
   };
 
-  // Position the fixed popover near its anchor, clamped to the viewport.
-  let popStyle: CSSProperties = {};
+  // TV / keyboard: arrows move focus across the dock (logical direction).
+  const onNavKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    const links = Array.from(btnRefs.current.values()).filter(Boolean);
+    const index = links.indexOf(document.activeElement as HTMLAnchorElement);
+    if (index < 0) return;
+    event.preventDefault();
+    const rtl = document.documentElement.dir === 'rtl';
+    const forward = event.key === 'ArrowRight' ? !rtl : rtl;
+    const next = (index + (forward ? 1 : -1) + links.length) % links.length;
+    links[next]?.focus({ preventScroll: true });
+  };
+
+  let popoverStyle: CSSProperties = {};
   if (anchor) {
-    const width = Math.min(280, window.innerWidth - 24);
+    const width = Math.min(300, window.innerWidth - 24);
     const left = Math.max(12, Math.min(anchor.x - width / 2, window.innerWidth - width - 12));
     const originX = Math.max(18, Math.min(anchor.x - left, width - 18));
-    popStyle = anchor.placement === 'bottom'
-      ? { left, top: anchor.y + 12, width, transformOrigin: `${originX}px 0` }
-      : { left, bottom: window.innerHeight - anchor.y + 12, width, transformOrigin: `${originX}px 100%` };
+    popoverStyle = {
+      left,
+      bottom: window.innerHeight - anchor.y + 12,
+      width,
+      transformOrigin: `${originX}px 100%`,
+    };
   }
 
   return (
     <div
-      className={`cp-global-nav theme-${theme}${flags.motionOff ? ' motion-off' : ''}${flags.noGlow ? ' no-glow' : ''}${flags.solid ? ' solid-panels' : ''}${playerOpen ? ' cp-nav-hidden' : ''}`}
+      className={`cp-global-nav${playerOpen ? ' cp-nav-hidden' : ''}`}
       aria-hidden={playerOpen || undefined}
-      dir={ar ? 'rtl' : 'ltr'}
     >
-      <nav className="cp-nav-bar" ref={barRef} aria-label={ar ? 'التنقل الرئيسي' : 'Main navigation'}>
+      <nav className="cp-nav-bar" aria-label={t('nav.main')} onKeyDown={onNavKeyDown}>
         {NAV_ROUTES.map(route => {
           const isActive = active?.href === route.href;
-          const label = ar ? route.ar : route.en;
+          const label = t(route.labelKey);
           return (
             <Link
               key={route.href}
               href={route.href}
-              ref={el => { if (el) btnRefs.current.set(route.href, el); else btnRefs.current.delete(route.href); }}
+              ref={element => {
+                if (element) btnRefs.current.set(route.href, element);
+                else btnRefs.current.delete(route.href);
+              }}
               className={`cp-nav-btn${isActive ? ' cp-nav-active' : ''}`}
               tabIndex={playerOpen ? -1 : 0}
               aria-current={isActive ? 'page' : undefined}
               aria-label={label}
+              title={label}
               onClick={onNavClick(route)}
             >
-              <span className="cp-nav-ico">
-                {route.icon === 'tv' ? <Tv size={21} strokeWidth={1.9} /> : <Icon name={route.icon} size={21} />}
-              </span>
+              <span className="cp-nav-ico"><Icon name={route.icon} size={22} /></span>
               <span className="cp-nav-label">{label}</span>
             </Link>
           );
         })}
       </nav>
-      {/* Detached circular search, exactly as in the reference. CSS shows it only
-          from tablet width up; phones keep the full-width pill. */}
       <Link
         href="/search"
         className="cp-nav-search"
         tabIndex={playerOpen ? -1 : 0}
-        aria-label={ar ? 'البحث في الأفلام المتاحة' : 'Search available films'}
+        aria-label={t('header.search')}
+        title={t('common.search')}
+        onClick={() => haptic('light')}
       >
-        <Icon name="search" size={21} />
+        <Icon name="search" size={22} />
       </Link>
       {popover && anchor && (
-        <div className={`cp-nav-popover cp-pop-${anchor.placement}`} role="status" style={popStyle}>
-          <span className="cp-nav-popover-icon">
-            {popover.icon === 'tv' ? <Tv size={20} /> : <Icon name={popover.icon} size={20} />}
-          </span>
+        <div className="cp-nav-popover" role="status" style={popoverStyle}>
+          <span className="cp-nav-popover-icon"><Icon name={popover.icon} size={20} /></span>
           <div className="cp-nav-popover-copy">
-            <strong>{ar ? popover.ar : popover.en}</strong>
-            <p>{ar ? popover.descAr : popover.descEn}</p>
+            <strong>{t(popover.labelKey)}</strong>
+            <p>{t(popover.descKey)}</p>
           </div>
         </div>
       )}

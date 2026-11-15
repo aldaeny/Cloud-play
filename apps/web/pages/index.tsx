@@ -1,190 +1,325 @@
-import { useBranding } from '../src/components/brand/BrandingProvider';
-import { brandingStyle } from '../src/components/brand/branding-style';
 import Head from 'next/head';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import Image from 'next/image';
+import { useRouter } from 'next/router';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import type { GetStaticProps } from 'next';
 import IntroLayer from '../src/components/intro/IntroLayer';
-import { readAppearance } from '../src/lib/appearance';
-import ReferenceReel from '../src/components/carousel/ReferenceReel';
 import CloudPlayBrand from '../src/components/brand/CloudPlayBrand';
-import { PUBLIC_FILMS as movies } from '../src/server/public-films';
-import { PlaybackPreferencesContext } from '../src/components/player/PlaybackPreferences';
-import { useEffect, useRef, useState } from 'react';
-import Icon from '../src/components/icons/Icon';
 import AppHeader from '../src/components/layout/AppHeader';
+import SiteFooter from '../src/components/layout/SiteFooter';
 import SearchField from '../src/components/search/SearchField';
-import OwnerPlayerLink from '../src/components/account/OwnerPlayerLink';
+import FilmCard from '../src/components/movies/FilmCard';
+import Rail from '../src/components/ui/Rail';
+import Icon from '../src/components/icons/Icon';
+import { useBranding } from '../src/components/brand/BrandingProvider';
+import { brandingStyle } from '../src/components/brand/branding-style';
+import { useI18n } from '../src/lib/i18n';
+import { useAppearance } from '../src/lib/use-appearance';
+import { getPrefsSnapshot, SERVER_PREFS, subscribePrefs, LIBRARY_EVENT } from '../src/lib/preferences';
+import { PUBLIC_FILMS, filmPoster, getPublicFilm } from '../src/server/public-films';
 import { getPublicChannels } from '../src/server/public-tv';
 
-type Language = 'ar' | 'en';
-// Sample art is retained solely for explicit local design preview, never shown by default.
-const showDesignPreview = process.env.NEXT_PUBLIC_DESIGN_PREVIEW === 'true';
-const items = [
-  { id: 'horizon', image: '/art/horizon.jpg', en: 'Beyond Horizon', ar: 'ما وراء الأفق', genreEn: 'SCI-FI · ADVENTURE', genreAr: 'خيال علمي · مغامرة', number: '01' },
-  { id: 'signal', image: '/art/signal.jpg', en: 'The Last Signal', ar: 'الإشارة الأخيرة', genreEn: 'MYSTERY · SCI-FI', genreAr: 'غموض · خيال علمي', number: '02' },
-  { id: 'parallel', image: '/art/parallel.jpg', en: 'Parallel', ar: 'عالم موازٍ', genreEn: 'DRAMA · THRILLER', genreAr: 'دراما · تشويق', number: '03' },
-];
-const words = {
-  en: { featured: 'Featured', trending: 'Trending', live: 'Live TV', search: 'Search titles', searchLabel: 'Search available films', spotlight: 'CLOUD PLAY IRAQ', tagline: 'Free films and live TV.\nNo sign-in, no subscription.', demo: 'DESIGN PREVIEW', demoNote: 'Sample artwork and titles · not yet connected to content', discover: 'Explore titles', details: 'View details', selection: 'THE CLOUD PLAY EDIT', trendingTitle: 'Made for your watchlist', trendingSub: 'A little inspiration for your next escape.', seeAll: 'Explore the collection', liveTitle: 'IPTV channels', liveText: 'Choose an available channel below; playback depends on its provider.', liveBadge: 'CATALOG PREVIEW', footer: 'Free public-domain films and free live TV from Iraq.', rights: 'Cloud Play. All rights reserved.', modalTitle: 'A glimpse of what’s coming', modalBody: 'This is a sample title for the design preview. Playback and the content library are not connected yet.', close: 'Close', prev: 'Previous title', next: 'Next title', noResults: 'No sample titles found.', goLive: 'Explore Live TV', switchLang: 'العربية', settings: 'Settings', settingsHint: 'Make Cloud Play yours', languageLabel: 'Language', motion: 'Reduce motion', motionHint: 'Minimize animations and transitions', systemMotion: 'Your device’s motion preferences are always respected.', arabic: 'العربية', english: 'English', explore: 'EXPLORE CLOUD PLAY', browseTitle: 'Find your kind of story', browseSub: 'Movies, series, and live TV — all in one place.', movies: 'Movies', series: 'Series', movieDesc: 'Public-domain features, free to watch.', seriesDesc: 'Find your next favorite series.', liveDesc: 'Your channels together, whenever you are ready.', coming: 'COMING SOON', browse: 'Explore', home: 'Home', appearance: 'Appearance', dark: 'Dark', light: 'Light', account: 'User account', accountHint: 'Account and profile', accountStatus: 'Account not connected', accountDesc: 'Sign-in and profile management will be available after the user account service is connected.', back: 'Back to settings', preferencesNote: 'Preferences are saved on this device.', textSize: 'Text size', textNormal: 'Normal', textLarge: 'Large', glow: 'Ambient glow', glowHint: 'Show decorative lights and particles', autoCarousel: 'Auto-advance titles', autoHint: 'Automatically change the featured title', autoNote: 'Auto-advance pauses while interacting or when motion is reduced.', tvShort: 'TV', searchAction: 'Search', clearSearch: 'Clear' },
-  ar: { featured: 'المختارة', trending: 'الأكثر رواجاً', live: 'البث المباشر', search: 'ابحث عن عنوان', searchLabel: 'البحث في الأفلام المتاحة', spotlight: 'كلاود بلاي العراق', tagline: 'أفلام مجانية وبث مباشر.\nبدون تسجيل دخول ولا اشتراك.', demo: 'معاينة التصميم', demoNote: 'صور وعناوين تجريبية · المحتوى غير مربوط بعد', discover: 'استكشف العناوين', details: 'عرض التفاصيل', selection: 'اختيارات كلاود بلاي', trendingTitle: 'اختيارات تستحق المشاهدة', trendingSub: 'بعض الإلهام لرحلتك القادمة.', seeAll: 'استكشف المجموعة', liveTitle: 'قنوات IPTV', liveText: 'اختر قناة متاحة أدناه؛ يعتمد التشغيل على مصدر البث.', liveBadge: 'معاينة القائمة', footer: 'أفلام من الملك العام وبث مباشر مجاني من العراق.', rights: 'كلاود بلاي. جميع الحقوق محفوظة.', modalTitle: 'لمحة عمّا هو قادم', modalBody: 'هذا عنوان تجريبي لمعاينة التصميم. لم يتم ربط المشغّل ومكتبة المحتوى بعد.', close: 'إغلاق', prev: 'العنوان السابق', next: 'العنوان التالي', noResults: 'لا توجد عناوين تجريبية مطابقة.', goLive: 'اكتشف البث المباشر', switchLang: 'EN', settings: 'الإعدادات', settingsHint: 'خلّي تجربتك مثل ما تحب', languageLabel: 'اللغة', motion: 'تقليل الحركة', motionHint: 'تقليل الأنميشن والانتقالات', systemMotion: 'نحترم أيضاً إعدادات الحركة على جهازك.', arabic: 'العربية', english: 'English', explore: 'اكتشف كلاود بلاي', browseTitle: 'كل حكاياتك بمكان واحد', browseSub: 'أفلام ومسلسلات وقنوات مباشرة بانتظار الربط.', movies: 'الأفلام', series: 'المسلسلات', movieDesc: 'أفلام من الملك العام تُشاهَد مجاناً.', seriesDesc: 'اكتشف مسلسلك القادم.', liveDesc: 'قنواتك في مكان واحد بعد ربط السيرفر.', coming: 'قريباً', browse: 'استكشف', home: 'الرئيسية', appearance: 'المظهر', dark: 'داكن', light: 'فاتح', account: 'حساب المستخدم', accountHint: 'الحساب والملف الشخصي', accountStatus: 'الحساب غير مربوط', accountDesc: 'تسجيل الدخول وإدارة الملف الشخصي يتوفران بعد ربط خدمة حسابات المستخدمين.', back: 'العودة للإعدادات', preferencesNote: 'تُحفظ التفضيلات على هذا الجهاز.', textSize: 'حجم النص', textNormal: 'عادي', textLarge: 'كبير', glow: 'التوهجات المحيطة', glowHint: 'إظهار الإضاءة والجسيمات الزخرفية', autoCarousel: 'التنقل التلقائي', autoHint: 'تغيير العنوان المختار تلقائياً', autoNote: 'يتوقف التنقل التلقائي أثناء التفاعل أو عند تقليل الحركة.', tvShort: 'TV', searchAction: 'بحث', clearSearch: 'مسح' },
-};
-function Brand() {
-  return <Link className="footer-reference-brand" href="/" aria-label="Cloud Play home"><CloudPlayBrand/></Link>;
+type Progress = Record<string, { position: number; duration: number }>;
+
+function readProgress(): Progress {
+  const result: Progress = {};
+  try {
+    for (const film of PUBLIC_FILMS) {
+      const raw = JSON.parse(localStorage.getItem(`cloudplay-progress-v1-${film.id}`) || 'null');
+      if (raw && Number.isFinite(raw.position) && raw.position >= 5) {
+        result[film.id] = {
+          position: raw.position,
+          duration: Number.isFinite(raw.duration) && raw.duration > raw.position ? raw.duration : raw.position + 1,
+        };
+      }
+    }
+  } catch { /* Storage is optional. */ }
+  return result;
 }
-export const getStaticProps=async()=>({props:{curatedChannelCount:getPublicChannels().length}});
-export default function Home({curatedChannelCount}:{curatedChannelCount:number}) {
+
+function readFavorites(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem('cloudplay-movie-favorites-v1') || '[]');
+    if (Array.isArray(raw)) return raw.filter((id): id is string => typeof id === 'string' && Boolean(getPublicFilm(id)));
+  } catch { /* Storage is optional. */ }
+  return [];
+}
+
+export const getStaticProps: GetStaticProps = async () => ({
+  props: { curatedChannelCount: getPublicChannels().length },
+});
+
+export default function Home({ curatedChannelCount }: { curatedChannelCount: number }) {
   const brand = useBranding();
   const brandName = brand?.displayName || 'Cloud Play';
   const router = useRouter();
-  const [language, setLanguage] = useState<Language>('ar');
-  const [active, setActive] = useState(0);
-  const carouselStageRef = useRef<HTMLDivElement>(null);
+  const { t, n, lang } = useI18n();
+  const appearance = useAppearance();
+  const prefs = useSyncExternalStore(subscribePrefs, getPrefsSnapshot, () => SERVER_PREFS);
+
   const [query, setQuery] = useState('');
-  const [modal, setModal] = useState<number | null>(null);
-  const [reduceMotion, setReduceMotion] = useState(false);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [textSize, setTextSize] = useState<'normal' | 'large'>('normal');
-  const [glowEnabled, setGlowEnabled] = useState(true);
-  const [autoCarousel, setAutoCarousel] = useState(true);
-  const [highContrast, setHighContrast] = useState(false);
-  const [solidPanels, setSolidPanels] = useState(false);
-  const [hideCover, setHideCover] = useState(false);
-  const [staticCover, setStaticCover] = useState(false);
-  const [playbackAuto, setPlaybackAuto] = useState(true);
-  const [playbackMuted, setPlaybackMuted] = useState(false);
-  const [scrollToPlayer, setScrollToPlayer] = useState(true);
-  const [carouselPaused, setCarouselPaused] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const searchButtonRef = useRef<HTMLButtonElement>(null);
-  const searchRowRef = useRef<HTMLDivElement>(null);
-  const t = words[language];
+  const [progress, setProgress] = useState<Progress>({});
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const searchRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    let cancelled = false;
-    // Read only non-sensitive preferences; blocked storage is harmless.
-    Promise.resolve().then(() => {
-      if (cancelled) return;
-      try {
-        const savedLanguage = localStorage.getItem('cloudplay-language');
-        const savedTheme = readAppearance();
-        const savedMotion = localStorage.getItem('cloudplay-reduce-motion');
-        const savedText = localStorage.getItem('cloudplay-text-size');
-        const savedGlow = localStorage.getItem('cloudplay-glow');
-        const savedAuto = localStorage.getItem('cloudplay-auto-carousel');
-        const savedContrast = localStorage.getItem('cloudplay-high-contrast');
-        const savedSolid = localStorage.getItem('cloudplay-solid-panels');
-        const savedHideCover = localStorage.getItem('cloudplay-hide-cover');
-        const savedStaticCover = localStorage.getItem('cloudplay-static-cover');
-        const savedPlaybackAuto = localStorage.getItem('cloudplay-playback-auto');
-        const savedPlaybackMuted = localStorage.getItem('cloudplay-playback-muted');
-        const savedScrollToPlayer = localStorage.getItem('cloudplay-scroll-to-player');
-        if (savedLanguage === 'ar' || savedLanguage === 'en') setLanguage(savedLanguage);
-        if (savedTheme === 'dark' || savedTheme === 'light') setTheme(savedTheme);
-        if (savedMotion === 'true') setReduceMotion(true);
-        if (savedText === 'normal' || savedText === 'large') setTextSize(savedText);
-        if (savedGlow === 'false') setGlowEnabled(false);
-        if (savedAuto === 'true' || savedAuto === 'false') setAutoCarousel(savedAuto === 'true');
-        if (savedContrast === 'true') setHighContrast(true);
-        if (savedSolid === 'true') setSolidPanels(true);
-        if (savedHideCover === 'true') setHideCover(true);
-        if (savedStaticCover === 'true') setStaticCover(true);
-        if (savedPlaybackAuto === 'false') setPlaybackAuto(false);
-        if (savedPlaybackMuted === 'true') setPlaybackMuted(true);
-        if (savedScrollToPlayer === 'false') setScrollToPlayer(false);
-      } catch { /* Continue with defaults when storage is unavailable. */ }
-    });
-    return () => { cancelled = true; };
+    const refresh = () => { setProgress(readProgress()); setFavorites(readFavorites()); };
+    refresh();
+    window.addEventListener('storage', refresh);
+    window.addEventListener(LIBRARY_EVENT, refresh);
+    return () => {
+      window.removeEventListener('storage', refresh);
+      window.removeEventListener(LIBRARY_EVENT, refresh);
+    };
   }, []);
-  const store = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* Settings still work for this page. */ } };
-  const chooseLanguage = (value: Language) => { setLanguage(value); store('cloudplay-language', value); };
-  const chooseTheme = (value: 'dark' | 'light') => { setTheme(value); store('cloudplay-theme', value); };
-  const openSearch = () => { window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' }); window.setTimeout(() => searchInputRef.current?.focus(), reduceMotion ? 0 : 250); };
-  useEffect(() => { document.documentElement.lang = language; document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'; }, [language]);
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.reveal-on-scroll'));
-    // Only hide sections below the fold: the page remains usable without JS or when reloaded mid-page.
-    nodes.forEach(node => { if (node.getBoundingClientRect().top > window.innerHeight) node.classList.add('reveal-pending'); });
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (entry.isIntersecting) { entry.target.classList.remove('reveal-pending'); entry.target.classList.add('revealed'); observer.unobserve(entry.target); }
-    }), { threshold: 0, rootMargin: '0px 0px -25px 0px' });
-    nodes.forEach(node => observer.observe(node));
-    return () => { observer.disconnect(); nodes.forEach(node => node.classList.remove('reveal-pending')); };
-  }, []);
-  useEffect(() => {
-    document.documentElement.style.scrollBehavior = reduceMotion ? 'auto' : '';
-    return () => { document.documentElement.style.scrollBehavior = ''; };
-  }, [reduceMotion]);
-  useEffect(() => {
-    if (!showDesignPreview || !autoCarousel || reduceMotion || modal !== null || carouselPaused) return;
-    const timer = window.setInterval(() => {
-      if (!document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) setActive(current => (current + 1) % items.length);
-    }, 6000);
-    return () => window.clearInterval(timer);
-  }, [autoCarousel, reduceMotion, modal, carouselPaused]);
-  useEffect(() => { if (modal === null) return; const handler = (event: KeyboardEvent) => { if (event.key === 'Escape') setModal(null); }; window.addEventListener('keydown', handler); return () => window.removeEventListener('keydown', handler); }, [modal]);
-  useEffect(() => {
-    if (!window.matchMedia('(max-width: 700px)').matches) return;
-    const stage = carouselStageRef.current;
-    const card = stage?.querySelector<HTMLElement>('.poster-center');
-    if (!stage || !card) return;
-    const delta = card.getBoundingClientRect().left - stage.getBoundingClientRect().left - (stage.clientWidth - card.clientWidth) / 2;
-    stage.scrollBy({ left: delta, behavior: reduceMotion || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  }, [active, reduceMotion]);
-  const move = (n: number) => setActive(current => (current + n + items.length) % items.length);
-  return <PlaybackPreferencesContext.Provider value={{ autoPlay: playbackAuto, startMuted: playbackMuted, scrollToPlayer }}><div className={`site theme-${theme} text-${textSize}${reduceMotion ? ' motion-off' : ''}${glowEnabled ? '' : ' no-glow'}${highContrast ? ' high-contrast' : ''}${solidPanels ? ' solid-panels' : ''}${hideCover ? ' hide-cover' : ''}${staticCover ? ' static-cover' : ''}`} id="top" style={brandingStyle(brand,theme)} dir={language === 'ar' ? 'rtl' : 'ltr'}>
-    <IntroLayer/>
-    <Head><title>{brand ? `${brandName} — Your world of stories` : 'Cloud Play Iraq | Free films & live TV'}</title><meta name="description" content="Cloud Play Iraq — free public-domain films and free live TV. No sign-in, no subscription, no payment."/>{!brand && <link rel="canonical" href="https://cloud-play-iraq.vercel.app/"/>}</Head>
-    <AppHeader language={language} theme={theme} onToggleLanguage={() => chooseLanguage(language === 'ar' ? 'en' : 'ar')} onToggleTheme={() => chooseTheme(theme === 'dark' ? 'light' : 'dark')} onSearchClick={openSearch} hasQuery={!!query.trim()} searchButtonRef={searchButtonRef}/>
-    <div ref={searchRowRef} className="home-search shell">
-      <SearchField
-        value={query}
-        onChange={setQuery}
-        onClear={() => { setQuery(''); searchInputRef.current?.focus(); }}
-        placeholder={language === 'ar' ? 'ابحث عن فيلم، مسلسل، أو عرض حصري...' : 'Search movies, series, exclusives...'}
-        label={t.searchLabel}
-        inputRef={searchInputRef}
-        onSubmit={() => { void router.push({ pathname: '/search', query: query.trim() ? { q: query.trim() } : {} }); }}
-      />
-      {query.trim() && <div className="home-search-results" aria-live="polite">
-        {movies.filter(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())).map(m => <Link href={`/movies/${m.id}`} key={m.id}><strong>{m.title}</strong><small dir={language === 'ar' ? 'rtl' : 'ltr'}>{m[language]}</small></Link>)}
-        {!movies.some(m => `${m.title} ${m.ar} ${m.en}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())) && <p>{language === 'ar' ? 'لا توجد أفلام مطابقة.' : 'No matching films.'}</p>}
-      </div>}
+
+  const featured = PUBLIC_FILMS.slice(0, 12);
+  const spotlight = getPublicFilm('bunny') ?? PUBLIC_FILMS[0];
+  const continueWatching = useMemo(
+    () => PUBLIC_FILMS.filter(film => progress[film.id]).slice(0, 10),
+    [progress],
+  );
+  const favoriteFilms = useMemo(
+    () => favorites.map(id => getPublicFilm(id)).filter(Boolean).slice(0, 10) as typeof PUBLIC_FILMS,
+    [favorites],
+  );
+  const suggestions = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    if (needle.length < 2) return [];
+    return PUBLIC_FILMS.filter(film =>
+      `${film.title} ${film.titleAr} ${film.ar} ${film.en} ${film.year}`
+        .toLocaleLowerCase().includes(needle),
+    ).slice(0, 6);
+  }, [query]);
+
+  const classes = [
+    'site', `theme-${appearance.theme === 'black' ? 'dark' : appearance.theme}`,
+    appearance.reduceMotion ? 'motion-off' : '',
+    !prefs.glow ? 'no-glow' : '',
+    prefs.solidPanels ? 'solid-panels' : '',
+    prefs.textSize === 'large' ? 'text-large' : '',
+    prefs.highContrast ? 'high-contrast' : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <div className={classes} id="top" style={brandingStyle(brand, appearance.theme)} dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <IntroLayer />
+      <Head>
+        <title>{brand ? `${brandName} — ${t('home.kicker')}` : `Cloud Play Iraq | ${t('home.title').replace('\n', ' ')}`}</title>
+        <meta name="description" content={t('home.subtitle')} />
+        {!brand && <link rel="canonical" href="https://cloud-play-iraq.vercel.app/" />}
+        <meta name="color-scheme" content="dark light" />
+      </Head>
+
+      <AppHeader onSearchClick={() => searchRef.current?.focus()} hasQuery={Boolean(query.trim())} />
+      <main id="main">
+
+        {/* ---- Hero ------------------------------------------------------- */}
+        <section className="cp-hero" aria-labelledby="hero-title">
+          <div className="cp-hero__scene" aria-hidden="true">
+            <Image src="/art/cloud-city-hero.jpg" alt="" fill priority sizes="100vw" />
+            <span className="cp-hero-scrim" />
+            <span className="cp-orb cp-orb--violet" style={{ insetBlockStart: '-10%', insetInlineEnd: '8%' }} />
+          </div>
+
+          <div className="cp-hero__inner shell">
+            <div className="cp-hero__copy cp-on-media">
+              <span className="cp-hero__kicker">
+                <span className="cp-badge cp-badge--live"><span className="cp-badge__dot" />{t('common.live')}</span>
+                <span className="cp-type-micro">{t('home.kicker')}</span>
+              </span>
+              <h1 id="hero-title" className="cp-type-display">
+                {t('home.title').split('\n').map((line, index) => <span key={line}>{line}{index === 0 && <br />}</span>)}
+              </h1>
+              <p className="cp-hero__sub">{t('home.subtitle')}</p>
+              <div className="cp-hero__actions">
+                <Link href="/movies" className="cp-btn" data-variant="primary" data-size="lg">
+                  <span className="cp-btn__glyph"><Icon name="play" size={13} /></span>
+                  {t('home.browseFilms')}
+                </Link>
+                <Link href="/live" className="cp-btn" data-size="lg">
+                  <Icon name="tv" size={18} />
+                  {t('home.exploreLive')}
+                </Link>
+              </div>
+              <dl className="cp-hero__stats">
+                <div><dt>{t('home.stat.films')}</dt><dd className="cp-num">{n(PUBLIC_FILMS.length)}</dd></div>
+                <div><dt>{t('home.stat.channels')}</dt><dd className="cp-num">{n(curatedChannelCount)}</dd></div>
+                <div><dt>{t('home.stat.free')}</dt><dd>{t('common.free')}</dd></div>
+              </dl>
+            </div>
+
+            <aside className="cp-spotlight" aria-label={t('home.featured')}>
+              <div className="cp-spotlight__art">
+                <Image src={filmPoster(spotlight)} alt="" fill priority unoptimized sizes="360px" />
+                <span className="cp-media__scrim" aria-hidden="true" />
+                <span className="cp-badge cp-spotlight__badge">{t('home.featured')}</span>
+              </div>
+              <div className="cp-spotlight__body">
+                <span className="cp-type-micro">{t('common.new')}</span>
+                <h2>{lang === 'ar' ? spotlight.titleAr : spotlight.title}</h2>
+                <p>{lang === 'ar' ? spotlight.ar : spotlight.en}</p>
+                <div className="cp-spotlight__actions">
+                  <Link href={`/movies/${spotlight.id}`} className="cp-btn" data-variant="primary">
+                    <Icon name="play" size={15} />{t('home.watchNow')}
+                  </Link>
+                  <span className="cp-badge cp-num">{spotlight.year}</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        {/* ---- Search + quick destinations -------------------------------- */}
+        <section className="cp-quick shell" aria-label={t('common.search')}>
+          <div className="cp-quick__search">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              onClear={() => setQuery('')}
+              placeholder={t('search.placeholder')}
+              label={t('header.search')}
+              inputRef={searchRef}
+              onSubmit={() => {
+                const value = query.trim();
+                void router.push(value ? { pathname: '/search', query: { q: value } } : '/search');
+              }}
+              shortcut="/"
+            />
+            {suggestions.length > 0 && (
+              <div className="cp-suggest cp-glass cp-glass--thick" role="listbox" aria-label={t('search.results')}>
+                {suggestions.map(film => (
+                  <Link key={film.id} href={`/movies/${film.id}`} className="cp-suggest__item" role="option" aria-selected={false}>
+                    <span className="cp-suggest__art">
+                      <Image src={filmPoster(film)} alt="" fill unoptimized sizes="44px" />
+                    </span>
+                    <span className="cp-suggest__copy">
+                      <strong>{lang === 'ar' ? film.titleAr : film.title}</strong>
+                      <small>{film.year}</small>
+                    </span>
+                    <Icon name="arrow" size={16} />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="cp-quick__chips">
+            <Link href="/live" className="cp-chip"><span className="ptv-dot" aria-hidden="true" />{t('home.liveNow')}</Link>
+            <Link href="/movies" className="cp-chip">{t('nav.movies')}</Link>
+            <Link href="/series" className="cp-chip">{t('nav.series')}</Link>
+            <Link href="/favorites" className="cp-chip">{t('nav.favorites')}</Link>
+          </div>
+        </section>
+
+        {/* ---- Continue watching ------------------------------------------ */}
+        {continueWatching.length > 0 && (
+          <Rail
+            id="rail-continue"
+            title={t('home.continue')}
+            subtitle={t('home.continueSub')}
+            action={t('common.viewAll')}
+            actionHref="/continue"
+          >
+            {continueWatching.map(film => (
+              <FilmCard
+                key={film.id}
+                film={film}
+                progress={progress[film.id] ? progress[film.id].position / progress[film.id].duration : undefined}
+              />
+            ))}
+          </Rail>
+        )}
+
+        {/* ---- Featured --------------------------------------------------- */}
+        <Rail
+          id="rail-featured"
+          title={t('home.featured')}
+          subtitle={t('home.featuredSub')}
+          action={t('common.seeAll')}
+          actionHref="/movies"
+        >
+          {featured.map(film => <FilmCard key={film.id} film={film} />)}
+        </Rail>
+
+        {/* ---- Destinations ----------------------------------------------- */}
+        <section className="cp-destinations shell" aria-labelledby="destinations-title">
+          <div className="cp-destinations__head">
+            <h2 id="destinations-title">{t('home.library')}</h2>
+            <p>{t('home.librarySub')}</p>
+          </div>
+          <div className="cp-destinations__grid">
+            <Link href="/live" className="cp-dest cp-glass cp-glass--interactive cp-glass--thick">
+              <span className="cp-dest__icon"><Icon name="tv" size={22} /></span>
+              <span className="cp-badge cp-badge--live"><span className="cp-badge__dot" />{t('common.live')}</span>
+              <strong>{t('home.liveNow')}</strong>
+              <p>{t('home.liveSub')}</p>
+              <span className="cp-dest__meta cp-num">{n(curatedChannelCount)} {t('live.channels')}</span>
+              <span className="cp-dest__go">{t('common.watchNow')} <Icon name="arrow" size={15} /></span>
+            </Link>
+            <Link href="/movies" className="cp-dest cp-glass cp-glass--interactive cp-glass--thick">
+              <span className="cp-dest__icon"><Icon name="film" size={22} /></span>
+              <span className="cp-badge">{t('nav.movies')}</span>
+              <strong>{t('home.library')}</strong>
+              <p>{t('home.librarySub')}</p>
+              <span className="cp-dest__meta cp-num">{n(PUBLIC_FILMS.length)} {t('home.stat.films')}</span>
+              <span className="cp-dest__go">{t('common.seeAll')} <Icon name="arrow" size={15} /></span>
+            </Link>
+            <Link href="/series" className="cp-dest cp-glass cp-glass--interactive cp-glass--thick">
+              <span className="cp-dest__icon"><Icon name="play" size={22} /></span>
+              <span className="cp-badge">{t('nav.series')}</span>
+              <strong>{t('nav.series')}</strong>
+              <p>{t('nav.series.desc')}</p>
+              <span className="cp-dest__meta">{t('common.free')}</span>
+              <span className="cp-dest__go">{t('common.more')} <Icon name="arrow" size={15} /></span>
+            </Link>
+          </div>
+        </section>
+
+        {/* ---- Favorites --------------------------------------------------- */}
+        <Rail
+          id="rail-favorites"
+          title={t('home.favorites')}
+          subtitle={t('home.favoritesSub')}
+          action={t('common.viewAll')}
+          actionHref="/favorites"
+        >
+          {favoriteFilms.length > 0 ? favoriteFilms.map(film => <FilmCard key={film.id} film={film} />) : (
+            <div className="cp-rail-empty cp-glass cp-glass--thin">
+              <Icon name="star" size={20} />
+              <p>{t('home.noFavorites')}</p>
+              <Link href="/movies" className="cp-btn" data-size="sm">{t('home.browseFilms')}</Link>
+            </div>
+          )}
+        </Rail>
+
+        {/* ---- Platform ---------------------------------------------------- */}
+        <section className="cp-about shell" aria-labelledby="about-title">
+          <div className="cp-about__panel cp-glass cp-glass--thick">
+            <div className="cp-about__copy">
+              <span className="cp-type-micro">{brand ? brandName : t('home.kicker')}</span>
+              <h2 id="about-title">{t('home.platform')}</h2>
+              <p>{t('home.platformBody')}</p>
+              <div className="cp-about__badges">
+                <span className="cp-badge">{t('language.arabic')} / {t('language.english')}</span>
+                <span className="cp-badge">{t('theme.dark')} · {t('theme.light')}</span>
+                <span className="cp-badge">{t('common.free')}</span>
+              </div>
+            </div>
+            <div className="cp-about__actions">
+              <Link href="/about" className="cp-btn" data-variant="primary">{t('home.platformCta')} <Icon name="arrow" size={15} /></Link>
+              <Link href="/settings" className="cp-btn" data-variant="ghost">{t('common.settings')}</Link>
+            </div>
+            <span className="cp-orb cp-orb--blue" aria-hidden="true" style={{ insetBlockEnd: '-40%', insetInlineStart: '-10%' }} />
+          </div>
+        </section>
+
+        <div className="cp-brand-strip shell" aria-hidden="true">
+          <CloudPlayBrand />
+        </div>
+      </main>
+
+      <SiteFooter />
     </div>
-    <main><section className="hero shell" id="featured"><div className="feature-banner"><div className="hero-scene" aria-hidden="true"><Image src="/art/cloud-city-hero.jpg" alt="" fill priority sizes="100vw"/><span className="hero-scene-shade"/><span className="color-ribbon ribbon-a"/><span className="color-ribbon ribbon-b"/></div><div className="hero-copy"><div className="eyebrow"><span className="tiny-line"/>{t.spotlight}</div><h1>{t.tagline.split('\n').map((line, i) => <span key={line}>{line}{i === 0 && <br/>}</span>)}</h1><p className="hero-description">{language === 'ar' ? `${movies.length} فيلماً من الملك العام · ${curatedChannelCount} قناة مباشرة · بدون حساب` : `${movies.length} public-domain films · ${curatedChannelCount} live channels · no account needed`}</p><Link className="outline-button" href="/movies">{language === 'ar' ? 'تصفّح مكتبة الأفلام' : 'Browse the film library'}<Icon name="arrow" size={17}/></Link>{showDesignPreview && <div className="hero-index"><span>0{active + 1}</span><span className="index-line"/><span>0{items.length}</span></div>}</div></div>
-      {showDesignPreview && <><div className="carousel-heading"><div><span className="tiny-line"/><h2>{t.featured}</h2></div><span>{language === 'ar' ? 'اختيارات كلاود بلاي' : 'THE CLOUD PLAY EDIT'}</span></div><div className="carousel-area" onMouseEnter={() => setCarouselPaused(true)} onMouseLeave={e => setCarouselPaused(e.currentTarget.contains(document.activeElement))} onFocusCapture={() => setCarouselPaused(true)} onBlurCapture={e => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCarouselPaused(e.currentTarget.matches(':hover')); }} aria-label={language === 'ar' ? 'العناوين المختارة' : 'Featured titles'}><div className="magic-dust" aria-hidden="true"><i/><i/><i/><i/><i/><i/></div><div className="glow glow-one"/><div className="glow glow-two"/><div className="carousel-stage" ref={carouselStageRef}>{items.map((item, i) => { const diff = (i - active + items.length) % items.length; const position = diff === 0 ? 'center' : diff === 1 ? 'right' : 'left'; return <button type="button" key={item.id} className={`poster poster-${position}`} onClick={() => position === 'center' ? setModal(i) : setActive(i)} aria-label={position === 'center' ? `${t.details}: ${item[language]}` : item[language]}><Image src={item.image} alt="" fill sizes="(max-width: 700px) 220px, 300px" priority={i === 0} className="poster-image"/><span className="poster-shade"/><span className="poster-content"><span className="poster-genre">{language === 'ar' ? item.genreAr : item.genreEn}</span><strong>{item[language]}</strong>{position === 'center' && <span className="poster-action"><Icon name="play" size={15}/>{t.details}</span>}</span></button>; })}</div><button className="carousel-arrow arrow-left" onClick={() => move(-1)} aria-label={t.prev}><span>‹</span></button><button className="carousel-arrow arrow-right" onClick={() => move(1)} aria-label={t.next}><span>›</span></button><div className="dots" aria-label={language === 'ar' ? 'اختيار عنوان' : 'Choose a title'}>{items.map((item, i) => <button key={item.id} className={i === active ? 'dot active' : 'dot'} onClick={() => setActive(i)} aria-label={item[language]} aria-current={i === active ? 'true' : undefined}/>)}</div></div>
-      <div className="hero-foot"><span><span className="live-dot"/> {t.demo}</span><span>{t.demoNote}</span></div></>}</section>
-    <ReferenceReel language={language} autoAdvance={autoCarousel} reduceMotion={reduceMotion} paused={modal !== null || query.trim() !== ''}/>
-    <div className="shell home-live-band reveal-on-scroll">
-      <OwnerPlayerLink language={language}/>
-      <Link href="/live" className="home-live-card">
-        <span className="home-live-badge"><span className="ptv-dot" aria-hidden="true"/>{language === 'ar' ? 'مباشر الآن' : 'LIVE NOW'}</span>
-        <strong>{language === 'ar' ? `بث مباشر مجاني · ${curatedChannelCount} قناة` : `Free live TV · ${curatedChannelCount} channels`}</strong>
-        <small>{language === 'ar' ? 'قنوات عراقية وعربية وعالمية يبثّها أصحابها مجاناً — بدون تسجيل دخول ولا اشتراك.' : 'Iraqi, Arabic and international channels streamed free by their owners — no sign-in, no subscription.'}</small>
-        <span className="home-live-go">{language === 'ar' ? 'شاهد الآن' : 'Watch now'} <span aria-hidden="true">↗</span></span>
-      </Link>
-      <Link href="/movies" className="home-live-card home-films-card">
-        <span className="home-live-badge home-films-badge">{language === 'ar' ? 'أفلام السيرفر' : 'IPTV MOVIES'}</span>
-        <strong>{language === 'ar' ? 'مكتبة أفلام VOD مباشرة' : 'VOD movie library'}</strong>
-        <small>{language === 'ar' ? 'أحدث الأفلام وتصنيفات متنوعة مع تشغيل فوري وسريع.' : 'Latest movies with multiple categories and instant playback.'}</small>
-        <span className="home-live-go">{language === 'ar' ? 'تصفّح الأفلام' : 'Browse films'} <span aria-hidden="true">↗</span></span>
-      </Link>
-      <Link href="/series" className="home-live-card">
-        <span className="home-live-badge">{language === 'ar' ? 'مسلسلات' : 'SERIES'}</span>
-        <strong>{language === 'ar' ? 'مسلسلات ومواسم كاملة' : 'Full series and seasons'}</strong>
-        <small>{language === 'ar' ? 'تصفّح كل الحلقات والمواسم من سيرفر البث مجاناً بدون تسجيل دخول.' : 'Browse all episodes and seasons free with no sign-in.'}</small>
-        <span className="home-live-go">{language === 'ar' ? 'مشاهدة المسلسلات' : 'Watch series'} <span aria-hidden="true">↗</span></span>
-      </Link>
-    </div>
-    <section className="home-highlights shell reveal-on-scroll" aria-labelledby="home-highlights-title">
-      <div className="section-head"><div><div className="eyebrow"><span className="tiny-line"/>{language === 'ar' ? 'اكتشف كلاود بلاي' : 'DISCOVER CLOUD PLAY'}</div><h2 id="home-highlights-title">{language === 'ar' ? 'الحصريات وأحدث الأفلام' : 'Exclusives and new films'}</h2><p>{language === 'ar' ? 'تابع الأقسام لمعرفة ما يتوفر عند إضافة محتوى مرخّص.' : 'Explore these sections as licensed content becomes available.'}</p></div></div>
-      <div className="home-highlight-grid">
-        <Link href="/exclusive" className="browse-card home-highlight-card"><div className="browse-icon"><Icon name="sparkle" size={23}/></div><div><span className="browse-tag">{language === 'ar' ? 'الحصريات' : 'EXCLUSIVES'}</span><h3>{language === 'ar' ? 'حصريات كلاود بلاي' : 'Cloud Play exclusives'}</h3><p>{language === 'ar' ? 'لا توجد أعمال حصرية مؤكدة حالياً.' : 'No confirmed exclusive titles are available yet.'}</p></div><span className="home-card-link">{language === 'ar' ? 'عرض الصفحة' : 'View page'} ↗</span><span className="browse-orb" aria-hidden="true"/></Link>
-        <Link href="/latest" className="browse-card home-highlight-card"><div className="browse-icon"><Icon name="film" size={23}/></div><div><span className="browse-tag">{language === 'ar' ? 'أحدث الأفلام' : 'NEW FILMS'}</span><h3>{language === 'ar' ? 'الأفلام الحديثة' : 'New films'}</h3><p>{language === 'ar' ? 'لا توجد أفلام حديثة مرخّصة في المكتبة حالياً.' : 'There are no recently released licensed films in the library yet.'}</p></div><span className="home-card-link">{language === 'ar' ? 'عرض الصفحة' : 'View page'} ↗</span><span className="browse-orb" aria-hidden="true"/></Link>
-      </div>
-    </section>
-    <section className="home-about shell reveal-on-scroll" aria-labelledby="home-about-title"><div className="home-about-panel"><div><div className="eyebrow"><span className="tiny-line"/>{brand ? brandName : 'CLOUD PLAY IRAQ'}</div><h2 id="home-about-title">{language === 'ar' ? 'عن المنصة' : 'About the platform'}</h2><p>{language === 'ar' ? 'كلاود بلاي يجمع الأفلام المرخّصة وقنوات البث المباشر المجانية في مكان واحد، مجاناً بالكامل وبدون تسجيل دخول للمشاهدة. أنشئ حساباً مجانياً لحفظ مفضلتك ومتابعة المشاهدة عبر أجهزتك.' : 'Cloud Play brings licensed films and free live channels together, completely free and with no sign-in required to watch. Create a free account to keep your favorites and watch progress across devices.'}</p></div><Link className="home-about-link" href="/about">{language === 'ar' ? 'تفاصيل المنصة' : 'Platform details'} <span aria-hidden="true">↗</span></Link></div></section></main>
-    <footer className="footer shell"><div><Brand/><p>{t.footer}</p><nav className="footer-pages" aria-label={language === 'ar' ? 'صفحات المنصة' : 'Platform pages'}><Link href="/exclusive">{language === 'ar' ? 'الحصريات' : 'Exclusives'}</Link><Link href="/latest">{language === 'ar' ? 'أحدث الأفلام' : 'New films'}</Link><Link href="/about">{language === 'ar' ? 'عن المنصة' : 'About'}</Link><Link href="/movies">{t.movies}</Link><Link href="/series">{t.series}</Link><Link href="/live">{t.live}</Link><Link href="/search">{t.searchAction}</Link><Link href="/favorites">{language === 'ar' ? 'المفضلة' : 'Favorites'}</Link><Link href="/continue">{language === 'ar' ? 'متابعة المشاهدة' : 'Continue watching'}</Link><Link href="/settings">{t.settings}</Link><Link href="/login">{language === 'ar' ? 'تسجيل الدخول' : 'Sign in'}</Link></nav></div><span>© {new Date().getFullYear()} {t.rights}</span></footer>
-    {modal !== null && <div className="modal-backdrop" onClick={() => setModal(null)}><div role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="modal" onClick={e => e.stopPropagation()}><button className="modal-close" onClick={() => setModal(null)} aria-label={t.close}><Icon name="close"/></button><div className="modal-art"><Image src={items[modal].image} fill sizes="400px" alt=""/></div><div className="modal-body"><span className="eyebrow">{t.demo}</span><h2 id="dialog-title">{items[modal][language]}</h2><h3>{t.modalTitle}</h3><p>{t.modalBody}</p><button className="outline-button" onClick={() => setModal(null)}>{t.close}</button></div></div></div>}
-  </div></PlaybackPreferencesContext.Provider>;
+  );
 }

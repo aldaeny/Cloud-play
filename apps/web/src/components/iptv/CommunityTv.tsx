@@ -10,6 +10,13 @@ type Language = 'ar' | 'en';
 
 const FAVORITES = 'cloudplay-tv-favorites-v1';
 const PAGE = 60;
+const CHECK_BATCH = 12;
+
+/** The guide opens on the Arab world's channels; "كل الدول" widens it. */
+const ARAB_CODES = new Set([
+  'iq','sa','ae','bh','qa','kw','om','jo','lb','sy','ps',
+  'ye','eg','sd','ly','tn','dz','ma','mr','so','dj','km',
+]);
 
 const T = {
   ar: {
@@ -25,6 +32,9 @@ const T = {
     note: 'الدليل يجمعه المجتمع ولا يستضيف أي فيديو؛ التشغيل يتطلب تسجيل الدخول وموافقة المصدر والحقوق عبر الخادم. الحقوق والتوفر يختلفان لكل قناة، وتُحذف أي قناة بطلب من صاحبها عبر المشروع.',
     favNote: 'المفضلة محفوظة على هذا الجهاز، وتُزامَن مع حسابك المجاني إذا سجّلت الدخول.',
     browserNote: 'نستبعد تلقائياً القنوات التي تحتاج ترويسات خاصة أو اتصالاً غير مشفّر، لأنها لا تعمل داخل المتصفح.',
+    region: 'المنطقة', arabRegion: 'الدول العربية', allRegion: 'كل الدول',
+    check: 'فحص القنوات المعروضة', checking: 'جاري الفحص…', hideDead: 'إخفاء المتوقفة',
+    statusOk: 'يعمل', statusDead: 'متوقفة',
   },
   en: {
     heading: 'World directory',
@@ -39,6 +49,9 @@ const T = {
     note: 'The directory is community-maintained and hosts no video; playback requires sign-in and backend source and rights approval. Rights and availability vary per channel, and entries are removed on the owner’s request via the project.',
     favNote: 'Favorites are stored on this device and sync to your free account if you sign in.',
     browserNote: 'Channels that require special headers or an unencrypted connection are filtered out automatically, because browsers cannot play them.',
+    region: 'Region', arabRegion: 'Arab world', allRegion: 'All countries',
+    check: 'Check shown channels', checking: 'Checking…', hideDead: 'Hide offline',
+    statusOk: 'Reachable', statusDead: 'Offline',
   },
 };
 
@@ -79,6 +92,7 @@ function countryLabel(code: string, language: Language): string {
 }
 
 type Selected = { id: string; name: string; url: string };
+type ProbeStatus = 'available' | 'unavailable';
 
 export default function CommunityTv({ language }: { language: Language }) {
   const t = T[language];
@@ -86,6 +100,7 @@ export default function CommunityTv({ language }: { language: Language }) {
   const [countries, setCountries] = useState<CommunityFacet[]>([]);
   const [categories, setCategories] = useState<CommunityFacet[]>([]);
   const [total, setTotal] = useState(0);
+  const [region, setRegion] = useState<'arab' | ''>('arab');
   const [country, setCountry] = useState('');
   const [category, setCategory] = useState('');
   const [search, setSearch] = useState('');
@@ -96,6 +111,10 @@ export default function CommunityTv({ language }: { language: Language }) {
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<Selected | null>(null);
   const [brokenLogos, setBrokenLogos] = useState<string[]>([]);
+  // Reachability results for the channels on screen, and whether offline ones are hidden.
+  const [probes, setProbes] = useState<Record<string, ProbeStatus>>({});
+  const [probing, setProbing] = useState(false);
+  const [hideDead, setHideDead] = useState(false);
   const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -123,6 +142,7 @@ export default function CommunityTv({ language }: { language: Language }) {
     setLoading(true);
     setFailed(false);
     const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
+    if (region === 'arab') params.set('region', 'arab');
     if (country) params.set('country', country);
     if (category) params.set('category', category);
     if (debounced) params.set('q', debounced);
@@ -140,7 +160,7 @@ export default function CommunityTv({ language }: { language: Language }) {
     } finally {
       if (request.current === controller) setLoading(false);
     }
-  }, [country, category, debounced]);
+  }, [region, country, category, debounced]);
 
   useEffect(() => {
     Promise.resolve().then(() => load(0));
@@ -155,10 +175,43 @@ export default function CommunityTv({ language }: { language: Language }) {
   }
 
   const visible = useMemo(
-    () => onlyFavorites ? channels.filter(c => favorites.includes(c.id)) : channels,
-    [channels, favorites, onlyFavorites],
+    () => {
+      const base = onlyFavorites ? channels.filter(c => favorites.includes(c.id)) : channels;
+      return hideDead ? base.filter(c => probes[c.id] !== 'unavailable') : base;
+    },
+    [channels, favorites, onlyFavorites, hideDead, probes],
   );
   const canLoadMore = !onlyFavorites && channels.length < total;
+
+  // A probe hit by the rate limit is left unchecked so a later press can retry it.
+  const checkVisible = useCallback(async () => {
+    const ids = visible.filter(c => !(c.id in probes)).map(c => c.id);
+    if (!ids.length) return;
+    setProbing(true);
+    try {
+      for (let start = 0; start < ids.length; start += CHECK_BATCH) {
+        const batch = ids.slice(start, start + CHECK_BATCH);
+        const response = await fetch(`/api/iptv/check?ids=${encodeURIComponent(batch.join(','))}`);
+        if (!response.ok) break;
+        const body = await response.json();
+        const rows: { id: string; status: string }[] = Array.isArray(body?.data) ? body.data : [];
+        setProbes(prev => {
+          const next = { ...prev };
+          for (const row of rows) {
+            if (row && row.id && (row.status === 'available' || row.status === 'unavailable')) next[row.id] = row.status;
+          }
+          return next;
+        });
+      }
+    } catch { /* Whatever was checked so far stays on screen. */ }
+    finally { setProbing(false); }
+  }, [visible, probes]);
+
+  function pickCountry(code: string) {
+    setCountry(code);
+    // A non-Arab country must not sit under the Arab region filter.
+    if (code && region === 'arab' && !ARAB_CODES.has(code)) setRegion('');
+  }
 
   return (
     <div className="ptv community-tv">
@@ -168,7 +221,11 @@ export default function CommunityTv({ language }: { language: Language }) {
       </div>
 
       <div className="ptv-controls">
-        <select className="ctv-select" value={country} onChange={e => setCountry(e.target.value)} aria-label={t.country}>
+        <div className="film-genres" role="group" aria-label={t.region}>
+          <button aria-pressed={region === 'arab'} onClick={() => setRegion('arab')}>{t.arabRegion}</button>
+          <button aria-pressed={region === ''} onClick={() => setRegion('')}>{t.allRegion}</button>
+        </div>
+        <select className="ctv-select" value={country} onChange={e => pickCountry(e.target.value)} aria-label={t.country}>
           <option value="">{t.country}</option>
           {countries.map(item => (
             <option key={item.value} value={item.value}>
@@ -187,6 +244,17 @@ export default function CommunityTv({ language }: { language: Language }) {
         <button className="ptv-fav-toggle" aria-pressed={onlyFavorites} onClick={() => setOnlyFavorites(v => !v)}>
           ★ {t.favoritesOnly}
         </button>
+      </div>
+
+      <div className="ptv-controls">
+        <button className="ptv-fav-toggle" disabled={probing || visible.length === 0} onClick={() => void checkVisible()}>
+          ✓ {probing ? t.checking : t.check}
+        </button>
+        {Object.keys(probes).length > 0 && (
+          <button className="ptv-fav-toggle" aria-pressed={hideDead} onClick={() => setHideDead(v => !v)}>
+            {t.hideDead}
+          </button>
+        )}
       </div>
 
       {categories.length > 0 && (
@@ -213,6 +281,7 @@ export default function CommunityTv({ language }: { language: Language }) {
         {visible.map(channel => {
           const isFavorite = favorites.includes(channel.id);
           const broken = brokenLogos.includes(channel.id);
+          const status = probes[channel.id];
           return (
             <div className={selected?.id === channel.id ? 'ptv-card selected' : 'ptv-card'} key={channel.id}>
               <button
@@ -220,6 +289,13 @@ export default function CommunityTv({ language }: { language: Language }) {
                 onClick={() => setSelected({ id: channel.id, name: channel.name, url: channel.url })}
               >
                 <span className="ptv-badge"><span className="ptv-dot" aria-hidden="true" />LIVE</span>
+                {status && (
+                  <span
+                    className="ctv-status"
+                    aria-hidden="true"
+                    title={status === 'available' ? t.statusOk : t.statusDead}
+                  >{status === 'available' ? '●' : '✕'}</span>
+                )}
                 {channel.logo && !broken
                   ? <span className="ctv-logo">
                       <Image

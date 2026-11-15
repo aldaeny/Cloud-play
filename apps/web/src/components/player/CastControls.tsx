@@ -1,4 +1,5 @@
 import {useEffect,useState,type RefObject} from 'react';
+import { Airplay, Cast } from 'lucide-react';
 import {castContext,isShareableMedia,loadCastSdk,sendWebCast} from './castWeb';
 type Language='ar'|'en';
 type Props={language:Language;title:string;url:string;kind:'hls'|'mp4'|'dash';videoRef:RefObject<HTMLVideoElement>};
@@ -43,15 +44,17 @@ export default function CastControls({language,title,url,kind,videoRef}:Props){
  }
  return <div className="media-cast" aria-label={ar?'المشاهدة على التلفزيون':'Watch on TV'}>
   <div className="media-cast-buttons">
-   {airplay&&<button type="button" className="media-cast-button" onClick={airplayNow}>▣ AirPlay</button>}
-   {native&&<button type="button" className="media-cast-button" onClick={nativeCast} disabled={!safe}>▣ Google Cast</button>}
-   {!native&&webCast&&<button type="button" className="media-cast-button" onClick={webCastNow} disabled={busy||!safe}>▣ Google Cast</button>}
+   {airplay&&<button type="button" className="media-cast-button" onClick={airplayNow}><Airplay size={16} aria-hidden="true"/> AirPlay</button>}
+   {native&&<button type="button" className="media-cast-button" onClick={nativeCast} disabled={!safe}><Cast size={16} aria-hidden="true"/> Google Cast</button>}
+   {!native&&webCast&&<button type="button" className="media-cast-button" onClick={webCastNow} disabled={busy||!safe}><Cast size={16} aria-hidden="true"/> Google Cast</button>}
    {native&&sent&&<button type="button" className="media-cast-button" onClick={()=>{(window as NativeWindow).ReactNativeWebView?.postMessage(JSON.stringify({type:'cloudplay.cast.stop.v1'}))}}>{ar?'إيقاف البث':'Stop casting'}</button>}
    {!native&&webCast&&sent&&<button type="button" className="media-cast-button" onClick={()=>{castContext()?.endCurrentSession(true);setSent(false);setNotice(ar?'تم طلب إيقاف جلسة Cast.':'Cast session ended.')}}>{ar?'إيقاف البث':'Stop casting'}</button>}
   </div>
-  <p className="media-cast-hint">{ar?'للمشاهدة على التلفزيون استخدم AirPlay أو Google Cast على جهاز متوافق ومتصل بالشبكة نفسها. يعتمد التشغيل على دعم المصدر والجهاز.':'To watch on a TV, use AirPlay or Google Cast on compatible devices on the same network. Playback depends on the media source and receiver.'}</p>
-  {!airplay&&!native&&!webCast&&<p className="media-cast-hint">{ar?'البث المباشر من المتصفح غير متاح هنا؛ جرّب Safari لـ AirPlay أو Chrome على جهاز يدعم Cast.':'Casting is not available in this browser; try Safari for AirPlay or Chrome on a Cast-supported device.'}</p>}
-  {!safe&&<p className="media-cast-hint">{ar?'لا يمكن إرسال رابط خاص أو غير آمن.':'Private or insecure media URLs cannot be shared.'}</p>}
-  {notice&&<p className="media-cast-hint" role="status">{notice}</p>}
+  {(notice || (!safe && (airplay || native || webCast))) && <p className="media-cast-hint" role="status">{notice || (ar?'لا يمكن إرسال رابط خاص أو غير آمن.':'Private or insecure media URLs cannot be shared.')}</p>}
+  <details className="media-cast-help">
+    <summary>{ar?'المشاهدة على التلفزيون':'Watching on a TV'}</summary>
+    <p className="media-cast-hint">{ar?'استخدم AirPlay أو Google Cast على جهاز متوافق ومتصل بالشبكة نفسها. يعتمد التشغيل على دعم المصدر والجهاز.':'Use AirPlay or Google Cast on a compatible device on the same network. Playback depends on the media source and receiver.'}</p>
+    {!airplay&&!native&&!webCast&&<p className="media-cast-hint">{ar?'البث من المتصفح غير متاح هنا؛ جرّب Safari لـ AirPlay أو Chrome على جهاز يدعم Cast.':'Casting is not available in this browser; try Safari for AirPlay or Chrome on a Cast-supported device.'}</p>}
+  </details>
  </div>;
 }

@@ -1,13 +1,19 @@
-import { type Ref } from 'react';
+'use client';
+/* eslint-disable react-hooks/immutability -- a ref callback forwards the node to a caller-owned ref. */
+
+import { useCallback, useRef, type Ref } from 'react';
 import Icon from '../icons/Icon';
+import { useI18n } from '../../lib/i18n';
 
 /**
- * A real, modern glassmorphic search input: a clean inline-start search icon
- * (no box around it), a full-width text field and an optional clear button.
- * Used on the Search page and anywhere a first-class search field is needed.
+ * The product's search field: a single glass capsule with a leading glyph, a
+ * full-width input, an optional clear control and (on pointer devices) a
+ * keyboard hint. It keeps `dir="auto"` so mixed Arabic/Latin queries never
+ * reorder, while the field itself follows the interface direction.
  */
 export default function SearchField({
-  value, onChange, placeholder, label, onSubmit, onClear, autoFocus = false, id, inputRef, maxLength = 200,
+  value, onChange, placeholder, label, onSubmit, onClear, autoFocus = false, id,
+  inputRef, maxLength = 200, shortcut, className,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -19,16 +25,27 @@ export default function SearchField({
   id?: string;
   inputRef?: Ref<HTMLInputElement>;
   maxLength?: number;
+  shortcut?: string;
+  className?: string;
 }) {
+  const { t } = useI18n();
+  const fallbackRef = useRef<HTMLInputElement | null>(null);
+  // Stable ref callback: keep the local fallback and forward to the caller's ref.
+  const setInput = useCallback((node: HTMLInputElement | null) => {
+    fallbackRef.current = node;
+    if (typeof inputRef === 'function') inputRef(node);
+    else if (inputRef && 'current' in inputRef) (inputRef as { current: HTMLInputElement | null }).current = node;
+  }, [inputRef]);
+
   return (
     <form
-      className="cp-search-field"
+      className={['cp-field', 'cp-search-field', className ?? ''].filter(Boolean).join(' ')}
       role="search"
-      onSubmit={e => { e.preventDefault(); onSubmit?.(); }}
+      onSubmit={event => { event.preventDefault(); onSubmit?.(); }}
     >
-      <span className="cp-search-icon" aria-hidden="true"><Icon name="search" size={20} /></span>
+      <span className="cp-field__icon" aria-hidden="true"><Icon name="search" size={19} /></span>
       <input
-        ref={inputRef}
+        ref={setInput}
         id={id}
         type="search"
         dir="auto"
@@ -37,15 +54,25 @@ export default function SearchField({
         autoFocus={autoFocus}
         autoComplete="off"
         enterKeyHint="search"
-        onChange={e => onChange(e.target.value)}
+        onChange={event => onChange(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === 'Escape' && value) { event.stopPropagation(); onChange(''); onClear?.(); }
+        }}
         placeholder={placeholder}
         aria-label={label}
       />
-      {value && onClear && (
-        <button type="button" className="cp-search-clear" onClick={onClear} aria-label={label}>
-          <Icon name="close" size={16} />
+      {value ? (
+        <button
+          type="button"
+          className="cp-field__action"
+          onClick={() => { onChange(''); onClear?.(); fallbackRef.current?.focus(); }}
+          aria-label={t('search.clear')}
+        >
+          <Icon name="close" size={15} />
         </button>
-      )}
+      ) : shortcut ? (
+        <kbd className="cp-kbd" aria-hidden="true">{shortcut}</kbd>
+      ) : null}
     </form>
   );
 }

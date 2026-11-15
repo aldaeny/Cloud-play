@@ -1,0 +1,136 @@
+/* AUTO-GENERATED from packages/ui-tokens/tokens.json — do not edit by hand. */
+:root {
+  color-scheme: dark;
+
+  /* ---- Colour · dark (reference values; semantic mapping lives in theme.css) ---- */
+  --cp-dark-canvas: #05060A;
+  --cp-dark-canvas-raised: #0A0C12;
+  --cp-dark-canvas-sunken: #030409;
+  --cp-dark-ambient-blue: #1F3A7A;
+  --cp-dark-ambient-violet: #40206F;
+  --cp-dark-ambient-magenta: #5A1236;
+  --cp-dark-glass-1: rgba(255, 255, 255, 0.055);
+  --cp-dark-glass-2: rgba(255, 255, 255, 0.085);
+  --cp-dark-glass-3: rgba(255, 255, 255, 0.125);
+  --cp-dark-glass-solid: #14161E;
+  --cp-dark-glass-rim: rgba(255, 255, 255, 0.13);
+  --cp-dark-glass-rim-strong: rgba(255, 255, 255, 0.26);
+  --cp-dark-glass-highlight: rgba(255, 255, 255, 0.42);
+  --cp-dark-glass-shadow: rgba(0, 0, 0, 0.55);
+  --cp-dark-text-primary: #F5F7FC;
+  --cp-dark-text-secondary: rgba(233, 238, 249, 0.72);
+  --cp-dark-text-tertiary: rgba(233, 238, 249, 0.48);
+  --cp-dark-text-on-accent: #FFFFFF;
+  --cp-dark-accent: #7AA2FF;
+  --cp-dark-accent-strong: #9B7BFF;
+  --cp-dark-accent-soft: rgba(122, 162, 255, 0.16);
+  --cp-dark-accent-magenta: #FF5FA2;
+  --cp-dark-success: #4ADE80;
+  --cp-dark-warning: #FBBF24;
+  --cp-dark-danger: #FB7185;
+  --cp-dark-focus: #B9D2FF;
+
+  /* ---- Colour · light ---- */
+  --cp-light-canvas: #EEF1F7;
+  --cp-light-canvas-raised: #F7F9FD;
+  --cp-light-canvas-sunken: #E3E8F1;
+  --cp-light-ambient-blue: #C9DBFF;
+  --cp-light-ambient-violet: #DCCBFF;
+  --cp-light-ambient-magenta: #FFD3E6;
+  --cp-light-glass-1: rgba(255, 255, 255, 0.52);
+  --cp-light-glass-2: rgba(255, 255, 255, 0.70);
+  --cp-light-glass-3: rgba(255, 255, 255, 0.88);
+  --cp-light-glass-solid: #FFFFFF;
+  --cp-light-glass-rim: rgba(255, 255, 255, 0.92);
+  --cp-light-glass-rim-strong: rgba(19, 33, 62, 0.14);
+  --cp-light-glass-highlight: rgba(255, 255, 255, 0.96);
+  --cp-light-glass-shadow: rgba(30, 48, 86, 0.16);
+  --cp-light-text-primary: #0C1526;
+  --cp-light-text-secondary: rgba(20, 33, 55, 0.70);
+  --cp-light-text-tertiary: rgba(20, 33, 55, 0.48);
+  --cp-light-text-on-accent: #FFFFFF;
+  --cp-light-accent: #2F5FD0;
+  --cp-light-accent-strong: #7A3CF0;
+  --cp-light-accent-soft: rgba(47, 95, 208, 0.10);
+  --cp-light-accent-magenta: #C2185B;
+  --cp-light-success: #15803D;
+  --cp-light-warning: #B45309;
+  --cp-light-danger: #BE123C;
+  --cp-light-focus: #2F5FD0;
+
+  /* ---- Radius ---- */
+  --cp-radius-xs: 8px;
+  --cp-radius-sm: 12px;
+  --cp-radius-md: 16px;
+  --cp-radius-lg: 22px;
+  --cp-radius-xl: 28px;
+  --cp-radius-2xl: 36px;
+  --cp-radius-pill: 999px;
+
+  /* ---- Blur / material ---- */
+  --cp-blur-thin: 14px;
+  --cp-blur-regular: 26px;
+  --cp-blur-thick: 40px;
+  --cp-blur-saturate: 180%;
+
+  /* ---- Spacing ---- */
+  --cp-space-1: 4px;
+  --cp-space-2: 8px;
+  --cp-space-3: 12px;
+  --cp-space-4: 16px;
+  --cp-space-5: 20px;
+  --cp-space-6: 24px;
+  --cp-space-8: 32px;
+  --cp-space-10: 40px;
+  --cp-space-12: 48px;
+  --cp-space-16: 64px;
+  --cp-space-20: 80px;
+
+  /* ---- Type ---- */
+  --cp-font-arabic: 'IBM Plex Sans Arabic', 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --cp-font-latin: 'Plus Jakarta Sans', 'IBM Plex Sans Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --cp-text-display: clamp(2.35rem, 4.4vw, 3.9rem);
+  --cp-text-title1: clamp(1.75rem, 2.6vw, 2.5rem);
+  --cp-text-title2: clamp(1.35rem, 1.9vw, 1.85rem);
+  --cp-text-title3: 1.15rem;
+  --cp-text-headline: 1rem;
+  --cp-text-body: 0.9375rem;
+  --cp-text-callout: 0.875rem;
+  --cp-text-caption: 0.75rem;
+  --cp-text-micro: 0.6875rem;
+  --cp-leading-tight: 1.15;
+  --cp-leading-snug: 1.35;
+  --cp-leading-normal: 1.6;
+  --cp-leading-arabic: 1.78;
+  --cp-weight-regular: 400;
+  --cp-weight-medium: 500;
+  --cp-weight-semibold: 600;
+  --cp-weight-bold: 700;
+
+  /* ---- Motion ---- */
+  --cp-duration-instant: 90ms;
+  --cp-duration-fast: 180ms;
+  --cp-duration-base: 280ms;
+  --cp-duration-slow: 420ms;
+  --cp-duration-page: 560ms;
+  --cp-ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --cp-ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --cp-ease-exit: cubic-bezier(0.55, 0, 0.75, 0.2);
+  --cp-ease-spring: cubic-bezier(0.34, 1.42, 0.44, 1);
+  --cp-ease-spring-soft: cubic-bezier(0.28, 1.18, 0.32, 1);
+
+  /* ---- Control metrics ---- */
+  --cp-control-height-sm: 34px;
+  --cp-control-height-md: 44px;
+  --cp-control-height-lg: 52px;
+  --cp-control-icon-sm: 36px;
+  --cp-control-icon-md: 44px;
+  --cp-control-icon-lg: 54px;
+  --cp-control-touch-target: 44px;
+  --cp-control-tv-target: 64px;
+
+  /* ---- Elevation ---- */
+  --cp-elevation-1: 0 1px 2px rgba(4, 8, 20, 0.18), 0 8px 24px -12px rgba(4, 8, 20, 0.45);
+  --cp-elevation-2: 0 2px 6px rgba(4, 8, 20, 0.20), 0 18px 44px -18px rgba(4, 8, 20, 0.60);
+  --cp-elevation-3: 0 6px 16px rgba(4, 8, 20, 0.24), 0 32px 80px -24px rgba(4, 8, 20, 0.72);
+}

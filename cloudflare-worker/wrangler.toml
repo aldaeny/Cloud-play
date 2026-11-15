@@ -10,10 +10,11 @@ compatibility_flags = ["nodejs_compat"]
 # preview_id = "your-preview-kv-namespace-id-here"
 
 # Environment variables (vars - not secrets, for temporary deployment)
+# For production, use `wrangler secret put` instead of vars for credentials
 [vars]
-XTREAM_BASE_URL = "http://redchicks.xyz:2052"
-XTREAM_USERNAME = "adam@net"
-XTREAM_PASSWORD = "83632625225643"
+XTREAM_BASE_URL = "https://your-provider.com:2053"
+# XTREAM_USERNAME and XTREAM_PASSWORD should be set as secrets: wrangler secret put XTREAM_USERNAME
+# XTREAM_PASSWORD = "your-password"
 
 # Optional: Custom domain (configure in Cloudflare dashboard after deploy)
 # routes = [

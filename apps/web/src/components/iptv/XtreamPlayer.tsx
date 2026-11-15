@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { XtreamClient, XtreamCredentials, XtreamCategory, XtreamStream, XtreamMovie, XtreamSeries, XtreamEpisode, XtreamError, XtreamErrorCode, createClientFromStorage, saveCredentials, clearCredentials, hasStoredCredentials } from '../../lib/xtream-client';
-import type { Language } from './PublicTv';
+type Language = 'ar' | 'en';
 import { VideoPlayerModal } from '../player/VideoPlayerModal';
 import { getStreamType } from '../../lib/player-utils';
 import type { Channel } from '../../types/channel';
@@ -37,7 +37,7 @@ const T: Record<Language, Record<string, string>> = {
     noResults: 'لا نتائج مطابقة للبحث.', pickGroup: 'اختر تصنيفاً لعرض محتواه.',
     credentialsTitle: 'إدخال بيانات السيرفر',
     credentialsDesc: 'بيانات الدخول تُحفظ في متصفحك فقط ولا تُرسل لأي خادم خارجي.',
-    serverLabel: 'عنوان السيرفر (مثال: http://redchicks.xyz:2052)',
+    serverLabel: 'عنوان السيرفر (مثال: https://your-provider.com:2053)',
     usernameLabel: 'اسم المستخدم',
     passwordLabel: 'كلمة المرور',
     proxyLabel: 'عنوان البروكسي (اختياري - Cloudflare Worker)',
@@ -74,7 +74,7 @@ const T: Record<Language, Record<string, string>> = {
     noResults: 'No matches for your search.', pickGroup: 'Pick a category to browse its content.',
     credentialsTitle: 'Enter Server Credentials',
     credentialsDesc: 'Credentials are stored only in your browser and never sent to any external server.',
-    serverLabel: 'Server URL (e.g. http://redchicks.xyz:2052)',
+    serverLabel: 'Server URL (e.g. https://your-provider.com:2053)',
     usernameLabel: 'Username',
     passwordLabel: 'Password',
     proxyLabel: 'Proxy URL (optional - Cloudflare Worker)',
@@ -109,13 +109,15 @@ function toPlayerChannel(source: Playing, name: string): Channel {
     logo: '',
     streamUrl: source.url,
     streamType: source.hls ? 'hls' : source.container === 'mp4' ? 'mp4' : 'hls',
-    category: source.kind,
+    category: source.kind === 'live' ? 'general' : source.kind === 'movie' ? 'movies' : 'series',
     sourceGroup: source.kind,
     country: '',
     countryCode: '',
     language: '',
     isLive: source.kind === 'live',
     playable: true,
+    quality: '',
+    qualityLabel: '',
     epgId: '',
   };
 }
@@ -147,10 +149,10 @@ export default function XtreamPlayer({ language }: { language: Language }) {
   const [playerError, setPlayerError] = useState('');
   const [filter, setFilter] = useState('');
   const [credentials, setCredentials] = useState<XtreamCredentials>({
-    server: 'http://redchicks.xyz:2052',
-    username: 'adam@net',
-    password: '83632625225643',
-    proxyUrl: 'https://xtream-media-proxy.scarce-python.workers.dev',
+    server: 'https://your-provider.com:2053',
+    username: '',
+    password: '',
+    proxyUrl: '',
   });
   const [showSavedNotice, setShowSavedNotice] = useState(false);
   const clientRef = useRef<XtreamClient | null>(null);
@@ -158,21 +160,6 @@ export default function XtreamPlayer({ language }: { language: Language }) {
 
   const message = useCallback((code: string) => t[code] || t.connectionError, [language, t]);
 
-  // Initialize: check for stored credentials
-  useEffect(() => {
-    const stored = createClientFromStorage();
-    if (stored) {
-      clientRef.current = stored;
-      const creds = stored.getCredentials();
-      setCredentials(creds);
-      setGate('ready');
-      setShowSavedNotice(true);
-      // Auto-load categories
-      loadGroups();
-    } else {
-      setGate('credentials');
-    }
-  }, []);
 
   const loadGroups = useCallback(async () => {
     const client = clientRef.current;
@@ -223,6 +210,24 @@ export default function XtreamPlayer({ language }: { language: Language }) {
     }
   }, [kind, gate]);
 
+  // Initialize: check for stored credentials (one-time, after mount).
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- restoring a saved Xtream session after mount */
+    const stored = createClientFromStorage();
+    if (stored) {
+      clientRef.current = stored;
+      const creds = stored.getCredentials();
+      setCredentials(creds);
+      setGate('ready');
+      setShowSavedNotice(true);
+      // Auto-load categories
+      loadGroups();
+    } else {
+      setGate('credentials');
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
+
   const handleSaveCredentials = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -266,9 +271,9 @@ export default function XtreamPlayer({ language }: { language: Language }) {
     clientRef.current = null;
     setGate('credentials');
     setCredentials({
-      server: 'http://redchicks.xyz:2052',
-      username: 'adam@net',
-      password: '83632625225643',
+      server: 'https://your-provider.com:2053',
+      username: '',
+      password: '',
       proxyUrl: '',
     });
     setAccount(null);
@@ -355,11 +360,11 @@ export default function XtreamPlayer({ language }: { language: Language }) {
         for (const ep of eps) {
           allEpisodes.push({
             id: ep.id,
-            name: ep.title || ep.info?.title || `Episode ${ep.episode_num}`,
+            name: ep.title || `Episode ${ep.id}`,
             icon: ep.info?.movie_image,
             ext: ep.container_extension,
             season: String(season),
-            episode: String(ep.episode_num),
+            episode: String(ep.id),
             plot: ep.info?.plot,
           });
         }
@@ -440,7 +445,7 @@ export default function XtreamPlayer({ language }: { language: Language }) {
               type="text"
               value={credentials.server}
               onChange={e => setCredentials(c => ({ ...c, server: e.target.value }))}
-              placeholder="http://redchicks.xyz:2052"
+              placeholder="https://your-provider.com:2053"
               required
               autoComplete="off"
             />
@@ -617,6 +622,8 @@ export default function XtreamPlayer({ language }: { language: Language }) {
               key={playing.url}
               channel={toPlayerChannel(playing, playing.name)}
               language={language}
+              favorite={false}
+              onFavoriteToggle={() => {}}
               onClose={() => { setPlaying(null); setPlayerError(''); }}
             />
             {playerError && <p className="pp-error">{t.playerError}</p>}

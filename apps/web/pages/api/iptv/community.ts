@@ -79,6 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const page = queryCommunity(index, {
+    region: first(req.query.region),
     country: first(req.query.country),
     category: first(req.query.category),
     q: first(req.query.q),

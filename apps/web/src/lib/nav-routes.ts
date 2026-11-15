@@ -1,4 +1,5 @@
 import type { IconName } from '../components/icons/Icon';
+import type { MessageKey } from './i18n/messages';
 
 /**
  * Single source of truth for the global navigation: every entry maps to a real
@@ -8,6 +9,9 @@ import type { IconName } from '../components/icons/Icon';
 export type NavRoute = {
   href: string;
   icon: IconName;
+  /** Localized label + description, resolved through the shared catalog. */
+  labelKey: MessageKey;
+  descKey: MessageKey;
   ar: string;
   en: string;
   descAr: string;
@@ -19,29 +23,23 @@ const norm = (p: string) => p.replace(/\/$/, '') || '/';
 
 // The 6 core dock items requested: Home · Movies · Series · TV · Favorites · Settings.
 export const NAV_ROUTES: NavRoute[] = [
-  { href: '/', icon: 'home', ar: 'الرئيسية', en: 'Home',
-    descAr: 'واجهتك الأولى: أحدث الأفلام والبث المباشر والحصريات.',
-    descEn: 'Your front page: the latest films, live TV and exclusives.',
+  { href: '/', icon: 'home', labelKey: 'nav.home', descKey: 'nav.home.desc',
+    ar: 'الرئيسية', en: 'Home', descAr: 'واجهتك: الأفلام المختارة والبث المباشر والمفضلة.', descEn: 'Your front page: the latest films, live TV and exclusives.',
     match: p => norm(p) === '/' },
-  { href: '/movies', icon: 'film', ar: 'الأفلام', en: 'Movies',
-    descAr: 'أفلام قصيرة مرخّصة متاحة للمشاهدة المجانية مع حفظ التقدم.',
-    descEn: 'Licensed short films, free to watch, with saved progress.',
+  { href: '/movies', icon: 'film', labelKey: 'nav.movies', descKey: 'nav.movies.desc',
+    ar: 'الأفلام', en: 'Movies', descAr: 'أفلام كاملة من الملك العام، مجانية للمشاهدة مع حفظ التقدم.', descEn: 'Licensed short films, free to watch, with saved progress.',
     match: p => norm(p) === '/movies' || norm(p).startsWith('/movies/') },
-  { href: '/series', icon: 'play', ar: 'المسلسلات', en: 'Series',
-    descAr: 'قسم المسلسلات؛ تُضاف الأعمال بعد ربط محتوى مرخّص بالمكتبة.',
-    descEn: 'The series section; titles arrive once licensed content is linked.',
+  { href: '/series', icon: 'play', labelKey: 'nav.series', descKey: 'nav.series.desc',
+    ar: 'المسلسلات', en: 'Series', descAr: 'المسلسلات والمواسم المتاحة من مكتبة المشغّل.', descEn: 'The series section; titles arrive once licensed content is linked.',
     match: p => norm(p) === '/series' },
-  { href: '/live', icon: 'tv', ar: 'تلفزيون', en: 'TV',
-    descAr: 'قنوات تلفزيونية مباشرة وتصنيفات محلية وعالمية.',
-    descEn: 'Live TV channels with local and global categories.',
+  { href: '/live', icon: 'tv', labelKey: 'nav.tv', descKey: 'nav.tv.desc',
+    ar: 'تلفزيون', en: 'TV', descAr: 'قنوات تلفزيونية مباشرة وتصنيفات محلية وعالمية.', descEn: 'Live TV channels with local and global categories.',
     match: p => norm(p) === '/live' || norm(p).startsWith('/live/') },
-  { href: '/favorites', icon: 'star', ar: 'المفضلة', en: 'Favorites',
-    descAr: 'أفلامك المحفوظة على هذا الجهاز فقط، للوصول السريع إليها.',
-    descEn: 'Your saved films, stored on this device only, for quick access.',
+  { href: '/favorites', icon: 'star', labelKey: 'nav.favorites', descKey: 'nav.favorites.desc',
+    ar: 'المفضلة', en: 'Favorites', descAr: 'أفلامك المحفوظة على هذا الجهاز فقط، للوصول السريع إليها.', descEn: 'Your saved films, stored on this device only, for quick access.',
     match: p => norm(p) === '/favorites' },
-  { href: '/settings', icon: 'settings', ar: 'الإعدادات', en: 'Settings',
-    descAr: 'اللغة والمظهر وتفضيلات الحركة والتشغيل.',
-    descEn: 'Language, appearance, motion and playback preferences.',
+  { href: '/settings', icon: 'settings', labelKey: 'nav.settings', descKey: 'nav.settings.desc',
+    ar: 'الإعدادات', en: 'Settings', descAr: 'اللغة والمظهر وتفضيلات الحركة والتشغيل.', descEn: 'Language, appearance, motion and playback preferences.',
     match: p => norm(p) === '/settings' },
 ];
 

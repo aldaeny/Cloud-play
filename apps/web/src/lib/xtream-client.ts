@@ -7,7 +7,7 @@
  */
 
 export type XtreamCredentials = {
-  server: string;           // e.g. "http://redchicks.xyz:2052"
+  server: string;           // e.g. "https://your-provider.com:2053" — HTTPS required for production
   username: string;
   password: string;
   proxyUrl?: string;        // Optional Cloudflare Worker proxy URL (e.g. "https://xtream-proxy.yourdomain.workers.dev")

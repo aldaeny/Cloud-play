@@ -52,15 +52,15 @@ preview_id = "your-preview-namespace-id"
 ### 3. Set Secrets
 
 ```bash
-# Required: Your Xtream server details
+# Required: Your Xtream server details (HTTPS required for production)
 wrangler secret put XTREAM_BASE_URL
-# Enter: http://redchicks.xyz:2052
+# Enter: https://your-provider.com:2053
 
 wrangler secret put XTREAM_USERNAME
-# Enter: adam@net
+# Enter: your-username
 
 wrangler secret put XTREAM_PASSWORD
-# Enter: 83632625225643
+# Enter: your-password
 ```
 
 ### 4. Deploy

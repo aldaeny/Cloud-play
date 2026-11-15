@@ -178,7 +178,7 @@ export default function XtreamServersPanel({ token }: Props) {
 
       <form onSubmit={addServer} className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 rounded-xl bg-[#0a0a0c] border border-white/10">
         <label className="text-sm">اسم السيرفر<input required minLength={2} maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder="Main Server" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
-        <label className="text-sm">رابط السيرفر<input required type="url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="http://example.com:2052" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
+        <label className="text-sm">رابط السيرفر<input required type="url" value={baseUrl} onChange={e => setBaseUrl(e.target.value)} placeholder="https://provider.example.com:2053" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
         <label className="text-sm">اسم المستخدم<input required value={username} onChange={e => setUsername(e.target.value)} autoComplete="off" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
         <label className="text-sm">كلمة المرور<input required={!editingId} type="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>
         <label className="text-sm">الأولوية (1 = الأعلى)<input required type="number" min={1} max={1000} step={1} value={priority} onChange={e => setPriority(e.target.value)} className="block w-full mt-1 p-3 rounded-lg bg-[#171820] border border-white/15" /></label>

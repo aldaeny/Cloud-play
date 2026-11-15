@@ -1,328 +1,804 @@
 /* ============================================================================
-   CLOUD PLAY IRAQ — UNIFIED BUTTON DESIGN SYSTEM (Liquid Glass)
+   CLOUD PLAY — CONTROL SYSTEM (Liquid Glass)
    ----------------------------------------------------------------------------
-   Single source of truth for every button surface in the web app (desktop,
-   tablet and phone — the phone app renders this same UI in a WebView).
+   Every interactive surface in the product: circular glass icon buttons, pill
+   buttons, floating controls, glass search fields, segmented controls, switches,
+   sliders, dropdown menus, bottom sheets, list rows — one coherent system.
 
-   Phase 2 mapping (per the transformation brief):
-     DARK theme  (.site / .theme-dark)  -> dark semi-transparent glass, clear silver rims
-     LIGHT theme (.site.theme-light)    -> LIGHT semi-transparent glass, soft silver rims,
-                                           dark text for excellent contrast
-   Glass is applied to BUTTONS ONLY — never to cards or page backgrounds.
-
-   Scope is strictly limited to button surfaces: background, border, radius,
-   shadow, label colour and interaction states. Geometry (size, padding, margin,
-   display, gap, font) is inherited from the existing layout and never altered
-   here. Cards, icons, menus, inputs, text and page layout are out of scope.
+   The controls are direction-agnostic (logical properties only) and adapt their
+   press feedback per platform:
+     iOS      → spring scale + haptic-friendly timing
+     Android  → material ripple, no scale
+     Web/TV   → hover lift + keyboard focus ring
    ========================================================================== */
 
-/* ---- Design tokens -------------------------------------------------------- */
-/* Shared with the global navigation bar so every platform uses one glass system. */
-.site, .cp-global-nav {
-  /* DARK — dark semi-transparent glass with a clear silver rim */
-  --cp-btn-fill: rgba(38, 50, 66, 0.42);
-  --cp-btn-fill-selected: rgba(74, 90, 112, 0.56);
-  --cp-btn-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.04) 52%, rgba(255, 255, 255, 0.09));
-  --cp-btn-border: rgba(255, 255, 255, 0.08);
-  --cp-btn-border-hover: rgba(255, 255, 255, 0.18);
-  --cp-btn-border-selected: rgba(255, 255, 255, 0.26);
-  --cp-btn-text: #f4f8fb;
-  --cp-btn-shadow: 0 2px 10px rgba(0, 0, 0, 0.20);
-  --cp-btn-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.26);
-  --cp-btn-shadow-pressed: 0 1px 4px rgba(0, 0, 0, 0.22);
-  --cp-btn-focus: #dcebf5;
-  --cp-btn-edge-a: rgba(255, 255, 255, 0.95);
-  --cp-btn-edge-b: rgba(220, 232, 240, 0.55);
-  --cp-btn-solid: #2b343c;
-}
-.site.theme-light, .cp-global-nav.theme-light {
-  /* LIGHT — light frosted glass, soft silver rim, dark text for strong contrast */
-  --cp-btn-fill: rgba(255, 255, 255, 0.55);
-  --cp-btn-fill-selected: rgba(255, 255, 255, 0.80);
-  --cp-btn-sheen: linear-gradient(160deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.22) 52%, rgba(255, 255, 255, 0.42));
-  --cp-btn-border: rgba(0, 0, 0, 0.08);
-  --cp-btn-border-hover: rgba(0, 0, 0, 0.16);
-  --cp-btn-border-selected: rgba(0, 0, 0, 0.22);
-  --cp-btn-text: #16233c;
-  --cp-btn-shadow: 0 1px 4px rgba(30, 50, 90, 0.10);
-  --cp-btn-shadow-hover: 0 3px 12px rgba(30, 50, 90, 0.14);
-  --cp-btn-shadow-pressed: 0 1px 3px rgba(30, 50, 90, 0.12);
-  --cp-btn-focus: #2f5fae;
-  --cp-btn-edge-a: rgba(255, 255, 255, 0.98);
-  --cp-btn-edge-b: rgba(150, 170, 200, 0.72);
-  --cp-btn-solid: #e9eef6;
-}
-
-/* ---- Base glass surface --------------------------------------------------- */
-.site :is(
-  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle,
-  .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button,
-  .section-header button, .section-nav a,
-  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
-  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite,
-  .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip, .mobile-dock a, .mobile-dock button
-) {
+/* ---- Pill buttons --------------------------------------------------------- */
+.cp-btn {
+  --cp-btn-height: var(--cp-control-height-md);
+  --cp-btn-pad: 18px;
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--cp-btn-height);
+  padding-inline: var(--cp-btn-pad);
+  border: 1px solid var(--cp-glass-rim);
+  border-radius: var(--cp-radius-pill);
+  background-color: var(--cp-glass-fill-2);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: var(--cp-text-callout);
+  font-weight: var(--cp-weight-semibold);
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  overflow: hidden;
   isolation: isolate;
-  border: 1px solid var(--cp-btn-border);
-  background-color: var(--cp-btn-fill);
-  background-image: var(--cp-btn-sheen);
-  box-shadow: var(--cp-btn-shadow);
-  color: var(--cp-btn-text);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  backdrop-filter: blur(14px) saturate(150%);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--cp-duration-fast) var(--cp-ease-spring),
+    background-color var(--cp-duration-fast) var(--cp-ease-standard),
+    border-color var(--cp-duration-fast) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard),
+    color var(--cp-duration-fast) var(--cp-ease-standard);
 }
+.cp-btn svg { flex: none; }
+.cp-btn:disabled,
+.cp-btn[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
-/* ---- Shape categories (match the reference rounded-rect / pill / circle) --- */
-.site :is(
-  .outline-button, .iptv-load, .media-play, .open-movie-card button, .movie-favorite,
-  .firebase-viewer-top button, .open-movie-viewer-head button, .section-header button,
-  .section-nav a, .home-about-link, .cp-reel-link, .media-cast-button, .account-entry,
-  .firebase-list button, .licensed-channel
-) { border-radius: 14px; }
-
-.site :is(
-  .main-nav a, .nav-reveal-item, .language, .nav-account, .movie-filters button,
-  .language-options button, .licensed-filters button, .iptv-groups button,
-  .world-search button, .world-pagination button, .search-actions button,
-  .account-back, .playback-reset, .sky-theme-toggle, .reference-intro-skip, .movie-details-link
-) { border-radius: 999px; }
-
-.site :is(.settings-trigger, .carousel-arrow, .modal-close, .settings-close, .cp-reel-controls > button) { border-radius: 50%; }
-.site :is(.search-trigger, .licensed-favorite) { border-radius: 12px; }
-.site .search-morph-close { border-radius: 8px; }
-
-/* Preserve the original positioning of overlay controls (the base rule above
-   sets position:relative only to anchor the edge light; these stay absolute). */
-.site :is(.carousel-arrow, .modal-close, .reference-intro-skip) { position: absolute; }
-
-/* ---- Animated edge light (the moving rim required by the brief) ------------ */
-@property --cp-btn-edge { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-.site :is(
-  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle,
-  .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button,
-  .section-header button, .section-nav a,
-  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
-  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite,
-  .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip
-)::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: inherit;
-  pointer-events: none;
-  padding: 1px;
-  background: conic-gradient(from var(--cp-btn-edge),
-    transparent 0deg, var(--cp-btn-edge-a) 38deg, transparent 86deg,
-    transparent 180deg, var(--cp-btn-edge-b) 218deg, transparent 266deg);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: cp-btn-edge-spin 5.5s linear infinite;
-}
-@keyframes cp-btn-edge-spin { to { --cp-btn-edge: 360deg; } }
-
-/* ---- Interaction states --------------------------------------------------- */
 @media (hover: hover) {
-  .site :is(
-    .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-    .language, .nav-account, .sky-theme-toggle,
-    .main-nav a, .nav-reveal-item,
-    .language-options button, .account-entry, .account-back, .playback-reset,
-    .search-trigger, .search-morph-close, .search-actions button,
-    .section-header button, .section-nav a,
-    .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
-    .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-    .licensed-filters button, .licensed-favorite,
-    .world-search button, .world-pagination button,
-    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-    .reference-intro-skip, .mobile-dock a, .mobile-dock button
-  ):hover:not(:disabled) {
-    border-color: var(--cp-btn-border-hover);
-    box-shadow: var(--cp-btn-shadow-hover);
+  .cp-btn:hover {
+    background-color: var(--cp-glass-fill-3);
+    border-color: var(--cp-glass-rim-strong);
+    box-shadow: var(--cp-elev-2), inset 0 1px 0 var(--cp-glass-highlight);
   }
 }
-.site :is(
-  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle,
-  .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button,
-  .section-header button, .section-nav a,
-  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
-  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite,
-  .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip
-):active:not(:disabled) {
-  border-color: var(--cp-btn-border);
-  box-shadow: var(--cp-btn-shadow-pressed);
+.cp-btn:active { transform: scale(0.97); box-shadow: var(--cp-elev-1); }
+:root[data-platform='android'] .cp-btn:active { transform: none; }
+
+/* Primary — aurora glass with a lit rim. */
+.cp-btn[data-variant='primary'] {
+  color: var(--cp-on-accent);
+  border-color: color-mix(in srgb, var(--cp-accent) 60%, transparent);
+  background-color: color-mix(in srgb, var(--cp-accent) 72%, transparent);
+  background-image:
+    linear-gradient(120deg, color-mix(in srgb, var(--cp-accent) 88%, #ffffff 6%), color-mix(in srgb, var(--cp-accent-strong) 82%, transparent)),
+    var(--cp-sheen);
+  box-shadow:
+    0 14px 34px -18px color-mix(in srgb, var(--cp-accent) 85%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 2px rgba(6, 12, 30, 0.28);
 }
-
-/* Selected / pressed / current — illuminated glass, no legacy colour fills */
-.site :is(
-  .language-options button.selected, .iptv-groups button.selected,
-  .firebase-list button.selected, .licensed-channel.selected,
-  .movie-filters button[aria-pressed="true"], .licensed-filters button[aria-pressed="true"],
-  .licensed-favorite[aria-pressed="true"], .movie-favorite[aria-pressed="true"],
-  .main-nav a.nav-active, .main-nav .nav-reveal-item.nav-active,
-  .settings-trigger.is-open, .search-trigger.is-open
-) {
-  background-color: var(--cp-btn-fill-selected);
-  border-color: var(--cp-btn-border-selected);
-  box-shadow: var(--cp-btn-shadow-hover);
-  color: var(--cp-btn-text);
+@media (hover: hover) {
+  .cp-btn[data-variant='primary']:hover {
+    background-color: color-mix(in srgb, var(--cp-accent) 84%, transparent);
+    box-shadow: 0 18px 44px -18px color-mix(in srgb, var(--cp-accent) 95%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
 }
-
-/* Focus — visible, high-contrast ring preserved for keyboard users */
-.site :is(
-  .outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle,
-  .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button,
-  .section-header button, .section-nav a,
-  .movie-filters button, .open-movie-card button, .movie-favorite, .movie-details-link,
-  .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite,
-  .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip, .mobile-dock a, .mobile-dock button
-):focus-visible {
-  outline: 2px solid var(--cp-btn-focus);
-  outline-offset: 3px;
+/* Tonal — tinted glass, dark text, for secondary emphasis. */
+.cp-btn[data-variant='tonal'] {
+  background-color: var(--cp-accent-soft);
+  border-color: color-mix(in srgb, var(--cp-accent) 34%, transparent);
+  color: var(--cp-ink);
 }
-.site.high-contrast :is(button, a):focus-visible { outline-width: 3px; }
-
-/* Disabled — dimmed, inert, no moving edge */
-.site :is(
-  .iptv-load, .media-play, .media-cast-button, .firebase-list button, .licensed-channel,
-  .world-search button, .world-pagination button, .open-movie-card button, .search-actions button
-):disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: var(--cp-btn-shadow);
+@media (hover: hover) {
+  .cp-btn[data-variant='tonal']:hover { background-color: color-mix(in srgb, var(--cp-accent) 22%, transparent); }
 }
-.site :is(.iptv-load, .media-play, .media-cast-button, .firebase-list button, .licensed-channel,
-  .world-search button, .world-pagination button, .open-movie-card button, .search-actions button):disabled::after {
-  animation: none;
-}
-
-/* ---- Pagination dots (indicator controls: geometry kept, rim recoloured) --- */
-.site .dot { background: rgba(255, 255, 255, 0.38); border: 0; box-shadow: none; border-radius: 50%; }
-.site .dot.active { background: var(--cp-btn-edge-a); border-radius: 5px; }
-.site.theme-light .dot { background: rgba(23, 42, 82, 0.35); }
-.site.theme-light .dot.active { background: #2f5fae; }
-.site .cp-reel-dots button { background: transparent; border: 0; box-shadow: none; }
-.site .cp-reel-dots button::after { background: rgba(255, 255, 255, 0.5); border-radius: 20px; }
-.site .cp-reel-dots button.active::after { background: var(--cp-btn-edge-a); }
-.site.theme-light .cp-reel-dots button::after { background: rgba(23, 42, 82, 0.4); }
-.site.theme-light .cp-reel-dots button.active::after { background: #2f5fae; }
-
-/* ---- Accessibility & viewing preferences ---------------------------------- */
-@media (prefers-reduced-motion: reduce) {
-  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-    .language-options button, .account-entry, .account-back, .playback-reset,
-    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-    .reference-intro-skip)::after { animation: none; }
-  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-    .language-options button, .account-entry, .account-back, .playback-reset,
-    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-    .reference-intro-skip) { transition: none; }
-}
-.site.motion-off :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip)::after { animation: none; }
-.site.motion-off :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip) { transition: none; }
-
-/* Ambient glow off: keep the static rim, drop the moving light */
-.site.no-glow :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip)::after { display: none; }
-
-/* Reduce transparency: solid glass equivalents, no blur */
-.site.solid-panels :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-  .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-  .language-options button, .account-entry, .account-back, .playback-reset,
-  .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-  .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-  .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-  .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-  .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-  .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-  .reference-intro-skip, .mobile-dock a, .mobile-dock button) {
+/* Ghost — text-level action. */
+.cp-btn[data-variant='ghost'] {
+  background: transparent;
   background-image: none;
-  background-color: var(--cp-btn-solid);
+  border-color: transparent;
+  box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  color: var(--cp-ink-2);
 }
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .site :is(.outline-button, .carousel-arrow, .modal-close, .settings-trigger, .settings-close,
-    .language, .nav-account, .sky-theme-toggle, .main-nav a, .nav-reveal-item,
-    .language-options button, .account-entry, .account-back, .playback-reset,
-    .search-trigger, .search-morph-close, .search-actions button, .section-header button,
-    .section-nav a, .movie-filters button, .open-movie-card button, .movie-favorite,
-    .movie-details-link, .home-about-link, .cp-reel-link, .cp-reel-controls > button,
-    .iptv-load, .iptv-groups button, .firebase-list button, .licensed-channel,
-    .licensed-filters button, .licensed-favorite, .world-search button, .world-pagination button,
-    .media-play, .media-cast-button, .firebase-viewer-top button, .open-movie-viewer-head button,
-    .reference-intro-skip, .mobile-dock a, .mobile-dock button) {
-    background-color: var(--cp-btn-solid);
+@media (hover: hover) { .cp-btn[data-variant='ghost']:hover { background: var(--cp-glass-fill); color: var(--cp-ink); box-shadow: none; } }
+/* Danger */
+.cp-btn[data-variant='danger'] {
+  color: var(--cp-danger);
+  border-color: color-mix(in srgb, var(--cp-danger) 38%, transparent);
+  background-color: color-mix(in srgb, var(--cp-danger) 12%, transparent);
+  box-shadow: none;
+}
+@media (hover: hover) { .cp-btn[data-variant='danger']:hover { background-color: color-mix(in srgb, var(--cp-danger) 20%, transparent); } }
+/* Quiet glass — for toolbars on media. */
+.cp-btn[data-variant='media'] {
+  background-color: rgba(16, 20, 30, 0.52);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f6f9ff;
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+}
+
+.cp-btn[data-size='sm'] { --cp-btn-height: var(--cp-control-height-sm); --cp-btn-pad: 13px; font-size: var(--cp-text-caption); gap: 6px; }
+.cp-btn[data-size='lg'] { --cp-btn-height: var(--cp-control-height-lg); --cp-btn-pad: 26px; font-size: var(--cp-text-body); }
+.cp-btn--block { width: 100%; }
+.cp-btn--rounded { border-radius: var(--cp-radius-md); }
+.cp-btn--icon { --cp-btn-pad: 0; width: var(--cp-btn-height); }
+
+/* Play glyph inside primary buttons. */
+.cp-btn__glyph {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ---- Circular glass icon buttons ------------------------------------------ */
+.cp-icon-btn {
+  --cp-icon-size: var(--cp-control-icon-md);
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--cp-icon-size);
+  height: var(--cp-icon-size);
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--cp-duration-fast) var(--cp-ease-spring),
+    background-color var(--cp-duration-fast) var(--cp-ease-standard),
+    border-color var(--cp-duration-fast) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard);
+}
+.cp-icon-btn[data-size='sm'] { --cp-icon-size: var(--cp-control-icon-sm); }
+.cp-icon-btn[data-size='lg'] { --cp-icon-size: var(--cp-control-icon-lg); }
+.cp-icon-btn[data-variant='plain'] {
+  background: transparent; background-image: none; border-color: transparent; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none; color: var(--cp-ink-2);
+}
+@media (hover: hover) {
+  .cp-icon-btn:hover { background-color: var(--cp-glass-fill-2); border-color: var(--cp-glass-rim-strong); transform: translateY(-1px); }
+  .cp-icon-btn[data-variant='plain']:hover { background: var(--cp-glass-fill); transform: none; color: var(--cp-ink); }
+}
+.cp-icon-btn:active { transform: scale(0.92); }
+:root[data-platform='android'] .cp-icon-btn:active { transform: none; }
+.cp-icon-btn[aria-pressed='true'],
+.cp-icon-btn[aria-expanded='true'] {
+  background-color: var(--cp-accent-soft);
+  border-color: color-mix(in srgb, var(--cp-accent) 45%, transparent);
+  color: var(--cp-ink);
+}
+.cp-icon-btn__dot {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cp-accent);
+  box-shadow: 0 0 0 2px var(--cp-glass-solid);
+}
+
+/* ---- Segmented control ---------------------------------------------------- */
+.cp-segmented {
+  --cp-seg-count: 2;
+  --cp-seg-index: 0;
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  padding: 4px;
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background: var(--cp-glass-fill);
+  -webkit-backdrop-filter: var(--cp-material-thin);
+  backdrop-filter: var(--cp-material-thin);
+  box-shadow: inset 0 1px 0 var(--cp-glass-highlight);
+  isolation: isolate;
+}
+.cp-segmented__thumb {
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-start: 4px;
+  z-index: 0;
+  width: calc((100% - 8px) / var(--cp-seg-count));
+  margin-inline-start: calc(var(--cp-seg-index) * ((100% - 8px) / var(--cp-seg-count)));
+  border-radius: var(--cp-radius-pill);
+  background: var(--cp-glass-fill-3);
+  background-image: var(--cp-sheen);
+  border: 1px solid var(--cp-glass-rim);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  transition:
+    margin-inline-start var(--cp-duration-base) var(--cp-ease-spring),
+    width var(--cp-duration-base) var(--cp-ease-spring);
+  pointer-events: none;
+}
+.cp-segmented__item {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: calc(var(--cp-control-height-sm) + 2px);
+  padding-inline: 12px;
+  border: 0;
+  border-radius: var(--cp-radius-pill);
+  background: transparent;
+  color: var(--cp-ink-2);
+  font-family: inherit;
+  font-size: var(--cp-text-caption);
+  font-weight: var(--cp-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--cp-duration-fast) var(--cp-ease-standard);
+}
+.cp-segmented__item[aria-pressed='true'] { color: var(--cp-ink); }
+@media (hover: hover) { .cp-segmented__item:hover { color: var(--cp-ink); } }
+.cp-segmented__item:focus-visible { outline-offset: -2px; }
+.cp-segmented[data-size='lg'] .cp-segmented__item { min-height: var(--cp-control-height-md); font-size: var(--cp-text-callout); }
+
+/* ---- Toggle switch -------------------------------------------------------- */
+.cp-switch {
+  --cp-switch-w: 50px;
+  --cp-switch-h: 30px;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  /* 30px is the Apple switch, but its hit area must reach 44px. */
+  padding-block: 7px;
+  margin-block: -7px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cp-switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+.cp-switch__track {
+  position: relative;
+  display: block;
+  width: var(--cp-switch-w);
+  height: var(--cp-switch-h);
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background: color-mix(in srgb, var(--cp-ink) 14%, transparent);
+  box-shadow: inset 0 1px 2px var(--cp-glass-shadow);
+  transition:
+    background-color var(--cp-duration-base) var(--cp-ease-standard),
+    border-color var(--cp-duration-base) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard);
+}
+.cp-switch__knob {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  width: calc(var(--cp-switch-h) - 6px);
+  height: calc(var(--cp-switch-h) - 6px);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(4, 10, 24, 0.35), inset 0 -1px 1px rgba(0, 0, 0, 0.08);
+  transition:
+    inset-inline-start var(--cp-duration-base) var(--cp-ease-spring),
+    width var(--cp-duration-fast) var(--cp-ease-spring);
+}
+.cp-switch__input:checked + .cp-switch__track {
+  background: color-mix(in srgb, var(--cp-accent) 78%, transparent);
+  border-color: color-mix(in srgb, var(--cp-accent) 55%, transparent);
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--cp-accent) 90%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.cp-switch__input:checked + .cp-switch__track .cp-switch__knob {
+  inset-inline-start: calc(100% - (var(--cp-switch-h) - 6px) - 2px);
+}
+.cp-switch__input:active + .cp-switch__track .cp-switch__knob { width: calc(var(--cp-switch-h) - 2px); }
+.cp-switch__input:focus-visible + .cp-switch__track { outline: 2px solid var(--cp-focus); outline-offset: 3px; }
+.cp-switch[data-size='sm'] { --cp-switch-w: 42px; --cp-switch-h: 26px; }
+
+/* ---- Slider --------------------------------------------------------------- */
+.cp-slider {
+  --cp-slider-progress: 40%;
+  width: 100%;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.cp-slider::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: var(--cp-radius-pill);
+  background:
+    linear-gradient(to right,
+      var(--cp-accent) 0%,
+      var(--cp-accent-strong) var(--cp-slider-progress),
+      color-mix(in srgb, var(--cp-ink) 18%, transparent) var(--cp-slider-progress),
+      color-mix(in srgb, var(--cp-ink) 18%, transparent) 100%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+:root[dir='rtl'] .cp-slider::-webkit-slider-runnable-track {
+  background:
+    linear-gradient(to left,
+      var(--cp-accent) 0%,
+      var(--cp-accent-strong) var(--cp-slider-progress),
+      color-mix(in srgb, var(--cp-ink) 18%, transparent) var(--cp-slider-progress),
+      color-mix(in srgb, var(--cp-ink) 18%, transparent) 100%);
+}
+.cp-slider::-moz-range-track {
+  height: 5px;
+  border-radius: var(--cp-radius-pill);
+  background: color-mix(in srgb, var(--cp-ink) 18%, transparent);
+}
+.cp-slider::-moz-range-progress {
+  height: 5px;
+  border-radius: var(--cp-radius-pill);
+  background: linear-gradient(90deg, var(--cp-accent), var(--cp-accent-strong));
+}
+.cp-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-block-start: -6.5px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 0;
+  box-shadow: 0 1px 4px rgba(2, 6, 18, 0.45), 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  transition: transform var(--cp-duration-fast) var(--cp-ease-spring);
+}
+.cp-slider::-moz-range-thumb {
+  width: 18px; height: 18px; border: 0; border-radius: 50%; background: #ffffff;
+  box-shadow: 0 1px 4px rgba(2, 6, 18, 0.45);
+}
+.cp-slider:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.cp-slider:active::-webkit-slider-thumb { transform: scale(1.24); }
+.cp-slider:focus-visible { outline: 2px solid var(--cp-focus); outline-offset: 4px; border-radius: var(--cp-radius-pill); }
+
+/* ---- Text fields / search ------------------------------------------------- */
+.cp-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--cp-control-height-lg);
+  padding-inline: 16px;
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: inset 0 1px 0 var(--cp-glass-highlight), var(--cp-elev-1);
+  transition:
+    border-color var(--cp-duration-fast) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard),
+    background-color var(--cp-duration-fast) var(--cp-ease-standard);
+}
+.cp-field:focus-within {
+  border-color: color-mix(in srgb, var(--cp-accent) 55%, transparent);
+  background-color: var(--cp-glass-fill-2);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--cp-accent) 18%, transparent),
+    inset 0 1px 0 var(--cp-glass-highlight),
+    var(--cp-elev-1);
+}
+.cp-field__icon { display: grid; place-items: center; flex: none; color: var(--cp-ink-3); }
+.cp-field input,
+.cp-field textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding-block: 13px;
+  border: 0;
+  background: transparent;
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: var(--cp-text-body);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.cp-field input::placeholder { color: var(--cp-ink-3); opacity: 1; }
+.cp-field input[type='search']::-webkit-search-cancel-button { display: none; }
+.cp-field__action {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-inline-end: -4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cp-ink-3);
+  cursor: pointer;
+  transition: background-color var(--cp-duration-fast) var(--cp-ease-standard), color var(--cp-duration-fast) var(--cp-ease-standard);
+}
+.cp-field__action:hover { background: var(--cp-glass-fill-2); color: var(--cp-ink); }
+.cp-field--square { border-radius: var(--cp-radius-md); }
+
+/* ---- Dropdown / menu ------------------------------------------------------ */
+.cp-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--cp-control-height-md);
+  padding-inline: 16px;
+  border-radius: var(--cp-radius-md);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material-thin);
+  backdrop-filter: var(--cp-material-thin);
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: var(--cp-text-callout);
+  font-weight: var(--cp-weight-medium);
+  cursor: pointer;
+  transition: border-color var(--cp-duration-fast) var(--cp-ease-standard), background-color var(--cp-duration-fast) var(--cp-ease-standard);
+}
+.cp-select[aria-expanded='true'],
+.cp-select:focus-visible { border-color: color-mix(in srgb, var(--cp-accent) 52%, transparent); background-color: var(--cp-glass-fill-2); }
+.cp-select__chevron { color: var(--cp-ink-3); transition: transform var(--cp-duration-fast) var(--cp-ease-standard); }
+.cp-select[aria-expanded='true'] .cp-select__chevron { transform: rotate(180deg); }
+
+.cp-menu {
+  min-width: 220px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: var(--cp-radius-md);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill-3);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material-thick);
+  backdrop-filter: var(--cp-material-thick);
+  box-shadow: var(--cp-elev-3), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  animation: cp-pop-in var(--cp-duration-base) var(--cp-ease-spring) both;
+  transform-origin: var(--cp-origin, top center);
+}
+.cp-menu__label {
+  padding: 8px 12px 6px;
+  font-size: var(--cp-text-micro);
+  font-weight: var(--cp-weight-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cp-ink-3);
+}
+:root[lang='ar'] .cp-menu__label { letter-spacing: normal; text-transform: none; font-size: var(--cp-text-caption); }
+.cp-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--cp-radius-sm);
+  background: transparent;
+  color: var(--cp-ink-2);
+  font-family: inherit;
+  font-size: var(--cp-text-callout);
+  font-weight: var(--cp-weight-medium);
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--cp-duration-instant) var(--cp-ease-standard), color var(--cp-duration-instant) var(--cp-ease-standard);
+}
+.cp-menu__item:hover,
+.cp-menu__item.is-active { background: var(--cp-glass-fill-2); color: var(--cp-ink); }
+.cp-menu__item[aria-selected='true'] { color: var(--cp-ink); background: var(--cp-accent-soft); }
+.cp-menu__item[disabled] { opacity: 0.42; cursor: not-allowed; }
+.cp-menu__check { margin-inline-start: auto; color: var(--cp-accent); display: inline-grid; place-items: center; }
+.cp-menu__meta { margin-inline-start: auto; color: var(--cp-ink-3); font-size: var(--cp-text-caption); }
+.cp-menu__sep { height: 1px; margin: 6px 4px; background: var(--cp-glass-rim); }
+
+/* ---- List rows ------------------------------------------------------------ */
+.cp-row-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--cp-radius-md);
+  background: transparent;
+  color: var(--cp-ink);
+  text-align: start;
+  transition: background-color var(--cp-duration-fast) var(--cp-ease-standard), border-color var(--cp-duration-fast) var(--cp-ease-standard);
+}
+.cp-row-item + .cp-row-item { margin-block-start: 4px; }
+.cp-row-item--glass { background: var(--cp-glass-fill); border-color: var(--cp-glass-rim); }
+@media (hover: hover) { .cp-row-item:hover { background: var(--cp-glass-fill-2); } }
+.cp-row-item__icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--cp-radius-sm);
+  background: var(--cp-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--cp-accent) 24%, transparent);
+  color: var(--cp-ink);
+}
+.cp-row-item__copy { flex: 1 1 auto; min-width: 0; }
+.cp-row-item__copy strong { display: block; font-size: var(--cp-text-callout); font-weight: var(--cp-weight-semibold); }
+.cp-row-item__copy small { display: block; margin-block-start: 2px; font-size: var(--cp-text-caption); line-height: 1.55; color: var(--cp-ink-2); }
+
+/* ---- Bottom sheet / dialog ------------------------------------------------ */
+.cp-sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  background: color-mix(in srgb, #02040a 58%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: cp-fade var(--cp-duration-base) var(--cp-ease-enter) both;
+}
+:root[data-theme='light'] .cp-sheet-scrim { background: color-mix(in srgb, #16233c 34%, transparent); }
+.cp-sheet {
+  position: fixed;
+  z-index: 141;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: min(88vh, 860px);
+  padding-block-end: var(--cp-safe-bottom);
+  border-start-start-radius: var(--cp-radius-2xl);
+  border-start-end-radius: var(--cp-radius-2xl);
+  border: 1px solid var(--cp-glass-rim);
+  border-block-end: 0;
+  background-color: var(--cp-glass-fill-3);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material-thick);
+  backdrop-filter: var(--cp-material-thick);
+  box-shadow: 0 -20px 60px -24px var(--cp-glass-shadow), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  animation: cp-sheet-up var(--cp-duration-slow) var(--cp-ease-spring) both;
+  will-change: transform;
+}
+.cp-sheet--center {
+  inset: auto;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(84vh, 720px);
+  transform: translate(-50%, -50%);
+  border-radius: var(--cp-radius-2xl);
+  border-block-end: 1px solid var(--cp-glass-rim);
+  animation: cp-sheet-pop var(--cp-duration-base) var(--cp-ease-spring) both;
+}
+.cp-sheet__handle {
+  display: grid;
+  place-items: center;
+  padding-block: 10px 4px;
+  cursor: grab;
+  touch-action: none;
+}
+.cp-sheet__handle span {
+  width: 38px;
+  height: 5px;
+  border-radius: var(--cp-radius-pill);
+  background: color-mix(in srgb, var(--cp-ink) 26%, transparent);
+}
+.cp-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 20px 14px;
+}
+.cp-sheet__head h2 { font-size: var(--cp-text-title3); }
+.cp-sheet__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cp-sheet__foot {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 20px calc(18px + var(--cp-safe-bottom));
+  border-block-start: 1px solid var(--cp-glass-rim);
+}
+@keyframes cp-sheet-up {
+  from { transform: translateY(102%); }
+  to { transform: translateY(0); }
+}
+@keyframes cp-sheet-pop {
+  from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ---- Ripple (Android) & press halo --------------------------------------- */
+.cp-ripple {
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: scale(0);
+  opacity: 0.55;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.05) 62%, transparent 70%);
+  animation: cp-ripple-out 620ms var(--cp-ease-standard) forwards;
+}
+:root[data-theme='light'] .cp-ripple { background: radial-gradient(circle, rgba(20, 40, 80, 0.35) 0%, rgba(20, 40, 80, 0.04) 62%, transparent 70%); }
+@keyframes cp-ripple-out {
+  to { transform: scale(2.4); opacity: 0; }
+}
+
+/* ---- Progress / spinner --------------------------------------------------- */
+.cp-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--cp-ink) 22%, transparent);
+  border-block-start-color: var(--cp-accent);
+  animation: cp-spin 800ms linear infinite;
+}
+@keyframes cp-spin { to { transform: rotate(360deg); } }
+
+.cp-progress {
+  position: relative;
+  height: 4px;
+  border-radius: var(--cp-radius-pill);
+  background: color-mix(in srgb, var(--cp-ink) 16%, transparent);
+  overflow: hidden;
+}
+.cp-progress > span {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--cp-progress, 0%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--cp-accent), var(--cp-accent-strong));
+}
+
+/* ---- Keyboard hint -------------------------------------------------------- */
+.cp-kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 5px;
+  border-radius: 5px;
+  border: 1px solid var(--cp-glass-rim);
+  background: var(--cp-glass-fill);
+  color: var(--cp-ink-3);
+  font-family: var(--cp-font-latin);
+  font-size: 10.5px;
+  font-weight: var(--cp-weight-semibold);
+  direction: ltr;
+}
+
+/* ============================================================================
+   LEGACY CLASS BRIDGE
+   ----------------------------------------------------------------------------
+   Older screens (operator player, playlist import, community TV, Xtream) still
+   use their historic class names. They are mapped onto the same material and
+   shape so the product reads as one system while their logic stays untouched.
+   ========================================================================== */
+.site :is(
+  .outline-button, .live-button, .settings-ghost-btn, .account-submit,
+  .iptv-load, .media-play, .media-cast-button, .open-movie-card button,
+  .movie-favorite, .home-about-link, .home-live-go, .section-header button,
+  .reference-intro-skip, .cp-reel-link, .firebase-list button, .licensed-channel,
+  .search-actions button, .playback-reset, .world-search button, .world-pagination button
+) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--cp-control-height-md);
+  padding: 10px 18px;
+  border-radius: var(--cp-radius-pill);
+  border: 1px solid var(--cp-glass-rim);
+  background-color: var(--cp-glass-fill-2);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+  font-family: inherit;
+  font-size: var(--cp-text-callout);
+  font-weight: var(--cp-weight-semibold);
+  line-height: 1.1;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform var(--cp-duration-fast) var(--cp-ease-spring),
+    background-color var(--cp-duration-fast) var(--cp-ease-standard),
+    border-color var(--cp-duration-fast) var(--cp-ease-standard),
+    box-shadow var(--cp-duration-base) var(--cp-ease-standard);
+}
+.site :is(.outline-button, .media-play, .account-submit, .live-button.primary) {
+  border-color: color-mix(in srgb, var(--cp-accent) 55%, transparent);
+  background-color: color-mix(in srgb, var(--cp-accent) 70%, transparent);
+  background-image:
+    linear-gradient(120deg, color-mix(in srgb, var(--cp-accent) 86%, #ffffff 6%), color-mix(in srgb, var(--cp-accent-strong) 80%, transparent)),
+    var(--cp-sheen);
+  color: var(--cp-on-accent);
+  box-shadow: 0 14px 34px -18px color-mix(in srgb, var(--cp-accent) 85%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+@media (hover: hover) {
+  .site :is(.outline-button, .live-button, .settings-ghost-btn, .account-submit, .iptv-load, .media-play,
+    .media-cast-button, .open-movie-card button, .movie-favorite, .home-about-link, .section-header button,
+    .cp-reel-link, .firebase-list button, .licensed-channel, .search-actions button, .world-search button,
+    .world-pagination button):hover {
+    border-color: var(--cp-glass-rim-strong);
+    box-shadow: var(--cp-elev-2), inset 0 1px 0 var(--cp-glass-highlight);
+    transform: translateY(-1px);
   }
 }
+.site :is(.outline-button, .live-button, .settings-ghost-btn, .account-submit, .iptv-load, .media-play,
+  .media-cast-button, .open-movie-card button, .movie-favorite, .home-about-link, .section-header button,
+  .cp-reel-link, .firebase-list button, .licensed-channel):active { transform: scale(0.97); }
+.site :is(.outline-button, .live-button, .settings-ghost-btn, .account-submit,
+  .iptv-load, .media-play, .media-cast-button, .open-movie-card button, .movie-favorite,
+  .home-about-link, .section-header button, .cp-reel-link, .firebase-list button,
+  .licensed-channel, .search-actions button, .world-search button, .world-pagination button)::after {
+  content: none;
+}
+.site .settings-danger-btn,
+.site .live-button.danger {
+  border-color: color-mix(in srgb, var(--cp-danger) 40%, transparent);
+  background-color: color-mix(in srgb, var(--cp-danger) 12%, transparent);
+  background-image: none;
+  color: var(--cp-danger);
+  box-shadow: none;
+}
+.site :is(.settings-switch) { /* legacy switch markup is replaced in Settings */ }
+.site :is(.mobile-dock a, .mobile-dock button) {
+  border: 1px solid var(--cp-glass-rim);
+  background: var(--cp-glass-fill);
+  border-radius: var(--cp-radius-md);
+}
+
+/* Old icon-button variants (header, search morph, modal close, carousel arrows). */
+.site :is(.app-icon-btn, .search-trigger, .settings-trigger, .settings-close, .modal-close,
+  .carousel-arrow, .cp-reel-controls > button, .cp-nav-search, .firebase-viewer-top button,
+  .open-movie-viewer-head button, .movie-details-link, .account-back, .language, .sky-theme-toggle) {
+  border: 1px solid var(--cp-glass-rim);
+  border-radius: 50%;
+  background-color: var(--cp-glass-fill);
+  background-image: var(--cp-sheen);
+  -webkit-backdrop-filter: var(--cp-material);
+  backdrop-filter: var(--cp-material);
+  box-shadow: var(--cp-elev-1), inset 0 1px 0 var(--cp-glass-highlight);
+  color: var(--cp-ink);
+}
+
+/* Light Liquid Glass: the track needs a tint for the white thumb to read. */
+:root[data-theme='light'] .cp-segmented {
+  background: color-mix(in srgb, var(--cp-ink) 6%, transparent);
+  border-color: color-mix(in srgb, var(--cp-ink) 12%, transparent);
+}
+:root[data-theme='light'] .cp-segmented__thumb {
+  background: #ffffff;
+  background-image: none;
+  border-color: color-mix(in srgb, var(--cp-ink) 10%, transparent);
+  box-shadow: 0 2px 8px rgba(16, 24, 48, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+:root[data-theme='light'] .cp-switch__track { background: color-mix(in srgb, var(--cp-ink) 14%, transparent); }

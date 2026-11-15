@@ -68,17 +68,25 @@ await check('unknown channel has a not-found state and back link', async () => {
 });
 await check('theme and language persist across the hybrid router boundary', async () => {
   await goto('/movies');
-  await page.getByRole('switch').click();
-  await page.getByRole('button', { name: 'Switch to English' }).click();
+  // Appearance and language are anchored glass menus in the shared header.
+  await page.locator('.app-theme-btn').click();
+  await page.locator('[role="menuitemradio"]').filter({ hasText: /Light|فاتح/ }).first().click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
+  await page.locator('.app-lang-pill').click();
+  await page.locator('[role="menuitemradio"]').filter({ hasText: /English|الإنجليزية/ }).first().click();
+  await page.waitForFunction(() => document.documentElement.lang === 'en');
   await page.locator('.cp-nav-bar a[href="/live"]').click();
   await page.waitForURL('**/live');
   await page.waitForTimeout(700);
-  assert.ok(await page.locator('.site.theme-light').count());
   assert.equal(await page.locator('html').getAttribute('lang'), 'en');
+  assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   assert.ok(await page.getByText('No licensed channel list is connected yet').isVisible());
-  await page.getByRole('switch').click();
-  await page.getByRole('button', { name: 'التبديل إلى العربية' }).click();
-  await page.waitForTimeout(300);
+  await page.locator('.app-theme-btn').click();
+  await page.locator('[role="menuitemradio"]').filter({ hasText: /Dark|داكن/ }).first().click();
+  await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
+  await page.locator('.app-lang-pill').click();
+  await page.locator('[role="menuitemradio"]').filter({ hasText: /العربية|Arabic/ }).first().click();
+  await page.waitForFunction(() => document.documentElement.lang === 'ar');
 });
 await check('main navigation keeps working after returning to Pages Router', async () => {
   await page.locator('.cp-nav-bar a[href="/movies"]').click();

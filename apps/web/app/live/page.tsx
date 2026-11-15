@@ -17,6 +17,7 @@ import { CATEGORIES } from '../../src/constants/categories';
 import { filterChannels } from '../../src/lib/player-utils';
 import { applyChannelSort } from '../../src/lib/channel-sort';
 import { useChannelView } from '../../src/lib/use-channel-view';
+import LiveTv from '../../src/components/iptv/LiveTv';
 import OwnerPlayerLink from '../../src/components/account/OwnerPlayerLink';
 import { getPrefsSnapshot, SERVER_PREFS, subscribePrefs } from '../../src/lib/preferences';
 import { useSyncExternalStore } from 'react';
@@ -68,14 +69,22 @@ export default function LivePage() {
   return <main className="live-page shell">
     <div className="live-heading"><div><h1>{ar ? 'البث المباشر (TV)' : 'Live TV'}</h1><p>{ar ? 'قنواتك في مكان واحد. ابحث، صفّ واحفظ ما تحب.' : 'Your channels in one place. Search, filter and save your favorites.'}</p></div><button type="button" className="live-chip live-favorite-toggle" aria-pressed={onlyFavorites} onClick={() => { setOnlyFavorites(value => !value); setLimit(PAGE_SIZE); }}><Star size={17} fill={onlyFavorites ? 'currentColor' : 'none'}/>{ar ? 'المفضلة فقط' : 'Favorites only'}</button></div>
     <OwnerPlayerLink language={prefs.language}/>
+    {channels.length > 0 && <>
     <div className="live-filters"><ChannelSearch value={search} onChange={changeFilter(setSearch)} language={prefs.language}/><CategoryFilter active={category} onChange={changeFilter(setCategory)} language={prefs.language}/><div className="live-filter-row"><CountryFilter active={country} onChange={changeFilter(setCountry)} channels={channels} language={prefs.language}/><QualityFilter active={quality} onChange={changeFilter(setQuality)} language={prefs.language}/></div></div>
     <div className="cp-tw live-toolbar" dir={ar ? 'rtl' : 'ltr'}>
       <ViewModeToggle value={view} onChange={setView} language={prefs.language}/>
       <SortDropdown value={sort} onChange={setSort} language={prefs.language}/>
       {!loading && !failed && channels.length > 0 && <span className="tw-ms-auto tw-shrink-0 tw-text-xs tw-text-muted" role="status">{filtered.length} {ar ? 'قناة' : 'channels'}</span>}
     </div>
+    </>}
     <div aria-live="polite" aria-busy={loading}>
-      {loading ? <div className="live-skeleton" role="status" aria-label={ar ? 'جاري تحميل القنوات' : 'Loading channels'}><span/><span/><span/><span/></div> : failed ? <div className="live-empty" role="alert"><h2>{ar ? 'تعذر تحميل القنوات' : 'Could not load channels'}</h2><p>{ar ? 'تحقق من الاتصال بالشبكة. مصدر القنوات قد يكون غير متاح مؤقتاً.' : 'Check your network. The channel source may be temporarily unavailable.'}</p><button type="button" className="live-button primary" onClick={() => { setLoading(true); setFailed(false); setAttempt(value => value + 1); }}><RotateCcw size={17}/>{ar ? 'إعادة المحاولة' : 'Try again'}</button></div> : channels.length === 0 ? <div className="live-empty" role="status"><h2>{ar ? 'لم تُربط قائمة قنوات مرخّصة بعد' : 'No licensed channel list is connected yet'}</h2><p>{ar ? 'تظهر هنا القنوات التي يضيفها مسؤول المنصة بعد التحقق من حقوق بثها. لا نعرض قنوات تجريبية أو روابط غير حقيقية.' : 'Channels appear after the operator connects a rights-reviewed playlist. We do not show invented channels or placeholder streams.'}</p><Link className="live-button" href="/settings">{ar ? 'إعدادات الحساب' : 'Account settings'}</Link></div> : filtered.length === 0 ? <div className="live-empty" role="status"><h2>{onlyFavorites && favorites.length === 0 ? (ar ? 'لا توجد قنوات مفضلة بعد' : 'No favorite channels yet') : (ar ? 'لا توجد قنوات مطابقة' : 'No matching channels')}</h2><p>{ar ? 'جرّب تغيير البحث أو التصنيف، أو أزل الفلاتر لعرض القنوات المتاحة.' : 'Change your search or category, or clear filters to see available channels.'}</p><button type="button" className="live-button" onClick={resetFilters}>{ar ? 'مسح الفلاتر' : 'Clear filters'}</button></div> : view === 'list' ? <div className="cp-tw" dir={ar ? 'rtl' : 'ltr'}>
+      {loading ? <div className="live-skeleton" role="status" aria-label={ar ? 'جاري تحميل القنوات' : 'Loading channels'}><span/><span/><span/><span/></div> : failed ? <div className="live-empty" role="alert"><h2>{ar ? 'تعذر تحميل القنوات' : 'Could not load channels'}</h2><p>{ar ? 'تحقق من الاتصال بالشبكة. مصدر القنوات قد يكون غير متاح مؤقتاً.' : 'Check your network. The channel source may be temporarily unavailable.'}</p><button type="button" className="live-button primary" onClick={() => { setLoading(true); setFailed(false); setAttempt(value => value + 1); }}><RotateCcw size={17}/>{ar ? 'إعادة المحاولة' : 'Try again'}</button></div> : channels.length === 0 ? <>
+        <div className="live-open-sources" role="status">
+          <h2>{ar ? 'قنوات مباشرة مفتوحة للجميع' : 'Open live TV for everyone'}</h2>
+          <p>{ar ? 'لا توجد قائمة قنوات مرخّصة من المشغّل بعد — القنوات التالية متاحة الآن مباشرة، والقنوات المنتقاة والسيرفر الخاص بكل تبويب:' : 'No operator playlist is connected yet — the following sources are open to everyone right now:'}</p>
+        </div>
+        <LiveTv language={prefs.language}/>
+      </> : filtered.length === 0 ? <div className="live-empty" role="status"><h2>{onlyFavorites && favorites.length === 0 ? (ar ? 'لا توجد قنوات مفضلة بعد' : 'No favorite channels yet') : (ar ? 'لا توجد قنوات مطابقة' : 'No matching channels')}</h2><p>{ar ? 'جرّب تغيير البحث أو التصنيف، أو أزل الفلاتر لعرض القنوات المتاحة.' : 'Change your search or category, or clear filters to see available channels.'}</p><button type="button" className="live-button" onClick={resetFilters}>{ar ? 'مسح الفلاتر' : 'Clear filters'}</button></div> : view === 'list' ? <div className="cp-tw" dir={ar ? 'rtl' : 'ltr'}>
         <ChannelList channels={filtered} favorites={favorites} language={prefs.language} activeId={playing?.id} onPlay={play} onFavoriteToggle={toggle}/>
       </div> : <>
         <p className="live-count">{filtered.length} {ar ? 'قناة مطابقة' : 'matching channels'} · {channels.length} {ar ? 'قناة في المصدر' : 'channels in source'}</p>
