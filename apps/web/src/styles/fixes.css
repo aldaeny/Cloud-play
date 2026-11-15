@@ -1,0 +1,39 @@
+/*
+ * Cloud Play Iraq — safety fixes (appended last, wins ties).
+ *
+ * 1. The floating dock (cp-global-nav) must never cover page content on
+ *    phones: while the dock is mounted (cp-has-global-nav on body), reserve
+ *    real bottom space so the last rows of cards, buttons and footer lines
+ *    scroll fully clear of the pill.
+ * 2. The home intro's skip button stays above the dock and clear of it on
+ *    small screens — a visitor can always reach it.
+ * 3. A pure-CSS failsafe: even if the intro video stalls or scripting fails
+ *    on an old TV browser, the overlay fades out on its own and frees the
+ *    page (the JS timer's shorter fallback still wins when JS is alive).
+ */
+
+/* 1 — reserve bottom space while the dock is mounted. */
+body.cp-has-global-nav {
+  padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+}
+body.cp-has-global-nav main {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 2 — the intro skip is never trapped under the dock. */
+.reference-intro-skip {
+  z-index: 1600 !important;
+}
+@media (max-width: 700px) {
+  .reference-intro-skip {
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* 3 — the intro frees the page by itself even without working scripting. */
+@keyframes cp-intro-failsafe {
+  to { visibility: hidden; opacity: 0; pointer-events: none; }
+}
+.reference-intro {
+  animation: cp-intro-failsafe 7s forwards;
+}
