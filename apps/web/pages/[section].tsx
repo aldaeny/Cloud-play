@@ -29,6 +29,7 @@ export default function Section({section,channels,channelCount}:{section:Section
  if(section==='series')return <PrivatePlayer language={language} initialKind="series"/>;
  if(section==='movies')return <>
    <OpenMovies key="movies" language={language} query={query} initialFilter="all"/>
+   <Link href="/library" className="live-button">{ar?'مكتبة الأفلام الكاملة من Internet Archive ←':'Full film library from Internet Archive'}</Link>
    <details className="cp-operator-drawer">
      <summary>
        <span className="cp-operator-drawer__title">{ar?'مكتبة المشغّل (Xtream)':'Operator library (Xtream)'}</span>
