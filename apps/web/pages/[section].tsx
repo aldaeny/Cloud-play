@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type {GetStaticPaths,GetStaticProps} from 'next';
 import SectionLayout,{type Language} from '../src/components/layout/SectionLayout';
 import OpenMovies from '../src/components/movies/OpenMovies';
+import ArchiveLibrary from '../src/components/movies/ArchiveLibrary';
 import LiveTv from '../src/components/iptv/LiveTv';
 import PrivatePlayer from '../src/components/iptv/PrivatePlayer';
 import {getPublicChannels,type PublicChannel} from '../src/server/public-tv';
@@ -29,7 +30,7 @@ export default function Section({section,channels,channelCount}:{section:Section
  if(section==='series')return <PrivatePlayer language={language} initialKind="series"/>;
  if(section==='movies')return <>
    <OpenMovies key="movies" language={language} query={query} initialFilter="all"/>
-   <Link href="/library" className="live-button">{ar?'مكتبة الأفلام الكاملة من Internet Archive ←':'Full film library from Internet Archive'}</Link>
+   <ArchiveLibrary language={language}/>
    <details className="cp-operator-drawer">
      <summary>
        <span className="cp-operator-drawer__title">{ar?'مكتبة المشغّل (Xtream)':'Operator library (Xtream)'}</span>
