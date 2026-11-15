@@ -13,6 +13,10 @@ import { validateProductionConfig } from './common/production-config';
 async function bootstrap() {
   validateProductionConfig(process.env);
   const app = await NestFactory.create(AppModule);
+
+  // Global API prefix
+  app.setGlobalPrefix('api');
+
   const prisma = app.get(PrismaService);
 
   // Global validation pipe
