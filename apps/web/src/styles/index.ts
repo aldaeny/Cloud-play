@@ -8,6 +8,7 @@
  *   3. glass + controls   materials and every interactive control.
  *   4. navigation/home/screens  the product surfaces, rebuilt on the system.
  *   5. rtl + motion       direction audit and the spring motion layer.
+ *   6. fixes              safety overrides, appended last so they win ties.
  */
 import './globals.css';
 import './typography.css';
@@ -28,3 +29,4 @@ import './home.css';
 import './screens.css';
 import './rtl.css';
 import './motion.css';
+import './fixes.css';
