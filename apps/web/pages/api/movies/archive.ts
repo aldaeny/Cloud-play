@@ -36,6 +36,14 @@ function asText(value: unknown): string {
   return '';
 }
 
+/**
+ * Family-safe filter — mirrors the community directory's ADULT pattern and
+ * extends it for this collection, where exploitation and nudist titles are
+ * common. The site is public and free for all ages, so we drop these entries
+ * ourselves rather than trusting the upstream collection to be clean.
+ */
+const ADULT = /\b(xxx|adult|porn|pornographic|erotic|erotica|sex|sexy|nudist|nude|nudity|molester|exploitation)\b/i;
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
   if (!enforceRateLimit(req, res, { bucket: 'public' })) return;
@@ -75,6 +83,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const title = asText(doc.title).trim() || id;
       const yearValue = typeof doc.year === 'number' ? doc.year : Number.parseInt(String(doc.year ?? ''), 10);
       const description = asText(doc.description).replace(/\s+/g, ' ').trim().slice(0, 300);
+      // A family site carries none of these — titles first, descriptions too.
+      if (ADULT.test(title) || ADULT.test(description)) return [];
       return [{
         id,
         title,
