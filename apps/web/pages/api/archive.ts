@@ -31,8 +31,9 @@ function asText(value: unknown): string {
  * extends it for this collection, where exploitation and nudist titles are
  * common. The site is public and free for all ages, so we drop these entries
  * ourselves rather than trusting the upstream collection to be clean.
+ * Checked against BOTH the title and the description text.
  */
-const ADULT = /\b(xxx|adult|porn|pornographic|erotic|erotica|sex|sexy|nudist|nude|nudity|molester|exploitation)\b/i;
+const ADULT = /\b(xxx|adult|porn|pornographic|erotic|erotica|sex|sexy|nudist|nude|nudity|naked|molester|exploitation|topless|strip|grindhouse)\b/i;
 
 async function fetchJson(url: string): Promise<unknown> {
   const controller = new AbortController();
@@ -83,14 +84,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         .sort((a, b) => Number(b.size ?? 0) - Number(a.size ?? 0));
       const best = mp4s[0];
       if (!best) return res.status(404).json({ error: 'NO_PLAYABLE_FILE' });
+      const title = asText(meta.metadata?.title) || id;
       const description = asText(meta.metadata?.description)
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 500);
+      // Family-safe: refuse adult content even when the id is known.
+      if (ADULT.test(title) || ADULT.test(description)) return res.status(404).json({ error: 'NOT_AVAILABLE' });
       return res.status(200).json({
         id,
-        title: asText(meta.metadata?.title) || id,
+        title,
         year: asText(meta.metadata?.year),
         description,
         url: `https://archive.org/download/${encodeURIComponent(id)}/${encodeURIComponent(best.name)}`,
@@ -105,13 +109,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const rawPage = Number(first(req.query.page) ?? '1');
   const page = Number.isFinite(rawPage) && rawPage > 0 ? Math.min(Math.floor(rawPage), 50) : 1;
   const term = q ? ` AND (${q})` : '';
-  const url = `${SEARCH_URL}?q=${encodeURIComponent(`collection:(feature_films) AND mediatype:(movies)${term}`)}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=year&fl%5B%5D=downloads&sort%5B%5D=-downloads&rows=40&page=${page}&output=json`;
+  const url = `${SEARCH_URL}?q=${encodeURIComponent(`collection:(feature_films) AND mediatype:(movies)${term}`)}&fl%5B%5D=identifier&fl%5B%5D=title&fl%5B%5D=year&fl%5B%5D=description&fl%5B%5D=downloads&sort%5B%5D=-downloads&rows=40&page=${page}&output=json`;
   try {
-    const body = await fetchJson(url) as { response?: { numFound?: number; docs?: ArchiveDoc[] } };
+    const body = await fetchJson(url) as { response?: { numFound?: number; docs?: (ArchiveDoc & { description?: unknown })[] } };
     const docs = Array.isArray(body.response?.docs) ? body.response.docs : [];
     res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
     return res.status(200).json({
-      data: docs.map(toRow).filter(row => row.id).filter(row => !ADULT.test(row.title)),
+      data: docs
+        .map(doc => ({ ...toRow(doc), description: asText(doc.description).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300) }))
+        .filter(row => row.id)
+        .filter(row => !ADULT.test(row.title) && !ADULT.test(row.description)),
       total: Number(body.response?.numFound) || docs.length,
       page,
     });
