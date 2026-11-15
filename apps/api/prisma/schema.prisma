@@ -528,6 +528,12 @@ model XtreamServer {
   @@unique([tenantId, name])
   @@index([tenantId, enabled])
   @@index([tenantId, enabled, priority])
+  xtreamCategories      XtreamCategory[]
+  xtreamStreams         XtreamStream[]
+  xtreamVodStreams      XtreamVodStream[]
+  xtreamSeries          XtreamSeries[]
+  xtreamEpgEntries      XtreamEpgEntry[]
+  xtreamCatchupEntries  XtreamCatchupEntry[]
 }
 
 /// Provider-scoped metadata-only catalog imports. No credentials or playback URLs.
@@ -807,4 +813,307 @@ model ExternalGeoNonce {
   id String @id
   expiresAt DateTime @db.Timestamptz
   @@index([expiresAt])
+}
+// ============================================
+// DAX TV FEATURES - NEW MODELS (prefixed to avoid conflicts)
+// ============================================
+
+// --- Xtream/Catalog Models ---
+
+model XtreamCategory {
+  id          String   @id @default(cuid())
+  xtreamId    Int      @unique
+  name        String
+  parentId    Int?
+  type        XtreamCategoryType // LIVE, VOD, SERIES
+  serverId    String
+  server      XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([serverId, type])
+  @@index([parentId])
+  streams         XtreamStream[]
+  vodStreams      XtreamVodStream[]
+}
+
+enum XtreamCategoryType {
+  LIVE
+  VOD
+  SERIES
+}
+
+model XtreamStream {
+  id            String   @id @default(cuid())
+  xtreamId      Int      @unique
+  name          String
+  streamIcon    String?
+  rating        Float?
+  categoryId    String
+  category      XtreamCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  serverId      String
+  server        XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  streamUrl     String?  // cached signed URL
+  urlExpiresAt  DateTime?
+  isLive        Boolean  @default(true)
+  containerExtension String? // .m3u8, .mp4, .ts
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([categoryId, isLive])
+  @@index([serverId])
+}
+
+model XtreamVodStream {
+  id             String   @id @default(cuid())
+  xtreamId       Int      @unique
+  name           String
+  streamIcon     String?
+  rating         Float?
+  rating5based   Float?
+  categoryId     String
+  category       XtreamCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  serverId       String
+  server         XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  containerExtension String?
+  directSource   String?
+  duration       String?  // "01:30:00"
+  plot           String?  @db.Text
+  cast           String?
+  director       String?
+  genre          String?
+  releaseDate    String?
+  youtubeTrailer String?
+  backdropPath   String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([serverId])
+  @@index([genre])
+}
+
+// --- Xtream Series Models ---
+
+model XtreamSeries {
+  id              String   @id @default(cuid())
+  xtreamId        Int      @unique
+  name            String
+  cover           String?
+  plot            String?  @db.Text
+  cast            String?
+  director        String?
+  genre           String?
+  releaseDate     DateTime?
+  rating          String?
+  rating5based    Float?
+  backdropPath    String?  @db.Text
+  youtubeTrailer  String?
+  lastModified    DateTime?
+  serverId        String
+  server          XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  seasons         XtreamSeason[]
+
+  @@index([serverId, genre])
+  @@index([name])
+}
+
+model XtreamSeason {
+  id          String   @id @default(cuid())
+  seriesId    String
+  series      XtreamSeries @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+  seasonNum   Int
+  cover       String?
+  plot        String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  episodes    XtreamEpisode[]
+
+  @@unique([seriesId, seasonNum])
+  @@index([seriesId])
+}
+
+model XtreamEpisode {
+  id              String   @id @default(cuid())
+  xtreamId        Int      @unique
+  seasonId        String
+  season          XtreamSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  title           String
+  plot            String?  @db.Text
+  duration        String?  // "00:45:00"
+  streamUrl       String?  // cached signed URL
+  streamIcon      String?
+  episodeNum      Int
+  releaseDate     DateTime?
+  rating          Float?
+  containerExtension String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([seasonId, episodeNum])
+  @@index([seasonId])
+  @@index([xtreamId])
+}
+
+// --- EPG / TV Guide Models ---
+
+model XtreamEpgEntry {
+  id          String   @id @default(cuid())
+  channelId   String   // xtream stream id as string
+  channelName String
+  title       String
+  start       DateTime
+  stop        DateTime
+  description String?  @db.Text
+  serverId    String
+  server      XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([channelId, start])
+  @@index([serverId, start])
+  @@index([start, stop])
+}
+
+model XtreamCatchupEntry {
+  id          String   @id @default(cuid())
+  channelId   String
+  channelName String
+  title       String
+  start       DateTime
+  stop        DateTime
+  streamUrl   String?  // signed catchup URL
+  serverId    String
+  server      XtreamServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([channelId, start])
+  @@index([serverId, start])
+}
+
+// --- User/Profile Extensions ---
+
+model UserProfileExt {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  pinHash         String?  // bcrypt hash
+  avatarUrl       String?
+  language        String   @default("ar")
+  theme           String   @default("dark")
+  autoPlay        Boolean  @default(true)
+  playbackSpeed   Float    @default(1.0)
+  preferredQuality String? // "auto", "1080", "720", "480"
+  subtitleSize    Int      @default(100)
+  subtitleColor   String   @default("#ffffff")
+  subtitleBg      String   @default("#00000080")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  favorites       UserFavorite[]
+  watchHistory    UserWatchHistory[]
+  continueWatching UserContinueWatching[]
+  devices         UserDeviceExt[]
+}
+
+model UserFavorite {
+  id        String   @id @default(cuid())
+  profileId String
+  profile   UserProfileExt @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  type      UserFavoriteType
+  contentId String   // xtreamId as string
+  contentType UserContentType // LIVE, VOD, SERIES, EPISODE
+  createdAt DateTime @default(now())
+
+  @@unique([profileId, contentId, contentType])
+  @@index([profileId, contentType])
+}
+
+enum UserFavoriteType {
+  CHANNEL
+  MOVIE
+  SERIES
+  EPISODE
+}
+
+enum UserContentType {
+  LIVE
+  VOD
+  SERIES
+  EPISODE
+}
+
+model UserWatchHistory {
+  id            String   @id @default(cuid())
+  profileId     String
+  profile       UserProfileExt @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentId     String
+  contentType   UserContentType
+  contentTitle  String
+  contentCover  String?
+  progress      Int      @default(0) // seconds
+  duration      Int      @default(0) // seconds
+  completed     Boolean  @default(false)
+  episodeId     String?  // for series
+  seasonNum     Int?
+  episodeNum    Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([profileId, updatedAt])
+  @@index([profileId, contentId, contentType])
+}
+
+model UserContinueWatching {
+  id            String   @id @default(cuid())
+  profileId     String
+  profile       UserProfileExt @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  contentId     String
+  contentType   UserContentType
+  contentTitle  String
+  contentCover  String?
+  progress      Int      @default(0)
+  duration      Int      @default(0)
+  episodeId     String?
+  seasonNum     Int?
+  episodeNum    Int?
+  updatedAt     DateTime @updatedAt
+
+  @@unique([profileId, contentId, contentType])
+  @@index([profileId, updatedAt])
+}
+
+model UserDeviceExt {
+  id            String   @id @default(cuid())
+  profileId     String
+  profile       UserProfileExt @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  deviceId      String   @unique
+  deviceName    String
+  deviceType    UserDeviceType
+  lastActiveAt  DateTime @default(now())
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([profileId, isActive])
+}
+
+enum UserDeviceType {
+  MOBILE
+  TV
+  WEB
+  TABLET
+}
+
+// --- Settings/Config ---
+
+model AppSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
