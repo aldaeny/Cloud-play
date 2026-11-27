@@ -99,10 +99,8 @@ export default function ArchiveLibrary({ language }: { language: Language }) {
     }
   }, [debounced]);
 
-  useEffect(() => {
-    void load(1);
-    return () => request.current?.abort();
-  }, [load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
+  useEffect(() => { void load(1); return () => request.current?.abort(); }, [load]);
 
   const cardStyle = { background: '#101014', border: '1px solid #26262e', borderRadius: '14px', overflow: 'hidden', textAlign: 'start' as const };
   const playStyle = { display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#7b83ff', color: '#fff', borderRadius: '999px', padding: '7px 14px', fontSize: '13px', fontWeight: 600 };

@@ -224,7 +224,7 @@ export class IdentityService {
   async refresh(refreshToken: string, deviceId?: string) {
     this.requireTokenSecrets();
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken, {
+      const _payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
         algorithms: ['HS256'],
       });
@@ -240,7 +240,7 @@ export class IdentityService {
       }
 
       const user = await this.prisma.appUser.findUnique({
-        where: { id: payload.sub },
+        where: { id: _payload.sub },
         include: { profiles: { select: publicProfileSelect } },
       });
 
@@ -290,7 +290,7 @@ export class IdentityService {
       return { success: true };
     }
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken, {
+      const _payload = await this.jwtService.verifyAsync(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET,
         algorithms: ['HS256'],
       });

@@ -67,17 +67,17 @@ export default function LibraryPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsFailed, setDetailsFailed] = useState(false);
   const [playing, setPlaying] = useState<Channel | null>(null);
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = JSON.parse(localStorage.getItem(FAVORITES) || '[]');
+      return Array.isArray(raw) ? raw.filter(x => typeof x === 'string') : [];
+    } catch { return []; }
+  });
   const [broken, setBroken] = useState<string[]>([]);
   const request = useRef<AbortController | null>(null);
 
   useEffect(() => { const timer = setTimeout(() => setDebounced(query.trim()), 350); return () => clearTimeout(timer); }, [query]);
-  useEffect(() => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(FAVORITES) || '[]');
-      if (Array.isArray(raw)) setFavorites(raw.filter(x => typeof x === 'string'));
-    } catch { /* Storage unavailable. */ }
-  }, []);
   useEffect(() => { document.title = `${t.heading} | Cloud Play Iraq`; }, [t.heading]);
 
   const load = useCallback(async (nextPage: number) => {
@@ -102,6 +102,7 @@ export default function LibraryPage() {
     }
   }, [debounced]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
   useEffect(() => { void load(1); return () => request.current?.abort(); }, [load]);
 
   // Open a film: resolve its playable file server-side, then ask TMDB for the Arabic display.

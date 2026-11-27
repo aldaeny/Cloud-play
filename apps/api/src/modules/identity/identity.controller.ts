@@ -9,7 +9,7 @@ export class IdentityController {
 
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res() res: Response, @Req() req: Request) {
-    const deviceId = req.headers['x-device-id'] as string;
+    const _deviceId = req.headers['x-device-id'] as string;
     const user = await this.identityService.register(dto);
     return res.status(HttpStatus.CREATED).json(user);
   }

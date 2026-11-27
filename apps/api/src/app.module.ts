@@ -17,9 +17,10 @@ import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SupportModule } from './modules/support/support.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-import { XtreamModule } from './xtream/xtream.module';
-import { EpgModule } from './epg/epg.module';
-import { SeriesModule } from './series/series.module';
+// DAX TV Features - not yet implemented
+// import { XtreamModule } from './xtream/xtream.module';
+// import { EpgModule } from './epg/epg.module';
+// import { SeriesModule } from './series/series.module';
 
 @Module({
   imports: [
@@ -46,10 +47,10 @@ import { SeriesModule } from './series/series.module';
     NotificationsModule,
     SupportModule,
     AnalyticsModule,
-    // DAX TV Features
-    XtreamModule,
-    EpgModule,
-    SeriesModule,
+    // DAX TV Features - not yet implemented
+    // XtreamModule,
+    // EpgModule,
+    // SeriesModule,
   ],
 })
 export class AppModule {}

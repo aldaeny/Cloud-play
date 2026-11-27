@@ -166,9 +166,13 @@ export class ExternalChannelsService {
     const channel = await this.channel(tenantId, channelId);
     if (country !== channel.country || platform !== channel.platform) throw new ForbiddenException('PLAYBACK_SCOPE_DENIED');
     await this.evaluate(tenantId, channelId);
-    const row = await this.prisma.externalChannel.findFirst({ where: { id: channelId, tenantId }, include: { activeSource: { include: sourceInclude } } });
-    if (!row?.enabled || !row.activeSource || !sourceRights(row.activeSource, row, new Date()) || !healthySource(row.activeSource, row, new Date())) throw new ServiceUnavailableException('NO_RIGHTS_ELIGIBLE_HEALTHY_SOURCE');
-    return row.activeSource;
+    const row = await this.prisma.externalChannel.findFirst({ where: { id: channelId, tenantId } });
+    if (!row?.enabled || !row.activeSourceId) throw new ServiceUnavailableException('NO_RIGHTS_ELIGIBLE_HEALTHY_SOURCE');
+    const source = await this.prisma.channelSource.findFirst({ where: { id: row.activeSourceId, tenantId }, include: { server: { include: { license: true, checks: { take: 1, orderBy: { startedAt: 'desc' as const } } } } } });
+    if (!source) throw new ServiceUnavailableException('NO_RIGHTS_ELIGIBLE_HEALTHY_SOURCE');
+    const typedSource = source as Source;
+    if (!sourceRights(typedSource, row, new Date()) || !healthySource(typedSource, row, new Date())) throw new ServiceUnavailableException('NO_RIGHTS_ELIGIBLE_HEALTHY_SOURCE');
+    return source;
   }
   async playbackFailure(tenantId: string, channelId: string, sourceId: string, attempts: number) {
     playbackMetric('provider_failure',1);
