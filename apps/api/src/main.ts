@@ -5,10 +5,15 @@ import { PrismaService } from './prisma.service';
 import cookieParser from 'cookie-parser';
 import { json, urlencoded } from 'express';
 import type { Request, Response } from 'express';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 
 import {PostgresRateLimiter,sharedRateLimiter} from './common/shared-rate-limiter';
 import { rateLimiter } from './common/rate-limiter';
 import { validateProductionConfig } from './common/production-config';
+
+// Load .env file explicitly for production builds (from apps/api/.env)
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 async function bootstrap() {
   validateProductionConfig(process.env);
